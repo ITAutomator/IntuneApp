@@ -36,10 +36,23 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
             $scopes += "Application.Read.All"               # Allows the app to read all applications and service principals without a signed-in user
             $scopes += "Application.ReadWrite.All"          # Allows the app to create, read, update and delete applications and service principals without a signed-in user. Does not allow management of consent grants.
             $scopes += "RoleManagement.ReadWrite.Directory" # Allows the app to read and manage the role-based access control (RBAC) settings for your company's directory, without a signed-in user.
-            $scopes += "AppRoleAssignment.ReadWrite.All"    # Manage app permission grants and app role assignments
+            $scopes += "DelegatedPermissionGrant.ReadWrite.All"    # Manage app permission grants and app role assignments 
             $retval=""
-            Disconnect-MgGraph -ErrorAction Ignore | Out-Null
-            Connect-MgGraph -Scopes $scopes -TenantId $OrgDomain -erroraction Stop | Out-Null
+            $context = Get-MgContext
+            if ($context)
+            { # already connected
+                Write-Host "Connect-MgGraph is already connected as: " -NoNewline
+                Write-Host $context.Account -ForegroundColor Yellow
+                if (-not (AskForChoice "Use this connection?"))
+                {
+                    Disconnect-MgGraph -ErrorAction Ignore | Out-Null
+                    Connect-MgGraph -Scopes $scopes -TenantId $OrgDomain -erroraction Stop | Out-Null
+                }
+            } # already connected
+            else {
+                <# Action when all if and elseif conditions are false #>
+                Connect-MgGraph -Scopes $scopes -TenantId $OrgDomain -erroraction Stop | Out-Null
+            }
             $connected = $true
         }
         Catch
@@ -103,11 +116,11 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
         {#user didn't want to replace
             $retval="ERR: Existing app found, user chose not to replace: $($AppName)"
             Write-Verbose $retval
-            Return $retval,$AppIDs
+            Return $retval
         }#user didn't want to replace
         $appidstoremove = @($orgapp.id)
-        #Remove-MgApplication -ApplicationId $appidtoremove
     }# App with same name found
+    #region CreateApp
     ######## Create API Permission Object $ReqResAccess (https://aad.portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/RegisteredApps)
     $ReqResAccess = New-Object -TypeName System.Collections.Generic.List[Microsoft.Graph.PowerShell.Models.MicrosoftGraphRequiredResourceAccess]
     $ResourceName = "Microsoft Graph"
@@ -120,24 +133,27 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
     $ResourceRoles += "Group.Read.All"                               # read group properties and memberships
     $ResourceRoles += "User.Read.All"                                # read user properties
     Foreach ($Role in $ResourceRoles)
-    { # each resourcerole
-        $ResourceAppRole = Get-MgServicePrincipal -Filter "DisplayName eq '$($ResourceName)'" -Property AppRoles | Select-Object -ExpandProperty AppRoles | Where-Object Value -EQ $Role
-        $ReqResAppIDAccesses.ResourceAccess+=@{ Id = $ResourceAppRole.id ; Type = "Role" }
+    { # each resourcerole 
+        $sp_property = "Oauth2PermissionScopes" #sp_property: 'AppRoles' for Application, 'Oauth2PermissionScopes' for Delegated
+        $ra_type = "Scope"                      #Type       : 'Role' for Application, 'Scope' for Delegated
+        ##
+        $ResourceAppRole = Get-MgServicePrincipal -Filter "DisplayName eq '$($ResourceName)'" -Property $sp_property | Select-Object -ExpandProperty $sp_property | Where-Object Value -EQ $Role
+        $ReqResAppIDAccesses.ResourceAccess+=@{ Id = $ResourceAppRole.id ; Type = $ra_type } 
         Write-Host "Staging access to resource: " -NoNewline
         Write-Host $ResourceApp.DisplayName -ForegroundColor Yellow -NoNewline
         Write-Host " with role: " -NoNewline
         Write-Host $ResourceAppRole.Value -ForegroundColor Yellow
     } # each resourcerole
+    # Add the list to the ReqResAccess
     $ReqResAccess.Add($ReqResAppIDAccesses)
     ####### Create MgApplication (Registered App)
     ####### https://aad.portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/RegisteredApps
     $params = @{
         DisplayName = $AppName
         SignInAudience = "AzureADMyOrg"
-        Web = @{ RedirectUris="http://localhost"; } 
+        PublicClient = @{ RedirectUris="https://login.microsoftonline.com/common/oauth2/nativeclient"; } 
         RequiredResourceAccess = $ReqResAccess
         AdditionalProperties = @{}
-        #KeyCredentials = @(@{ Type="AsymmetricX509Cert"; Usage="Verify"; Key=$MyCert.RawData})
     }
     try {
         ########### CREATE APP! This is the purpose of this function
@@ -147,32 +163,32 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
         $_  
         Pause
     }
-    # $appRegistration = @(Get-MgApplication) | where-object id -notin $appidstoremove
-    #######
+    #endregion CreateApp
+    #region GrantApp
     ####### Create service principal (svc_princ) for the App (SPs are AD object ids, kind of like user ids, but for apps and resources)
-    # https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/1733
-    $svc_princ = New-MgServicePrincipal -AppId $appRegistration.AppId | Out-Null #-AdditionalProperties @{} 
-    $svc_princ = Get-MgServicePrincipal -Filter "DisplayName eq '$($AppName)'"
-    $svc_princ = $svc_princ | Where-Object AppId -EQ $appRegistration.AppId
-    ####### Grant permission to principals of required resources. Otherwise they must be granted manually on the API permissions page
-    $res_princ = Get-MgServicePrincipal -Filter "DisplayName eq '$($ResourceName)'"
-    Foreach ($Role in $ResourceRoles)
-    { # each resource role
-        $res_approle = $res_princ.AppRoles | Where-Object Value -Eq $Role
-        Write-Host "Granting permission to resource: " -NoNewline
-        Write-Host $res_princ.DisplayName -ForegroundColor Yellow -NoNewline
-        Write-Host " with role: " -NoNewline
-        Write-Host $res_approle.Value -ForegroundColor Yellow
-        Try
-        {
-            New-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $svc_princ.id -PrincipalId $svc_princ.Id -ResourceId $res_princ.Id -AppRoleId $res_approle.Id | Out-Null
-        }
-        Catch
-        {
-            Write-Host "New-MgServicePrincipalAppRoleAssignment Error:$($_.ToString())"
-            Pause
-        }
-    } # each resource role
+    $AppClient = New-MgServicePrincipal -AppId $appRegistration.AppId | Out-Null # was $svc_princ=  
+    $AppClient = Get-MgServicePrincipal -Filter "appId eq '$($appRegistration.AppId)'"
+    # Retrieve the RequiredResourceAccess for the app (the APIs)
+    $rras = $appRegistration.RequiredResourceAccess
+    # Each requiredResourceAccess identifies an API (the resource app) and a list of required
+    # delegated permissions and app roles.
+    foreach ($rra in $rras)
+    { # each api (Microsoft Graph)
+        $resource = Get-MgServicePrincipal -Filter "appId eq '$($rra.resourceAppId)'"
+        $requiredScopeIds = $rra.resourceAccess | Where-Object { $_.Type -eq "Scope" } | ForEach-Object { $_.id }
+        if ($requiredScopeIds)
+        { # each api permission
+            #$grantedScopeValues = @()
+            $finalScopeValues = {@()}.Invoke()  # not really sure what this does - create an empty object?
+            foreach ($requiredScopeId in $requiredScopeIds) {
+                $requiredScope = $resource.Oauth2PermissionScopes | Where-Object { $_.Id -eq $requiredScopeId }
+                $finalScopeValues.Add($requiredScope.Value) 
+            }
+            #Write-Host "  Creating delegated permissions grant for '$($finalScopeValues -join " ")'"
+            New-MgOauth2PermissionGrant -ConsentType "AllPrincipals" -ClientId $AppClient.Id -ResourceId $resource.Id -Scope ($finalScopeValues -join " ") | Out-Null
+        } # each api permission
+    } # each api
+    #endregion GrantApp
     ####### Remove old App?
     if ($appidstoremove)
     { # Some cookie to remove?
@@ -182,7 +198,7 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
         }
     } # Some cookie to remove?
     ####### Create MgApplication: Done
-    Disconnect-MgGraph | Out-Null
+    # Disconnect-MgGraph | Out-Null
     ####
     $retval="OK"
     Write-Host "-----------------------------------------------------------------------------"
@@ -719,7 +735,7 @@ Do
         Write-Host "     AppPublisherClientID : $($OrgValues.AppPublisherClientID)"
         if ($OrgValues."AppPublisherClientID" -eq "")
         {
-            Write-Host "ERR: AppPublisherClientID is missing for this Org. Suggestion: Delete the org row from AppsPublish_OrgList.csv and re-run with menu option [O] to fix up the org row.";Start-sleep  3; Return $false
+            Write-Host "ERR: AppPublisherClientID is missing for this Org. Suggestion: Use menu option [O]rg prep to fix up this TenantName.";Start-sleep  3; continue
         }
         #endregion choose tenant
         #region modules
@@ -728,6 +744,7 @@ Do
         $modules+="IntuneWin32App"
         $modules+="Microsoft.Graph.Devices.CorporateManagement"
         $modules+="Microsoft.Graph.Groups"
+        $modules+="Microsoft.Graph.Users"
         $modules+="Microsoft.Graph.Authentication"
         ForEach ($module in $modules)
         { 
@@ -1353,9 +1370,26 @@ Do
         $OrgDomain = Read-Host "Enter Org domain (eg mydomain.com, blank to cancel)"
         if ($OrgDomain -eq "") {
             Write-Host "Canceled" -ForegroundColor Yellow;Start-Sleep 2;Continue}
+        #region modules
+        $checkver=$true
+        $modules=@()
+        #$modules+="IntuneWin32App"
+        $modules+="Microsoft.Graph.Identity.SignIns"
+        $modules+="Microsoft.Graph.Identity.DirectoryManagement"
+        $modules+="Microsoft.Graph.Users"
+        $modules+="Microsoft.Graph.Authentication"
+        $modules+="Microsoft.Graph.Applications"
+        ForEach ($module in $modules)
+        { 
+            Write-Host "Loadmodule $($module)..." -NoNewline ; $lm_result=LoadModule $module -checkver $checkver; Write-Host $lm_result
+            if ($lm_result.startswith("ERR")) {
+                Write-Host "ERR: Load-Module $($module) failed. Suggestion: Open PowerShell $($PSVersionTable.PSVersion.Major) as admin and run: Install-Module $($module)";Start-sleep  3; Return $false
+            }
+        }
+        #endregion modules
         #region: Create the app in the org
         $OrgAppPublisherClientID = CreatePublishingApp $OrgDomain $AppName
-        if ($OrgAppPublisherClientID -eq "")
+        if ($OrgAppPublisherClientID.StartsWith("ERR"))
         { # auto didn't work
             If (-not(AskForChoice "Org connection didn't work out. Would you like directions to add the app manually?"))
             {
@@ -1378,7 +1412,7 @@ Do
                 Write-Host " Redirect Uri / public client/native: https://login.microsoftonline.com/common/oauth2/nativeclient"
                 Write-Host " Click Register"
                 Write-Host ""
-                Write-Host "API permisssions (Repeat search and tick box to accumulate all selections at once)"
+                Write-Host "API permisssions (Repeat search and tick box to accumulate all selections at once, then click Grant admin consent)"
                 Write-Host " API permisssions > Add a permission > Microsoft graph > Delegated permissions,"
                 Write-Host "  DeviceManagementManagedDevices.ReadWrite.All"
                 Write-Host "  DeviceManagementApps.ReadWrite.All"
@@ -1395,11 +1429,24 @@ Do
         } # auto didn't work
         #endregion: Create the app in the org
         # At this point we have a valid OrgAppPublisherClientID either automatically or manually
-        # Make a copy of the last row, update the Org field, and append
-        $newrow = $orglist[-1].PSObject.Copy()
-        $newRow.Org = $OrgDomain
-        $newRow.AppPublisherClientID = $OrgAppPublisherClientID
-        $orglist += $newRow
+        $rows_existing = @($orglist | Where-Object Org -eq $OrgDomain)
+        if ($rows_existing.count -ne 0)
+        { # Update existing row(s)
+            foreach ($row_existing in $rows_existing)
+            { # each row
+                $row_existing.AppPublisherClientID = $OrgAppPublisherClientID
+            } # each row
+        } # Update existing row(s)
+        else
+        { # create a new row
+            $newrow = $orglist[-1].PSObject.Copy() # copy the last added row?
+            $newRow.Org = $OrgDomain
+            $newRow.AppPublisherClientID = $OrgAppPublisherClientID
+            $newRow.Packages = ""
+            $newRow."Last Publish Count" = ""
+            $newRow."Last Publish Date" = ""
+            $orglist += $newRow
+        } # create a new row
         # Save
         $orglist | Export-Csv $orglistcsv -NoTypeInformation
         Write-host "New org added: " -NoNewline
