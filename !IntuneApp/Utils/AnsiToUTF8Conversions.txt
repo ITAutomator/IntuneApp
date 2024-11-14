@@ -1,0 +1,35 @@
+This file is ANSI encoded. Leave it that way on purpose.
+New .ps1 files should be UTF8 encoded.
+However, you must replace these common character problems first
+
+If you open this file in Notepad++ and switch between Encoding > UTF8 and Encoding > ANSI you will see the difference.
+The From chars become garbled in the chart below.
+But always save THIS file as ANSI.
+
+Steps to safely convert a PowerShell .ps1 file from ANSI encoded file to UTF8
+1. Open the suspected file in Notepad++
+2. Look in the lower right corner for ANSI or UTF8
+3. If it's ANSI:
+4. Search and replace all the problem characters below.
+5. Change it to UTF8: Encoding > UTF8 to SEE the problems (they will be black boxes)
+6. Save the file as UTF8
+
+For Bulk
+1. Find in files named .ps1
+2. Open all the files by double-clicking the search results.  This is so you can additionally save them as UTF8 (optional)
+3. Replace in files named .ps1 (Make sure it's .ps1 otherwise you'll ruin this file)
+
+-------------------------------------------------------
+ANSI to UTF8 Conversions
+from https://www.i18nqa.com/debug/utf8-debug.html
+-------------------------------------------------------
+Description:Long hyphen
+       From:– or —
+         To:-
+Description:Angle quote
+       From:‘ or ’
+         To:'
+Description:Angle double quote
+       From:“ or ”
+         To:"
+-------------------------------------------------------
