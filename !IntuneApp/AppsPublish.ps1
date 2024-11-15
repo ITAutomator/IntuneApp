@@ -19,6 +19,15 @@
 # \7zipInstaller\IntuneApp\   intune_settings.csv
 #                             intune_install
 #>
+Function InitializeOrgList ($orglistcsv)
+# Creates an empty OrgList
+{
+    if (-not (Test-Path ($orglistcsv)))
+    {
+        ######### Template
+        '"Org","Packages","Last Publish Count","Last Publish Date","PublishToGroupIncluded","PublishToGroupExcluded","AppPublisherClientID"' | Add-Content $orglistcsv
+    }
+}
 Function CreatePublishingApp ($OrgDomain, $AppName)
 # Connects to an org and creates the required Registered App to publish Windows Apps
 {
@@ -340,8 +349,9 @@ Function UpdatePS1File ($ps1template, $ps1file, $pkgobj, $injection_site, $injec
     }
     Return $return
 }
-Function Ps1FileCheckUpdate ($ps1template, $file_checks, $LogFolder, $pkgobj)
+Function Ps1FileCheckUpdate ($ps1template, $file_checks, $pkgobj)
 {
+    $LogFolder = "C:\IntuneApp"
     $sResult = "OK"
     $i=0
     $updated_count=0
@@ -493,7 +503,7 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
         $pkgobj.AvailableInCompanyPortal= [System.Convert]::ToBoolean($pkgobj.AvailableInCompanyPortal)
         # checks that all files exist, and injects them with updated variables and custom code (for detection and requirements files)
         $ps1template = "$($search_root)\!IntuneApp\AppsPublish_Template.ps1"
-        $sResultps1 = Ps1FileCheckUpdate $ps1template $file_checks $LogFolder $pkgobj
+        $sResultps1 = Ps1FileCheckUpdate $ps1template $file_checks $pkgobj
         if ($sResultps1.StartsWith("ERR"))
         {Return $sResultps1, $null}
         # update hash for this package (if needed)
@@ -513,10 +523,6 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
         # hash calc
         #$HashMethod = "ByContents"
         $HashMethod = "ByDate"
-        if ($pkgobj.AppName -eq "Printers (GLK)")
-        {
-            #Write-Host $sHash
-        }
         $sErr,$sHash,$HashList = GetHashOfFiles $HashFilePaths -ByDateOrByContents $HashMethod
         $pkgobj.Hash = $sHash
         $HashFilePath = Join-Path $IntuneAppFolder "intune_packagehash.xml"
@@ -559,7 +565,7 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
                 # Update Values
                 $pkgobj.AppVersion=$versionstr_new
                 $pkgobj.AppNameVer="$($pkgobj.AppName)-v$($versionstr_new)"
-                $sResultps1 = Ps1FileCheckUpdate $ps1template $file_checks $LogFolder $pkgobj
+                $sResultps1 = Ps1FileCheckUpdate $ps1template $file_checks $pkgobj
                 # recalc hash (because of csv change)
                 $sErr,$sHash,$HashList = GetHashOfFiles $HashFilePaths -ByDateOrByContents $HashMethod
                 $pkgobj.Hash = $sHash
@@ -699,16 +705,20 @@ Do
     { # Publish
         $showmenu_publish=$true
         $verbosepackager=$false
-        if ($PSVersionTable.PSVersion.Major -eq 5) {
+        if ($PSVersionTable.PSVersion.Major -eq 7) {
             Write-Host "Note: " -ForegroundColor Green -NoNewline
-            Write-Host "Powershell version 5 detected."
-            Write-Host "You may run into MFA-related connection issues. Consider upgrading to Powershell 7 for publishing." -ForegroundColor Green
+            Write-Host "Powershell version 7 detected."
+            Write-Host "You may run into MFA-related connection issues. Consider using Powershell 5 for publishing." -ForegroundColor Green
+            PressEnterToContinue
         }
         #region choose tenant
         # Get Org info
         $orglistcsv = "$($scriptdir)\AppsPublish_OrgList.csv"
-        If (-not (Test-Path $orglistcsv)) {write-host "Err: Couldn't find $($orglistcsv)";return}
+        If (-not (Test-Path $orglistcsv)) {InitializeOrgList $orglistcsv}
         $orglist=Import-Csv $orglistcsv
+        If ($orglist.count -eq 0) {
+            Write-Host "No orgs have been prepped yet.  Use the [O]rg prep option."; PressEnterToContinue ;Continue 
+        } 
         $i=0
         Write-Host ($orglist | Select-object @{N="ID";E={(++([ref]$i).Value)}},Org,Packages,"Last Publish Count","Last Publish Date"| Format-Table | Out-String)
         $choice=ChooseFromList $orglist.Org "--- Publish to Org (AppsPublish_OrgList.csv)" -showmenu $false
@@ -773,50 +783,6 @@ Do
             Write-Host "CONNECTED"
             Write-Host "--------------------"
         }
-<# 
-        Do
-        { # Connect-MgGraph
-            $MgOrg = Get-MgOrganization -ErrorAction Ignore
-            if ($OrgValues.TenantName -in $MgOrg.VerifiedDomains.Name)
-            { # AlreadyConnected (Try 1)
-                    $connected=$true
-                    $done=$true
-            }
-            if (-not $connected)
-            { # Connect-MgGraph
-                Disconnect-MgGraph -ErrorAction ignore
-                $RequiredScopes = @("Group.ReadWrite.All", "GroupMember.ReadWrite.All", "User.ReadWrite.All","DeviceManagementApps.ReadWrite.All")
-                Connect-MgGraph -Scopes $RequiredScopes | Out-Null
-            }
-            if (-not $connected)
-            { # IsConnected (Try 2)
-                $MgOrg = Get-MgOrganization -ErrorAction Ignore
-                if ($OrgValues.TenantName -in $MgOrg.VerifiedDomains.Name)
-                {
-                        $connected=$true
-                        $done=$true
-                }
-                else
-                { # Ask
-                    if (AskForChoice -message "Connection didn't work. Try again? (No=Exit)")
-                    { # Said yes
-                        $done=$false
-                    } # Said yes
-                    else
-                    { # Said no
-                        Write-Host "Connection didn't work"
-                        $done=$true
-                    } # Said no
-                }  # Ask
-            } # IsConnected (Try 2)
-        } Until ($done) # Connect-MgGraph
-        if (-not $connected)
-        {
-            Write-Host "Connect-MgGraph: Not connected, exiting"
-            Pause;Break
-        }
-        #>
-        #endregion Connect-MgGraph
         Do { # menu loop
             #region Check published apps
             Write-Host "Checking published apps in $($OrgValues.TenantName)..." -NoNewline
@@ -1126,11 +1092,11 @@ Do
                         }
                         if (($pkg.PublishToOrgGroup) -and ($OrgValues.PublishToGroupIncluded))
                         {
-                            $AppDescription+="`r`n* Pushed to group: Intune WindowsApp $($pkg.AppName), $($OrgValues.PublishToGroupIncluded)"
+                            $AppDescription+="`r`n* Pushed to group: IntuneApp $($pkg.AppName), $($OrgValues.PublishToGroupIncluded)"
                         }
                         else
                         {
-                            $AppDescription+="`r`n* Pushed to group: Intune WindowsApp $($pkg.AppName)"
+                            $AppDescription+="`r`n* Pushed to group: IntuneApp $($pkg.AppName)"
                         }
                         $AppDescription+="`r`n* Updated: $(Get-Date -format "yyyy-MM-dd") by $($env:USERNAME) on $($env:COMPUTERNAME)"
                         $AppDescription+="`r`n* Hash: [$($pkg.Hash)]"
@@ -1271,7 +1237,7 @@ Do
                         } #has include group
                         #endregion include_exclude groups
                         #region add app group
-                        $groupname = "Intune WindowsApp $($pkg.AppName)"
+                        $groupname = "IntuneApp $($pkg.AppName)"
                         Write-Host "Including via Group: $($groupname)... " -NoNewline
                         $strReturn,$MgGroup=MgGroupCreate $groupname
                         Write-Host $strReturn
@@ -1320,7 +1286,7 @@ Do
                                 Remove-MgDeviceAppManagementMobileApp -MobileAppId $pkgselect.PublishedAppId -ErrorAction Ignore
                                 Write-Host "App unpublished" -ForegroundColor Yellow
                                 # remove orphaned groups        
-                                $groupname = "Intune WindowsApp $($pkgselect.AppName)"
+                                $groupname = "IntuneApp $($pkgselect.AppName)"
                                 $MgGroup = Get-MgGroup -All | Where-Object {$_.DisplayName -eq $groupname}
                                 if ($mgGroup)
                                 { # has group
@@ -1362,9 +1328,9 @@ Do
     } # Publish
     ElseIf ($action -eq 3)
     { # Org
-        $AppName = "Intune WindowsApp Publisher"
+        $AppName = "IntuneApp Publisher"
         $orglistcsv = "$($scriptdir)\AppsPublish_OrgList.csv"
-        If (-not (Test-Path $orglistcsv)) {write-host "Err: Couldn't find $($orglistcsv)";return}
+        If (-not (Test-Path $orglistcsv)) {InitializeOrgList $orglistcsv}
         $orglist=Import-Csv $orglistcsv
         #
         $OrgDomain = Read-Host "Enter Org domain (eg mydomain.com, blank to cancel)"
@@ -1439,12 +1405,16 @@ Do
         } # Update existing row(s)
         else
         { # create a new row
-            $newrow = $orglist[-1].PSObject.Copy() # copy the last added row?
-            $newRow.Org = $OrgDomain
-            $newRow.AppPublisherClientID = $OrgAppPublisherClientID
-            $newRow.Packages = ""
-            $newRow."Last Publish Count" = ""
-            $newRow."Last Publish Date" = ""
+            $newrow=[pscustomobject][ordered]@{
+                Org                    = $OrgDomain
+                Packages               = "0"
+                "Last Publish Count"   = ""
+                "Last Publish Date"    = ""
+                PublishToGroupIncluded = "IntuneApp Windows Users"
+                PublishToGroupExcluded = "IntuneApp Windows Users Excluded"
+                AppPublisherClientID = $OrgAppPublisherClientID
+            }
+            #$newrow = $orglist[-1].PSObject.Copy() # copy the last added row?
             $orglist += $newRow
         } # create a new row
         # Save
