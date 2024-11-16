@@ -45,7 +45,7 @@ Do
     } # Exit
     ElseIf ($action -eq 1)
     {
-        $ps1file = "$($scriptDir)\CreateApp.ps1"
+        $ps1file = "$($scriptDir)\AppsCreate.ps1"
     }
     ElseIf ($action -eq 2)
     {
