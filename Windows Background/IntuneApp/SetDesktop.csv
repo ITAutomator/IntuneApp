@@ -1,0 +1,5 @@
+Name,Value,Comment
+Wallpaper,wallpaper1.png,"Wallpaper file (not path).  Blank=No wallpaper, just color"
+WallpaperStyle,Center,"Center, Fit, Fill, Stretch, Span"
+BackgroundColor,#2F2F40,Hex Code.  Black #000000. Blue #000040. #1A241B
+UpdateatLogonOrNow,Now,"Now=Update now, Logon=Update at next logon"
