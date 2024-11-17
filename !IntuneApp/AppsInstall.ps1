@@ -42,18 +42,22 @@ ForEach ($package_file in $package_files)
     $IntuneCSVValues.Add("SystemOrUser"         , ($IntuneAppValues_csv | Where-Object Name -EQ SystemOrUser).Value)
     $IntuneCSVValues.Add("AppDescription"       , ($IntuneAppValues_csv | Where-Object Name -EQ AppDescription).Value)
     $IntuneCSVValues.Add("PublishToOrgGroup"    , ($IntuneAppValues_csv | Where-Object Name -EQ PublishToOrgGroup).Value)
+    $IntuneCSVValues.Add("AppInstaller"         , ($IntuneAppValues_csv | Where-Object Name -EQ AppInstaller).Value)
+    $IntuneCSVValues.Add("AppInstallName"       , ($IntuneAppValues_csv | Where-Object Name -EQ AppInstallName).Value)
     #
     if (-not $IntuneCSVValues.AppName.StartsWith("!"))
     { # not hidden app
         $PublishToOrgGroup = If ($IntuneCSVValues.PublishToOrgGroup -eq "True") {"Yes"} else {""}
         $entry_obj=@([pscustomobject][ordered]@{
-            Package_Path                  = $package_path
-            AppName                       = $IntuneCSVValues.AppName
             AppType                       = $IntuneCSVValues.SystemOrUser
-            Requirements       = "-"
-            Detection          = "-"
-            PublishToOrgGroup             = $PublishToOrgGroup
+            AppName                       = $IntuneCSVValues.AppName
+            Requirements                  = "-"
+            Detection                     = "-"
+            Mandatory                     = $PublishToOrgGroup
+            AppInstaller                  = $IntuneCSVValues.AppInstaller
+            AppInstallName                = $IntuneCSVValues.AppInstallName
             AppDescription                = $IntuneCSVValues.AppDescription
+            Package_Path                  = $package_path
             })
         ### append object
         $package_objs +=$entry_obj
@@ -86,12 +90,15 @@ if (Test-Path $appsets_csvfile)
             $appgroup_showwarning = AskForChoice "Keep showing this warning (for this session)?" -DefaultChoice 1
         }
         $entry_obj=@([pscustomobject][ordered]@{
-            AppName                       = $entry.Name
             AppType                       = "AppGroup"
+            AppName                       = $entry.Name
             Requirements       = "-"
             Detection          = "-"
-            PublishToOrgGroup  = ""
+            Mandatory  = ""
+            AppInstaller                  = ""
+            AppInstallName                = ""
             AppDescription                = ($apps_in | Sort-Object) -join ", "
+            Package_Path                  = ""
             })
         ### append object
         $package_objs +=$entry_obj
@@ -99,23 +106,29 @@ if (Test-Path $appsets_csvfile)
 }
 ### All Apps
 $entry_obj=@([pscustomobject][ordered]@{
-    AppName                       = "AllApps"
     AppType                       = "AllApps"
+    AppName                       = "AllApps"
     Requirements       = "-"
     Detection          = "-"
-    PublishToOrgGroup  = ""
+    Mandatory  = ""
+    AppInstaller                  = ""
+    AppInstallName                = ""
     AppDescription                = "AllApps"
+    Package_Path                  = ""
     })
 ### append object
 $package_objs +=$entry_obj
 ### show packages
-$package_objs = @($package_objs | Sort-Object SystemOrUser,AppType,AppName) #sort properly
+$package_objs = @($package_objs | Sort-Object AppType,AppName) #sort properly
+# figure out columns to hide/show
+$columnstoHide = @("Package_Path")
+$columnsToShow = $package_objs[0].PSObject.Properties.Name | Where-Object { $_ -notin $columnsToHide }
 $showmenu = $true
 Do { # menu loop
     # Get choice
     Write-Host "Choose apps from the popup list: " -NoNewline
     $msg= "Select rows and click OK (Use Ctrl and Shift and Filter features to multi-select)"
-    $pkgselects =  $package_objs | Out-GridView -PassThru -Title $msg
+    $pkgselects = $package_objs | Select-Object $columnsToShow | Out-GridView -PassThru -Title $msg
     if (-not $pkgselects)
     { # apps canceled
         Write-Host "Canceled"
@@ -173,8 +186,8 @@ Do { # menu loop
             elseif ("System","User" -contains $Pkg.AppType)
             { # System or User
                 if (-not ($packages_selected | Where-Object -Property AppName -eq $PKg.AppName)) # make sure it's not already there
-                {
-                    $packages_selected +=$PKg
+                { # append
+                    $packages_selected += $package_objs | Where-Object -Property AppName -eq $PKg.AppName
                 }
             } # System or User
             elseif ("AllApps" -eq $Pkg.AppType)

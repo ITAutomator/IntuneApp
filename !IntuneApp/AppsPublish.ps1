@@ -857,10 +857,11 @@ Do
             #endregion Check published apps
             #region app selections
             $pkgchoices = $pkgs | Select-Object `
-            @{Name = 'AppName'          ; Expression = {$_.AppName}} `
+            @{Name = 'AppName'           ; Expression = {$_.AppName}} `
             ,@{Name = 'PublicationStatus'; Expression = {$_.PublicationStatus}} `
             ,@{Name = 'PublishedDate'    ; Expression = {$_.PublishedDate}} `
-            ,@{Name = 'PublishToOrgGroup'; Expression = {if ($_.PublishToOrgGroup) {"Yes"} }} `
+            ,@{Name = 'Mandatory'        ; Expression = {if ($_.PublishToOrgGroup) {"Yes"} }} `
+            ,@{Name = 'AppInstaller'     ; Expression = {$_.AppInstaller}} `
             ,@{Name = 'AppDescription'   ; Expression = {CropString $_.AppDescription.Replace("`n","").Replace("`r","")}} | Sort-object AppName
             Write-Host "Choose apps from the popup list: " -NoNewline
             $msg= "Select rows and click OK (Use Ctrl and Shift and Filter features to multi-select)"
@@ -1085,11 +1086,20 @@ Do
                         }
                         $AppDescription+="`r`n* " #Markdown. See Endpoint Manager>App>Edit description for Markdown help/visual editor. (Newline starting with: > block quote, * list, # header, ## header2, ### header3)
                         $AppDescription+="$($pkg.AppNameVer)"
-                        $AppDescription+="`r`n* $($pkg.AppInstaller) $($pkg.AppInstallName)"
+                        # AppInstaller:ps1 (Setup.ps1 -ARGS:test)
+                        $AppDescription+="`r`n* AppInstaller: $($pkg.AppInstaller) ($($pkg.AppInstallName)"
+                        if ($pkg.AppInstallArgs -ne "") {$AppDescription+=$pkg.AppInstallArgs}
+                        $AppDescription+=")"
+                        # ps1 AppUninstallVersion (upgrade if below): 129
+                        if ($pkg.AppInstaller -eq "ps1"){
+                            $AppDescription+="`r`n* ps1 AppUninstallVersion (upgrade if below): $($pkg.AppUninstallVersion)"
+                        }
+                        # AvailableInCompanyPortal: True
                         if ($pkg.AvailableInCompanyPortal)
                         {
                             $AppDescription+="`r`n* AvailableInCompanyPortal: $($pkg.AvailableInCompanyPortal)"
                         }
+                        # Pushed to group: IntuneApp Windows Background
                         if (($pkg.PublishToOrgGroup) -and ($OrgValues.PublishToGroupIncluded))
                         {
                             $AppDescription+="`r`n* Pushed to group: IntuneApp $($pkg.AppName), $($OrgValues.PublishToGroupIncluded)"
@@ -1098,6 +1108,7 @@ Do
                         {
                             $AppDescription+="`r`n* Pushed to group: IntuneApp $($pkg.AppName)"
                         }
+                        # Updated by and Hash value (used to check for package content changes in later publish requests)
                         $AppDescription+="`r`n* Updated: $(Get-Date -format "yyyy-MM-dd") by $($env:USERNAME) on $($env:COMPUTERNAME)"
                         $AppDescription+="`r`n* Hash: [$($pkg.Hash)]"
                         #### AppDescription
