@@ -1,5 +1,5 @@
 Name,Value,Comment
-AppName,Windows Background (Rethinkit),(Required) Base package name (e.g 7zip) (Remove ! Character which hides sample apps)
+AppName,Windows Background,(Required) Base package name (e.g 7zip) (Remove ! Character which hides sample apps)
 AppVersion,129,(Optional) Package version. Whole numbers beginning with 100. Nothing to do with product version. (e.g. 100 for 7zip-v100) (Recommended)
 AppInstaller,ps1,"(Required) winget,choco,exe,msi,ps1,cmd. If winget, choco is used, leave AppUninstallName blank unless you want to uninstall an additional app"
 AppInstallName,SetDesktop.ps1,(Required) winget appid (case sensitive) or choco appid or filename of .exe or .msi or .ps1 or .cmd (wildcard OK). See https://winstall.app or https://community.chocolatey.org/packages for package ids.
