@@ -83,7 +83,7 @@ if ($source -eq $target_folder)
     Write-Host "Source: $($source)"
     Write-Host "Target: $($target_folder)"
     Write-Host "Aborting.  You need to run this from the actual source of these files." -ForegroundColor Yellow
-    pause
+    PressEnterToContinue
     exit
 }
 # check for mounted usb drive
@@ -105,7 +105,13 @@ else
 {
     $choice=AskForChoice -message "Folder $($target_folder) doesn't exist. OK to create it?" -choices @("&Yes","No (E&xit)") -defaultChoice 0
     if ($choice -eq 1) {Exit}
-    $result = New-Item -ItemType Directory -Path $target_folder -Force
+    $result = $null
+    $result = New-Item -ItemType Directory -Path $target_folder -Force -ErrorAction Ignore
+    if (-not $result) {
+        Write-Host "ERR: Couldn't create folder: $($target_folder)"
+        PressEnterToContinue
+        Exit
+    }
 }
 if ($Globals.target_folder -ne $target_folder)
 {
@@ -249,27 +255,45 @@ Do { # menu loop
         }
         # ready?
         if ((AskForChoice) -eq 0) {Write-Host "Aborting";Start-Sleep -Seconds 3; continue}
-        # copy Root files 
-        robocopy "$($source)" "$($target_folder)"
+        Write-Host "---------------------------------"
+        Write-Host "Copying: " -NoNewline
+        Write-Host "Root files" -ForegroundColor Green -NoNewline
+        # copy Root files (no subfolders)
+        $retcode, $retmsg= CopyFilesIfNeeded $source $target_folder -CompareMethod "date" -delete_extra $false -deeply $false
+        # $retmsg | Write-Host ; Write-Host "Return code: $($retcode)"
         # copy !IntuneApp folder (no subfolders)
-        robocopy "$($source)\!IntuneApp" "$($target_folder)\!IntuneApp" /MIR /XD Logs
+        $retcode, $retmsg= CopyFilesIfNeeded "$($source)\!IntuneApp" "$($target_folder)\!IntuneApp" -CompareMethod "date" -delete_extra $true
+        if ($retcode -eq 0) {Write-Host " OK"} else {Write-Host " Updated" -ForegroundColor Yellow; $retmsg  | Where-Object { $_ -notlike "OK*" } | ForEach-Object {Write-Host "  $($_)"}}
+        # $retmsg | Write-Host ; Write-Host "Return code: $($retcode)"
         # get intunecmd path
         $intunecmd = "$($source)\!IntuneApp\!App Template\intune_command.cmd"
+        $count_updated=0
         $count_i=0
+        $count_i_total = $packages_selected.Count
         ForEach ($pkg in $packages_selected)
         { # Each package
             $count_i+=1
-            Write-Host "Copying $($count_i)) $($pkg.AppName)" -ForegroundColor Green
+            Write-Host "Copying $($count_i) of $($count_i_total): " -NoNewline
+            Write-Host $pkg.AppName -ForegroundColor Green -NoNewline
             # Copy Package ($pkg.Package_Path is ...7Zip\IntuneApp\intune_settings.csv)
             $source = Split-Path -Path (Split-Path -Path $pkg.Package_Path -Parent) -Parent
             $target = "$($target_folder)\$($pkg.AppName)"
-            # Copy package - E Empty folders too, MIR mirror removes extra files in target
-            robocopy "$($source)\IntuneApp" "$($target)\IntuneApp" /E /MIR
+            # Copy package
+            $retcode, $retmsg= CopyFilesIfNeeded "$($source)\IntuneApp" "$($target)\IntuneApp" -CompareMethod "date" -delete_extra $true
+            if ($retcode -eq 0) {Write-Host " OK"} else {$count_updated+=1;Write-Host " Updated" -ForegroundColor Yellow; $retmsg  | Where-Object { $_ -notlike "OK*" } | ForEach-Object {Write-Host "  $($_)"}}
             # Copy intunecmd (just one file)
-            robocopy "$(Split-path $intunecmd -parent)" "$($target)" "$(Split-path $intunecmd -leaf)" | out-null
+            $retcode, $retmsg= CopyFilesIfNeeded "$($intunecmd)" "$($target)" -CompareMethod "date" -deeply $false
+            # $retmsg | Write-Host ; Write-Host "Return code: $($retcode)"
         } # Each package
+        Write-Host "---------------------------------"
+        Write-Host "Packages Copied: $($count_i_total)"
+        Write-Host "      Unchanged: $($count_i_total-$count_updated)"
+        Write-Host "        Updated: " -NoNewline
+        Write-Host                   $count_updated -ForegroundColor Yellow
+        if ($count_updated -eq 0) {Write-host "               (Nothing needed updating)"}
+        Write-Host "---------------------------------"
         $showmenu=$false
     } # apps selected
-    $x=AskForChoice -message "Done" -choices @("&Done") -defaultChoice 0
+    PressEnterToContinue
 } until (-not $showmenu)
 start-sleep 1

@@ -68,6 +68,8 @@ If (-not(IsAdmin))
 
 <# 
 # Version History
+2024-11-17
+CopyFilesIfNeeded -deeply=$true - Added option to not recurse. Also fixed LiteralPath bug to allow filenames with [ chars
 2024-05-08
 LoadModule - Ask before installing
 2024-05-06
@@ -2410,13 +2412,13 @@ Function CopyFileIfNeeded ($source, $target)
     $retmsg=@()
     ##
 
-    if (-not (Test-Path $source -PathType Leaf))
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf))
     {
         $retcode=20
         $retmsg+="ERR:20 Couldn't find source file '$($source)'"
     }
     
-    if (-not (Test-Path $target -PathType Container))
+    if (-not (Test-Path -LiteralPath $target -PathType Container))
     {
         $retcode=20
         $retmsg+="ERR:20 Couldn't find target folder '$($target)'"
@@ -2425,7 +2427,7 @@ Function CopyFileIfNeeded ($source, $target)
     { # Target folder exists
         $retcode=0 #Assume OK
         $target_path = Join-Path $target (Split-Path $source -Leaf)
-        if (Test-Path $target_path -PathType Leaf)
+        if (Test-Path -LiteralPath $target_path -PathType Leaf)
         { # File exists on both sides
             $source_check=Get-FileHash $source
             $target_check=Get-FileHash $target_path
@@ -2452,7 +2454,7 @@ Function CopyFileIfNeeded ($source, $target)
         else
         { #not files_same
             New-Item -Type Dir (Split-Path $target_path -Parent) -Force |Out-Null #create folder if needed
-            Copy-Item $source -destination $target_path -Force
+            Copy-Item -LiteralPath $source -destination $target_path -Force
             $retmsg+= "CP:10 $($source) [$($copy_reason)]"
             if ($retcode -eq 0) {$retcode=10} #adjust return
         } #not files_same
@@ -2460,20 +2462,18 @@ Function CopyFileIfNeeded ($source, $target)
     } # Target folder exists
     Return $retcode, $retmsg
 }
-Function CopyFilesIfNeeded ($source, $target,$CompareMethod = "hash", $delete_extra=$false)
+Function CopyFilesIfNeeded ($source, $target,$CompareMethod="hash", $delete_extra=$false, $deeply=$true)
 # Copies the contents of a source folder into a target folder (which must exist)
 # Only copies files that need copying, based on date or hash of contents.
 # Source can be a directory, a file, or a file spec.
 # Target must be a directory (will be created if missing)
-# 
 <# Usage:
     $src = "C:\Downloads\src"
     $trg = "C:\Downloads\trg"
-    $retcode, $retmsg= CopyFilesIfNeeded $src $trg "date"
+    $retcode, $retmsg= CopyFilesIfNeeded $src $trg -CompareMethod "date"
     $retmsg | Write-Host
     Write-Host "Return code: $($retcode)"
 #>
-#
 # $comparemethod
 # hash : based on hash (hash computation my take a long time for large files)
 # date : based on date,size
@@ -2481,10 +2481,15 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod = "hash", $delete_ex
 # $retcode
 # 0    : No files copied
 # 10   : Some files copied
+# 90   : Some files failed
 #
 # $delete_extra
-# false : extra files in target are left alone
+# false : extra files in target are left alone (default)
 # true  : extra files in target are deleted. resulting empty folders also deleted. Careful with this.
+#
+# $deeply
+# true  : subdirs are included (default)
+# false : no subdirs are traversed
 #
 # $retmsg
 # Returns a list of files with status of each (an array of strings)
@@ -2494,7 +2499,7 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod = "hash", $delete_ex
     $retmsg=@()
     ##
     
-    if (Test-Path $target -PathType Leaf)
+    if (Test-Path -LiteralPath $target -PathType Leaf)
     {
         $retcode=20
         $retmsg+="ERR:20 Couldn't find target '$($target)'"
@@ -2502,17 +2507,22 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod = "hash", $delete_ex
     else
     { # Target folder exists
         # Figure out what the 'root' of the source is
-        if (Test-Path $source -PathType Container) #C:\Source (a folder)
+        if (Test-Path -LiteralPath $source -PathType Container) #C:\Source (a folder)
         {
-            $soureroot = $source
+            $sourceroot = $source
         }
         else # C:\Source\*.txt  (a wildcard)
         {
-            $soureroot = Split-Path $source -Parent
+            $sourceroot = Split-Path $source -Parent
         }
 
         $retcode=0 #Assume OK
-        $Files = Get-ChildItem $source -File -Recurse
+        if ($deeply){
+            $Files = Get-ChildItem -LiteralPath $source -File -Recurse
+        }
+        else {
+            $Files = Get-ChildItem -LiteralPath $source -File
+        }
         ForEach ($File in $Files)
         { # Each file
             $files_same=$false
@@ -2526,8 +2536,8 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod = "hash", $delete_ex
             #$target_path
             #C:\Target\Microsoft\Templates\Document Themes\MyTheme.thmx
             #
-            $target_path = $file.FullName.Replace($soureroot,$target)
-            if (Test-Path $target_path -PathType Leaf)
+            $target_path = $file.FullName.Replace($sourceroot,$target)
+            if (Test-Path -LiteralPath $target_path -PathType Leaf)
             { # File exists on both sides
                 Write-Verbose "$($file.name) Bytes: $($file.length)"
                 if ($CompareMethod -eq "hash")
@@ -2538,7 +2548,7 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod = "hash", $delete_ex
                 } #compare by hash
                 else
                 { #compare by date,size
-                    $target_file = Get-ChildItem -File $target_path
+                    $target_file = Get-ChildItem -LiteralPath $target_path -File
                     $compareresult = ($File.Name -eq $target_file.Name) `
                      -and ($File.Length -eq $target_file.Length) `
                      -and ($File.LastWriteTimeUtc -eq $target_file.LastWriteTimeUtc)
@@ -2561,30 +2571,41 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod = "hash", $delete_ex
             #########
             if ($files_same)
             { #files_same!
-                $retmsg+= "OK:00 $($file.FullName.Replace($source,'')) [already same file]"
+                $retmsg+= "OK:00 $($file.FullName.Replace($sourceroot,'')) [already same file]"
             } #files_same!
             else
             { #not files_same
                 New-Item -Type Dir (Split-Path $target_path -Parent) -Force |Out-Null #create folder if needed
-                Copy-Item $File.FullName -destination $target_path -Force
-                $retmsg+= "CP:10 $($file.FullName.Replace($source,'')) [$($copy_reason)]"
-                if ($retcode -eq 0) {$retcode=10} #adjust return
+                $result = Copy-Item -LiteralPath $File.FullName -destination $target_path -Force -PassThru
+                if (-not($result)) {
+                    $retmsg+= "CP:90 $($file.FullName.Replace($sourceroot,'')) [$($copy_reason) but copy failed]"
+                    if ($retcode -eq 0) {$retcode=90} #adjust return
+                }
+                Else {
+                    $retmsg+= "CP:10 $($file.FullName.Replace($sourceroot,'')) [$($copy_reason)]"
+                    if ($retcode -eq 0) {$retcode=10} #adjust return
+                }
             } #not files_same
         } # Each file
         if ($delete_extra)
         { # Delete extra files from target
             #$retcode=0 #Assume OK
-            $Files = Get-ChildItem $target -File -Recurse
+            if ($deeply){
+                $Files = Get-ChildItem -LiteralPath $target -File -Recurse
+            }
+            else {
+                $Files = Get-ChildItem -LiteralPath $target -File
+            }
             ForEach ($File in $Files)
             { # Each file in target
                 $source_path = $file.FullName.Replace($target,$source)
-                if (-not(Test-Path $source_path -PathType Leaf))
+                if (-not(Test-Path -LiteralPath $source_path -PathType Leaf))
                 { # No Source file, delete target
-                    Remove-Item $File.FullName -Force | Out-Null
+                    Remove-Item -LiteralPath $File.FullName -Force | Out-Null
                     $retmsg+= "DL:20 $($file.FullName.Replace($target,'')) [extra file removed]"
                     if (($file.DirectoryName -ne $target) -and (-not (Test-Path -Path "$($file.DirectoryName)\*")))
                     { # is parent an empty folder, remove it
-                        Remove-Item $File.DirectoryName -Force | Out-Null
+                        Remove-Item -LiteralPath $File.DirectoryName -Force | Out-Null
                         $retmsg+= "DL:30 $($file.DirectoryName.Replace($target,'')) [empty folder removed]"
                     }
                 } # No Source file, delete target
