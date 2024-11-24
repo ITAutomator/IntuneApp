@@ -100,7 +100,8 @@ Function IntuneLog ($line, $quiet=$false,$appname="",$logfolder="",$appfunction=
     { # logfolder exists
         # delete logfile if over 1MB
         $logfile = "$($logfolder)\Log_$($IntuneAppName).txt"
-        if (Test-Path -Path $logfile) {if (((Get-Item $logfile).length) -gt 1MB) {Remove-Item $logfile}}
+        if (Test-Path -Path $logfile) {if (((Get-Item $logfile).length) -gt 1MB) {Remove-Item $logfile;Add-Content $logfile "$($dt) [Log file was reset because it grew over 1MB]"}}
+        if (-not (Test-Path -Path $logfile)) {Add-Content $logfile "$($dt) [Log file initialized - will reset if it grows over 1MB]"} # 1st line has info about logfile itself
         # append to logfile
         Add-Content $logfile $logline
     } # logfolder exists
@@ -995,7 +996,7 @@ Function winget_core ($WingetMin ="1.6")
                 If ($pass -eq 1)
                 { # Pass 1 - try adding a path
                     $strPassInfo=" PassInfo:PathAdjust"
-                    $ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe"
+                    $ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*__8wekyb3d8bbwe"
                     if ($ResolveWingetPath)
                     { # change path to include winget.exe (for this session) to try again in for loop pass 2
                         $WingetPath = $ResolveWingetPath[-1].Path
@@ -1048,7 +1049,7 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
     #>
     $intReturnCode = 0
     $strReturnMsg = ""
-    # set winget scope option (--scope user,--scope machine, or nothing)
+    # set winget scope options:--scope user,--scope machine, or nothing
     if ($SystemOrUser -eq "")
     {$strScope = ""}
     Elseif ($SystemOrUser -eq "user")
@@ -1113,7 +1114,7 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
         } #verb:list
         elseif ($Wingetverb -eq "install")
         { # winget install
-            $Winget_command = "install --id $($WingetApp) --exact$($strScope)"
+            $Winget_command = "install --id $($WingetApp) --exact$($strScope) --accept-package-agreements"
             #$exitcode,$Winget_return,$stderr=StartProc "winget" $Winget_command
             $Winget_return,$retStatus,$exitcode= StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
             # exitcode: (https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md)
@@ -1133,7 +1134,7 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
                 } # 2nd install can't be tried
                 else
                 { # 2nd install attempt, without scope
-                    $Winget_command = "install --id $($WingetApp) --exact"
+                    $Winget_command = "install --id $($WingetApp) --exact --accept-package-agreements"
                     #$exitcode,$Winget_return,$stderr=StartProc "winget" $Winget_command
                     $Winget_return,$retStatus,$exitcode= StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
                     $chkresults = (($Winget_return -like "*Successfully installed*") -or ($Winget_return -like "*Found an existing package already installed*"))

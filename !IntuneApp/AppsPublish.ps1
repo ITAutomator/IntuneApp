@@ -39,13 +39,13 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
         {
             # These are the scopes required for the user to connect and create a registered app
             $scopes = @() 
-            $scopes += "Domain.Read.All"                    # Read domain properties
-            $scopes += "User.ReadWrite.All"                 # Read and update user properties
-            $scopes += "Directory.Read.All"                 # Allows the app to read data in your organization's directory.
-            $scopes += "Application.Read.All"               # Allows the app to read all applications and service principals without a signed-in user
-            $scopes += "Application.ReadWrite.All"          # Allows the app to create, read, update and delete applications and service principals without a signed-in user. Does not allow management of consent grants.
-            $scopes += "RoleManagement.ReadWrite.Directory" # Allows the app to read and manage the role-based access control (RBAC) settings for your company's directory, without a signed-in user.
-            $scopes += "DelegatedPermissionGrant.ReadWrite.All"    # Manage app permission grants and app role assignments 
+            $scopes += "Domain.Read.All"                        # Read domain properties
+            $scopes += "User.ReadWrite.All"                     # Read and update user properties
+            $scopes += "Directory.Read.All"                     # Allows the app to read data in your organization's directory.
+            $scopes += "Application.Read.All"                   # Allows the app to read all applications and service principals without a signed-in user
+            $scopes += "Application.ReadWrite.All"              # Allows the app to create, read, update and delete applications and service principals without a signed-in user. Does not allow management of consent grants.
+            $scopes += "RoleManagement.ReadWrite.Directory"     # Allows the app to read and manage the role-based access control (RBAC) settings for your company's directory, without a signed-in user.
+            $scopes += "DelegatedPermissionGrant.ReadWrite.All" # Manage app permission grants and app role assignments 
             $retval=""
             $context = Get-MgContext
             if ($context)
@@ -211,7 +211,7 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
     ####
     $retval="OK"
     Write-Host "-----------------------------------------------------------------------------"
-    Write-Host "Application setup complete"
+    Write-Host "Package-publishing Application setup complete"
     Write-Host "                  AppName: " -NoNewline
     Write-Host                             $AppName -ForegroundColor Yellow
     Write-Host "                    AppId: " -NoNewline
@@ -250,7 +250,7 @@ Function CreatePublishTemplatePs1Files ($rootpath)
             $ps1target = $null
         }
         if (($null -eq $ps1target) -or (ContentsHaveChanged $ps1source $ps1target))
-        { # target doesn't exist of is different
+        { # target doesn't exist or is different
             [System.IO.File]::WriteAllLines($ps1targetfile,$ps1source) # writes UTF8 file
             $iUpdateCount+=1
             $sUpdateList+=$ps1file
@@ -595,7 +595,7 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
         $pkgobjs += ,$pkgobj
     } #  # Each pkg (csv) file
     #endregion CheckUpdateHashes
-    Write-Progress -Activity "Processing Items" -Status "Complete" -PercentComplete 100 -Completed
+    Write-Progress -Activity "Checking Packages" -Status "Complete" -PercentComplete 100 -Completed
     #region sResult
     $sResult = "OK: $($pkgobjs.count) Packages"
     if ($pkgupdated.count -gt 0)
@@ -617,7 +617,8 @@ Function PackagesLocalUpdateandCheck
         # Update the 4 key ps1 files in !App Template\IntuneApp\IntuneUtils
         Write-Host "Checking / updating the 4 key template ps1 files... " -NoNewline
         $sReturn = CreatePublishTemplatePs1Files -rootpath $scriptdir
-        Write-Host $sReturn
+        if ($sReturn -eq "OK: no template files updated") {Write-Host $sReturn}
+        else {Write-Host $sReturn;Write-host "Note: Template files were changed. This updates all packages, and hashes will be updated too." -ForegroundColor Yellow;PressEnterToContinue}
         if (-not $sReturn.Startswith("OK")) {Write-host $sReturn -ForegroundColor Yellow ;return}
         #endregion update !App Template\IntuneApp\IntuneUtils
         #region package hashes
@@ -685,11 +686,11 @@ Do
     $action=AskForChoice -message $msg -choices $actionchoices -defaultChoice 0
     Write-Host "Action [$($action)]: $($actionchoices[$action].Replace('&',''))"
     If ($action -eq 0)
-    { # Exit
+    { # Menu Choice: Exit
         $bShowmenu=$false
-    } # Exit
+    } # Menu Choice: Exit
     ElseIf ($action -eq 1)
-    { # Check
+    { # Menu Choice: Check
         if ($pkgs)
         {
             if (0 -eq (AskForChoice "$($pkgs.count) packages have already been checked. Check again?"))
@@ -700,9 +701,9 @@ Do
             }
         }
         $pkgs=PackagesLocalUpdateandCheck
-    } # Check
+    } # Menu Choice: Check
     ElseIf ($action -eq 2)
-    { # Publish
+    { # Menu Choice: Publish
         $showmenu_publish=$true
         $verbosepackager=$false
         if ($PSVersionTable.PSVersion.Major -eq 7) {
@@ -733,7 +734,7 @@ Do
             }
             $pkgs=PackagesLocalUpdateandCheck
         } # no local package list yet
-        $OrgValues = @{}
+        $OrgValues = @{} #hashtable
         $OrgValues.Add("TenantName"             , $Orglist[$choice].Org)
         $OrgValues.Add("AppPublisherClientID"   , $orglist[$choice].AppPublisherClientID)
         $OrgValues.Add("PublishToGroupIncluded" , $orglist[$choice].PublishToGroupIncluded)
@@ -771,7 +772,12 @@ Do
         # Method 1 (no scopes - hides consent window if not set up yet)
         #$connected_ok = ConnectMgGraph -domain $OrgValues.TenantName
         # Method 2 (w scopes - asks for consent if needed)
-        $RequiredScopes = @("Group.ReadWrite.All", "GroupMember.ReadWrite.All", "User.ReadWrite.All","DeviceManagementApps.ReadWrite.All")
+        $RequiredScopes = @()
+        $RequiredScopes += "Group.ReadWrite.All"
+        $RequiredScopes += "GroupMember.ReadWrite.All"
+        $RequiredScopes += "User.ReadWrite.All"
+        $RequiredScopes += "DeviceManagementApps.Read.All" # not sure about this one
+        $RequiredScopes += "DeviceManagementApps.ReadWrite.All"
         $connected_ok = Connect-MgGraph -TenantId $OrgValues.TenantName -Scopes $RequiredScopes
         #
         if (!($connected_ok)) 
@@ -784,8 +790,14 @@ Do
             Write-Host "--------------------"
         }
         Do { # menu loop
+            # Get Required group ID
+            Write-Host "Required org group: $($OrgValues.PublishToGroupIncluded)..." -NoNewline
+            $group = Get-MgGroup -Filter "displayName eq '$($OrgValues.PublishToGroupIncluded)'"
+            $Required_OrgGroupId = $group.Id
+            if ($Required_OrgGroupId) {Write-host "Found" -ForegroundColor Green} else {Write-Host "<not found - will be created>"}
             #region Check published apps
             Write-Host "Checking published apps in $($OrgValues.TenantName)..." -NoNewline
+            # Get List of apps
             $IntuneApps = Get-MgDeviceAppManagementMobileApp -All -ErrorAction Ignore
             $IntuneApps = $IntuneApps | Where-Object {$_.AdditionalProperties."@odata.type" -in ("#microsoft.graph.win32LobApp")}
             Write-Host "$($IntuneApps.Count) Apps"
@@ -797,9 +809,15 @@ Do
                 $pkg.PublishedDate = ""
                 $pkg.PublicationStatus = "Unpublished"
             } # each pkg
-            # update entries
+            $i = 0
+            $i_count = $IntuneApps.count
+            Write-Progress -Activity "Checking Published Packages" -Status "Starting" -PercentComplete 0
             ForEach ($IntuneApp in $IntuneApps)
-            { # each intuneapp
+            { # each published intuneapp
+                $i+=1
+                $PercentComplete = (($i / $i_count) * 100)
+                $Status = "Checking $($i) of $($i_count) : $($IntuneApp.DisplayName)"
+                Write-Progress -Activity "Checking Published Packages" -Status $Status -PercentComplete $PercentComplete
                 # check for dupes within intune
                 $IntuneDupes = @($IntuneApps | Where-Object DisplayName -eq $IntuneApp.DisplayName)
                 if ($IntuneDupes.count -gt 1)
@@ -825,10 +843,24 @@ Do
                         } # each dupe
                     } # removedupes
                 } # dupes exist
-                # check for matching local pkg
+                #region: check group assignments for the app
+                $Required_Org_YesNo = "" # assume group isn't in org
+                if ($Required_OrgGroupId)
+                { # org has a Required group
+                    # get Required Group Assignments that match the publication group (Required_OrgGroupId)
+                    $AppAssignments = Get-MgDeviceAppManagementMobileAppAssignment -MobileAppId $IntuneApp.Id -all -ErrorAction Ignore
+                    $AppAssignments = $AppAssignments | Where-Object {($_.Intent -eq "required") `
+                            -and ($_.target.AdditionalProperties."@odata.type" -eq "#microsoft.graph.groupAssignmentTarget") `
+                            -and ($_.target.AdditionalProperties.groupId -eq $Required_OrgGroupId)}
+                    if ($AppAssignments) {
+                        $Required_Org_YesNo = "Yes"
+                    } # $AppAssignments.target.AdditionalProperties.groupId | % {Get-MgGroup -GroupId $_} 
+                } # org has a Required group
+                #endregion: check group assignments for the app
+                #region: check for matching local pkg
                 $pkg = $pkgs | Where-Object AppName -eq $IntuneApp.DisplayName
                 if ($pkg)
-                { # matching app found
+                { # matching local app found
                     $pkg.PublishedAppId = $IntuneApp.Id
                     $pkg.PublishedDate  = $IntuneApp.CreatedDateTime.ToString("yyyy-MM-dd")
                     $pub_hash = ParseToken $IntuneApp.Description "Hash: [" "]"
@@ -841,29 +873,34 @@ Do
                         $pkg.PublicationStatus = "Needs Update"
                         $pkg.PublishedAppId = $IntuneApp.Id
                     } # no match
-                } # matching app found
+                    $pkg.Required_Org = $Required_Org_YesNo
+                } # matching local app found
                 else
-                { # no matching app
+                { # no matching local app, add a new row 
                     $pkgobj_new = [Ordered]@{}
-                    $pkgobj_new.Add("PublicationStatus" ,"Package Missing")
                     $pkgobj_new.Add("AppName"           ,$IntuneApp.DisplayName)
+                    $pkgobj_new.Add("PublicationStatus" ,"Package Missing")
+                    $pkgobj_new.Add("PublishedDate"     ,$IntuneApp.CreatedDateTime.ToString("yyyy-MM-dd"))
                     $pkgobj_new.Add("AppDescription"    ,$IntuneApp.Description)
                     $pkgobj_new.Add("PublishedAppId"    ,$IntuneApp.Id)
-                    $pkgobj_new.Add("PublishedDate"     ,$IntuneApp.CreatedDateTime.ToString("yyyy-MM-dd"))
+                    $pkgobj_new.Add("Required_Org"      ,$Required_Org_YesNo)
+                    $pkgobj_new.Add("Required_Pkg"      ,"")
                     $pkgs+=$pkgobj_new
-                } # no matching app
-            } # each intuneapp
-            # not found in $pkgs
+                } # no matching local app, add a new row
+                #endregion: check for matching local pkg
+            } # each published intuneapp
+            Write-Progress -Activity "Checking Published Packages" -Status "Complete" -PercentComplete 100 -Completed
             #endregion Check published apps
             #region app selections
             $pkgchoices = $pkgs | Select-Object `
             @{Name = 'AppName'           ; Expression = {$_.AppName}} `
             ,@{Name = 'PublicationStatus'; Expression = {$_.PublicationStatus}} `
             ,@{Name = 'PublishedDate'    ; Expression = {$_.PublishedDate}} `
-            ,@{Name = 'Mandatory'        ; Expression = {if ($_.PublishToOrgGroup) {"Yes"} }} `
+            ,@{Name = 'Required_Pkg'    ; Expression = {if ($_.PublishToOrgGroup) {"Yes"} else {""}}} `
+            ,@{Name = 'Required_Org'    ; Expression = {$_.Required_Org}} `
             ,@{Name = 'AppInstaller'     ; Expression = {$_.AppInstaller}} `
             ,@{Name = 'AppDescription'   ; Expression = {CropString $_.AppDescription.Replace("`n","").Replace("`r","")}} | Sort-object AppName
-            Write-Host "Choose apps from the popup list: " -NoNewline
+            Write-Host "Choose apps from the popup list (may be behind this window - check taskbar): " -NoNewline
             $msg= "Select rows and click OK (Use Ctrl and Shift and Filter features to multi-select)"
             $pkgselects =  @($pkgchoices | Out-GridView -PassThru -Title $msg)
             #endregion app selections
@@ -874,21 +911,49 @@ Do
             } # apps canceled
             else
             { # apps selected
-                Write-Host "$($pkgselects.Count) apps selected"
-                Write-Host ($pkgselects | Format-Table | Out-string)
                 # convert selects to a bunch of objects (with all the properties)
                 $pkgselect_objs = $pkgs | Where-Object AppName -in $pkgselects.AppName
+                $pkgwarnings_objs = $pkgselects | Where-Object {$_.Required_Pkg -ne $_.Required_Org}
+                $pkgwarnings_msg = ""
+                $pkgwarnings_msg = $pkgwarnings_objs.AppName -Join ", "
                 # Show a menu of choices
+                Write-Host "$($pkgselects.Count) apps selected"
+                Write-Host "---------------------------------------------------------------"
+                Write-Host ($pkgselects | Format-Table | Out-string)
+                Write-Host "---------------------------------------------------------------"
+                Write-Host "[P]ublish       - Publish using package settings (Recommended)"
+                Write-Host "[R]equired      - Publish as Required to group: " -NoNewline
+                Write-host $OrgValues.PublishToGroupIncluded -NoNewline -ForegroundColor Yellow 
+                Write-host " (ignores package settings for PublishToOrgGroup)"
+                Write-Host "[N]ot Required  - Publish as Not Required (ignores package settings for PublishToOrgGroup)"
+                Write-Host "[U]npublish     - Remove app from the org"
+                Write-Host "---------------------------------------------------------------"
                 $msg= "Select an action for these $($pkgselects.count) apps"
-                $actionchoices = @("E&xit","&Publish/Update Apps","&Unpublish Apps")
-                $action=AskForChoice -message $msg -choices $actionchoices -defaultChoice 1
+                $actionchoices = @("E&xit","&Publish","&Required","&Not Required","&Unpublish")
+                $action=AskForChoice -message $msg -choices $actionchoices -defaultChoice 1 -showmenu:$false
                 Write-Host "Action : $($actionchoices[$action].Replace('&',''))"
                 if ($action -eq 0)
                 { Write-host "Aborting" }
-                elseif ($action -eq 1)
-                { # action publish
+                elseif (($action -ge 1) -and ($action -le 3))
+                { # action publish, Required, notrequired
+                    # warn of requirement diffs
+                    if ($pkgwarnings_msg -ne "") {
+                        Write-Host "Warning, package(s) with Require_Pkg and Required_Org difference: " -NoNewline
+                        Write-Host $pkgwarnings_msg -ForegroundColor Red
+                        Write-Host "   Publishing may immediately add packages to users in the Group: " -NoNewline
+                        Write-Host $($OrgValues.PublishToGroupIncluded) -ForegroundColor Yellow
+                    }
+                    if (-not (AskForChoice))
+                    {
+                        Write-Host "Aborted"
+                        Continue
+                    }
+                    # description of publish_option
+                    $publish_option_msg = ""
+                    if ($action -eq 2) {$publish_option_msg = "[R]equired"}
+                    if ($action -eq 3) {$publish_option_msg = "[N]ot Required"}
                     $apps_touched_count=0
-                    #region Remove unpackaged
+                    #region Remove unpackaged rows
                     $pkg_missing = @($pkgselects | Where-Object PublicationStatus -eq "Package Missing")
                     if ($pkg_missing.count -gt 0)
                     {
@@ -899,7 +964,7 @@ Do
                         # convert selects to a bunch of objects (with all the properties)
                         $pkgselect_objs = $pkgs | Where-Object AppName -in $pkgselects.AppName
                     }
-                    #endregion Remove unpackaged
+                    #endregion Remove unpackaged rows
                     #region Remove published
                     $pkg_published = @($pkgselects | Where-Object PublicationStatus -eq "Published")
                     if ($pkg_published.count -gt 0)
@@ -918,12 +983,10 @@ Do
                     {Continue}
                     Write-host "Publishing $($pkgselects.count) apps"
                     #region Connect to MSIntuneGraph
-                    #Message:  AADSTS700016: Application with identifier 'd1ddf0e4-d672-4dae-b554-9d5bdfd93547' was not found in the directory '5C Capital Management'. This can happen if the application has not been installed by the administrator of the tenant or consented to by any user in the tenant. You may have sent your authentication request to the wrong tenant. 
                     Write-Host "[Connect-MSIntuneGraph] Connecting to Tenant: $($OrgValues.TenantName) [You may see a sign-on popup <OR> subsequent directions for web sign-on]" -ForegroundColor Yellow
                     $connected=$false
                     $done = $false
-                    Do
-                    { # Connect-MSIntuneGraph
+                    Do {# Until Connect-MSIntuneGraph
                         #  Test-AccessToken -RenewalThresholdMinutes 10
                         $conn_result = Connect-MSIntuneGraph -TenantID $OrgValues.TenantName -ClientID $OrgValues.AppPublisherClientID -RedirectUri "https://login.microsoftonline.com/common/oauth2/nativeclient"
                         if ($conn_result)
@@ -942,15 +1005,14 @@ Do
                                 $done=$true
                             }
                         }
-                    } Until ($done) # Connect-MSIntuneGraph
-                    if (-not $connected)
-                    {
+                    } Until ($done) # Until Connect-MSIntuneGraph
+                    if (-not $connected) {
                         Write-Host "Connect-MSIntuneGraph: Not connected, exiting"
                         Pause;Break
                     }
                     #endregion Connect to MSIntuneGraph
-                    # Assume publish choice is not NO
-                    $pubchoice =0
+                    # Force Yes to All (ignore this portion of the code that asks per app)
+                    $pubchoice = 1
                     ForEach ($pkg in $pkgselect_objs)
                     { # Each package
                         #region display
@@ -965,22 +1027,32 @@ Do
                         {
                             Write-Host "AvailableInCompanyPortal : $($pkg.AvailableInCompanyPortal)"
                         }
-                        Write-Host "       PublishToOrgGroup : $($pkg.PublishToOrgGroup)" -ForegroundColor Yellow
-                        if ($pkg.PublishToOrgGroup)
+                        # Determin Publishing group option
+                        $publish_option_msg = ""
+                        if ($action -eq 2) {$publish_option_msg = "[R]equired"}
+                        if ($action -eq 3) {$publish_option_msg = "[N]ot Required"}
+                        $publish_option_boolean = $false # assume not Required
+                        if ($publish_option_msg -eq "") { # override is off: use package option
+                            $publish_option_boolean = $pkg.PublishToOrgGroup
+                        }
+                        else { # override is on: Required or not
+                            $publish_option_boolean = ($publish_option_msg -eq "[R]equired")
+                        }
+                        ###
+                        if ($publish_option_boolean)
                         {
-                            Write-Host "  PublishToGroupIncluded : $($OrgValues.PublishToGroupIncluded)" # (will prompt to confirm - if not then app will only initially be available in Company Portal)"
+                            Write-Host "  PublishToGroupIncluded : $($OrgValues.PublishToGroupIncluded) $($publish_option_msg)"
                             Write-Host "  PublishToGroupExcluded : $($OrgValues.PublishToGroupExcluded)"
                         }
                         else
                         {
-                            Write-Host "  PublishToGroupIncluded : None" -ForegroundColor DarkGray
+                            Write-Host "  PublishToGroupIncluded : None $($publish_option_msg)" -ForegroundColor DarkGray
                             Write-Host "  PublishToGroupExcluded : None" -ForegroundColor DarkGray
                         }
                         Write-Host "            AppName      : $($pkg.AppNameVer)" -ForegroundColor Yellow
                         Write-Host "            SystemOrUser : $($pkg.SystemOrUser)" -ForegroundColor Yellow
                         Write-Host "            AppDesc      : $($pkg.AppDescription)" -ForegroundColor Yellow
                         #endregion display
-                        $pubchoice=1 # Force Yes to All
                         if ($pubchoice -ne 1)
                         {
                             Write-Host "Proceed to create and publish $($pkg.AppNameVer)?"
@@ -992,11 +1064,8 @@ Do
                         }
                         #region delete apps that conflict
                         Write-Host "Checking for existing app: $($pkg.AppName)..." -ForegroundColor Yellow
-                        #$Apps= @()
-                        #$Apps+= Get-IntuneWin32App
                         $apps_todel = $null
                         $apps_todel = @($pkgs | Where-Object AppName -eq $pkg.AppName | Where-Object PublishedAppId -ne "")
-                        #$apps_todel = @($apps | Where-Object -Property DisplayName -EQ $pkg.AppName | Sort-Object -Property displayVersion -Descending)
                         if ($apps_todel.Count -eq 0)
                         {
                             Write-Host "OK: No existing app found"
@@ -1076,12 +1145,10 @@ Do
                         $UninstallCommandLine = "Powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File $($intune_uninstall_cmd) -quiet"
                         # Create intunewin zip file in temp folder along with in-mem script files for intune: end
                         #### AppDescription
-                        if ($pkg.AppDescription)
-                        {
+                        if ($pkg.AppDescription) {
                             $AppDescription=$pkg.AppDescription
                         }
-                        else
-                        {
+                        else {
                             $AppDescription="(None)"
                         }
                         $AppDescription+="`r`n* " #Markdown. See Endpoint Manager>App>Edit description for Markdown help/visual editor. (Newline starting with: > block quote, * list, # header, ## header2, ### header3)
@@ -1091,21 +1158,18 @@ Do
                         if ($pkg.AppInstallArgs -ne "") {$AppDescription+=$pkg.AppInstallArgs}
                         $AppDescription+=")"
                         # ps1 AppUninstallVersion (upgrade if below): 129
-                        if ($pkg.AppInstaller -eq "ps1"){
+                        if ($pkg.AppInstaller -eq "ps1") {
                             $AppDescription+="`r`n* ps1 AppUninstallVersion (upgrade if below): $($pkg.AppUninstallVersion)"
                         }
                         # AvailableInCompanyPortal: True
-                        if ($pkg.AvailableInCompanyPortal)
-                        {
+                        if ($pkg.AvailableInCompanyPortal) {
                             $AppDescription+="`r`n* AvailableInCompanyPortal: $($pkg.AvailableInCompanyPortal)"
                         }
                         # Pushed to group: IntuneApp Windows Background
-                        if (($pkg.PublishToOrgGroup) -and ($OrgValues.PublishToGroupIncluded))
-                        {
+                        if (($pkg.PublishToOrgGroup) -and ($OrgValues.PublishToGroupIncluded)) {
                             $AppDescription+="`r`n* Pushed to group: IntuneApp $($pkg.AppName), $($OrgValues.PublishToGroupIncluded)"
                         }
-                        else
-                        {
+                        else {
                             $AppDescription+="`r`n* Pushed to group: IntuneApp $($pkg.AppName)"
                         }
                         # Updated by and Hash value (used to check for package content changes in later publish requests)
@@ -1155,8 +1219,7 @@ Do
                                 $apps_todel += Get-MgDeviceAppManagementMobileApp -All -ErrorAction Ignore
                                 $apps_todel = @($apps_todel | Where-Object {$_.AdditionalProperties."@odata.type" -in ("#microsoft.graph.win32LobApp")})
                                 $apps_todel = @($apps_todel | Where-Object DisplayName -eq $pkg.AppName)
-                                if ($apps_todel.Count -eq 0)
-                                {
+                                if ($apps_todel.Count -eq 0) {
                                     Write-Host "OK: No existing app found to delete"
                                 }
                                 else
@@ -1210,9 +1273,10 @@ Do
                         #endregion AvailableInCompanyPortal
                         #region include_exclude groups
                         Write-Host "Connected OK to: " -NoNewline; Write-Host $MgOrg.displayname -ForegroundColor Yellow  # for: $(($conn_result.ExpiresOn-(Get-Date)).TotalHours.toString("0.#")) hrs"
-                        if (-not $pkg.PublishToOrgGroup)
+                        if (-not $publish_option_boolean)
                         {
-                            Write-Host "PublishToOrgGroup: " -NoNewline; Write-Host "FALSE " -NoNewline -ForegroundColor Yellow; Write-Host "Group '$($OrgValues.PublishToGroupIncluded)' will NOT be added to this app"
+                            Write-Host "PublishToOrgGroup: " -NoNewline; Write-Host "FALSE " -NoNewline -ForegroundColor Yellow
+                            Write-Host "Group '$($OrgValues.PublishToGroupIncluded)' will NOT be added to this app. $($publish_option_msg)"
                         }
                         elseif ($OrgValues.PublishToGroupIncluded)
                         {  #has include group
@@ -1249,7 +1313,7 @@ Do
                         #endregion include_exclude groups
                         #region add app group
                         $groupname = "IntuneApp $($pkg.AppName)"
-                        Write-Host "Including via Group: $($groupname)... " -NoNewline
+                        Write-Host "Including via this-app-only Group: $($groupname)... " -NoNewline
                         $strReturn,$MgGroup=MgGroupCreate $groupname
                         Write-Host $strReturn
                         if (-not $MgGroup)
@@ -1270,8 +1334,8 @@ Do
                         Write-Host "--------------------------------------------"
                         $apps_touched_count += 1
                     } # Each package
-                } # action publish
-                elseif ($action -eq 2)
+                } # action publish, Required, notrequired
+                elseif ($action -eq 4)
                 { # action delete
                     Write-host "Unpublishing $($pkgselects.count) apps"
                     $i=0
@@ -1290,7 +1354,7 @@ Do
                             {
                                 Write-host ""
                                 Write-host "Warning: No offline package" -ForegroundColor Yellow
-                                $bDelete = ((AskforChoice "There is no offline package for $($pkgselect.AppName). Once removed, it can not be re-published. Continue?") -eq 1)
+                                $bDelete = ((AskforChoice "There is no offline package for $($pkgselect.AppName). Once deleted from the org, it can not be re-published. Continue?") -eq 1)
                             }
                             If ($bDelete)
                             { #asked 
@@ -1334,11 +1398,14 @@ Do
             Write-Host "Check apps at the Intune Windows Apps (Admin center):"
             Write-Host "https://intune.microsoft.com/?ref=AdminCenter#view/Microsoft_Intune_DeviceSettings/AppsWindowsMenu/~/windowsApps" -ForegroundColor Green
             # Kind of like Pause but with a custom key and msg
-            $x=AskForChoice -message "All Done" -choices @("&Done") -defaultChoice 0
+            $retVal=AskForChoice -message "Done. Publish something else?"
+            if ($retVal -eq 0) {
+                $bShowmenu=$false
+            }
         } until (-not $showmenu_publish)
-    } # Publish
+    } # Menu Choice: Publish
     ElseIf ($action -eq 3)
-    { # Org
+    { # Menu Choice: Org Create
         $AppName = "IntuneApp Publisher"
         $orglistcsv = "$($scriptdir)\AppsPublish_OrgList.csv"
         If (-not (Test-Path $orglistcsv)) {InitializeOrgList $orglistcsv}
@@ -1433,9 +1500,9 @@ Do
         Write-host "New org added: " -NoNewline
         Write-Host $OrgDomain -ForegroundColor Yellow
         Start-Sleep 3
-    } # Org
+    } # Menu Choice: Org Create
     ElseIf ($action -eq 4)
-    { # Modules
+    { # Menu Choice: Modules
         $ps1file = "$($scriptDir)\AppsModules.ps1"
         if (-not (Test-Path $ps1file -PathType Leaf))
         { # not found
@@ -1446,11 +1513,9 @@ Do
             & $($ps1file)
         }
         Start-Sleep 1
-    } # Modules
+    } # Menu Choice: Modules
     ##### done with menu actions
-    if ($bShowmenu)
-    {
-        #Write-Host "Action Complete [$($action)]: $($actionchoices[$action].Replace('&',''))"
+    if ($bShowmenu) {
         Start-Sleep 1
     }
 } # show menu

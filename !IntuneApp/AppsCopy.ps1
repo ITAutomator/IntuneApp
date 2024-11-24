@@ -251,24 +251,28 @@ Do { # menu loop
                 $count_i +=1
                 Write-Host "$($count_i.ToString("00")) - [$($package.AppType)] " -NoNewline
                 Write-Host "$($package.AppName)" -ForegroundColor Green -NoNewline
-                Write-Host " $($package.AppDescription)"
+                Write-Host ", $($package.AppDescription)"
         }
         # ready?
         if ((AskForChoice) -eq 0) {Write-Host "Aborting";Start-Sleep -Seconds 3; continue}
         Write-Host "---------------------------------"
+        # create a csv file in the root
+        $packages_selected | Select-Object AppName, AppType, AppDescription | Export-Csv -Force -Path "$($target_folder)\$($scriptBase) $(get-date -Format "yyyy-MM-dd").csv"
+        # begin copying
         Write-Host "Copying: " -NoNewline
-        Write-Host "Root files" -ForegroundColor Green -NoNewline
+        Write-Host          "Root and !IntuneApp files" -ForegroundColor Green
         # copy Root files (no subfolders)
+        Write-Host "Copying: $($target_folder) (root files only)" -NoNewline
         $retcode, $retmsg= CopyFilesIfNeeded $source $target_folder -CompareMethod "date" -delete_extra $false -deeply $false
-        # $retmsg | Write-Host ; Write-Host "Return code: $($retcode)"
-        # copy !IntuneApp folder (no subfolders)
+        if ($retcode -eq 0) {Write-Host " OK"} else {Write-Host " Updated" -ForegroundColor Yellow; $retmsg  | Where-Object { $_ -notlike "OK*" } | ForEach-Object {Write-Host "  $($_)"}}
+        # copy !IntuneApp folder
+        Write-Host "Copying: $($target_folder)\!IntuneApp (deeply)" -NoNewline
         $retcode, $retmsg= CopyFilesIfNeeded "$($source)\!IntuneApp" "$($target_folder)\!IntuneApp" -CompareMethod "date" -delete_extra $true
         if ($retcode -eq 0) {Write-Host " OK"} else {Write-Host " Updated" -ForegroundColor Yellow; $retmsg  | Where-Object { $_ -notlike "OK*" } | ForEach-Object {Write-Host "  $($_)"}}
-        # $retmsg | Write-Host ; Write-Host "Return code: $($retcode)"
         # get intunecmd path
         $intunecmd = "$($source)\!IntuneApp\!App Template\intune_command.cmd"
-        $count_updated=0
         $count_i=0
+        $count_updated=0
         $count_i_total = $packages_selected.Count
         ForEach ($pkg in $packages_selected)
         { # Each package

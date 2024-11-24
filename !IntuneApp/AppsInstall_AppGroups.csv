@@ -1,20 +1,5 @@
 Name,App
-App Group 1,Setup Windows Remove AzureAD Admins
-App Group 1,Setup Windows RemoveApps
-App Group 1,Setup Windows System
-App Group 1,Setup Windows User
 App Group 1,Winget Update
 App Group 2,7Zip
 App Group 2,Adobe Reader
-App Group 2,Dell Command Update UWP
-App Group 2,Notepad++
-App Group 2,PC Info
-App Group 2,Restart Periodically
-App Group 2,Setup Teams User
-App Group 2,TeamViewer Rethinkit
-App Group 2,TreeSize Free
-App Group 2,VLC Media Player
-App Group 2,Zoom
-App Group 2,Zoom Outlook Plugin
-App Group 3,Dell Command Update Refresh
 App Group 3,Google Chrome

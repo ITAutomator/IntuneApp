@@ -17,7 +17,7 @@ echo -  psexec: %psexec%
 echo - ps1path: %ps1path%
 echo - 
 echo -------------------------------------------------
-if not exist %ps1path%  echo ERR: Couldn't find %ps1path% & pause & goto :eof
+::if not exist %ps1path%  echo ERR: Couldn't find %ps1path% & pause & goto :eof
 :: check admin
 net session >nul 2>&1
 if %errorLevel% == 0 (echo [Admin confirmed]) else (echo ERR: Admin denied. Right-click and run as administrator. & pause & goto :EOF)
@@ -28,7 +28,10 @@ set params=
 if /I "%quiet%" EQU "true" set params=-quiet
 @echo on
 cls
-"%psexec%" -i -s Powershell.exe -ExecutionPolicy Bypass -File %ps1path%
+::echo Launching ps1 file
+::"%psexec%" -i -s Powershell.exe -ExecutionPolicy Bypass -File %ps1path%
+echo Launching powershell ise
+"%psexec%" -i -s C:\Windows\System32\WindowsPowerShell\v1.0\powershell_ise.exe
 @echo off
 
 echo ----- Done.

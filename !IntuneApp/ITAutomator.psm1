@@ -65,9 +65,15 @@ If (-not(IsAdmin))
 }
 #>
 ########################################################################
-
 <# 
 # Version History
+2024-11-23
+LoadModule - Added suggestion if update is needed
+2024-11-20
+CopyFilesIfNeeded - added excludeFiles option
+2024-11-19
+CopyFilesIfNeeded - changed date compare to allow a few seconds of tolerance due to OneDrive
+GetHashOfFiles - changed date hash to only include mins (not secs) to help with OneDrive changing by a few secs. Doesn't help with :59 :00 edge cases
 2024-11-17
 CopyFilesIfNeeded -deeply=$true - Added option to not recurse. Also fixed LiteralPath bug to allow filenames with [ chars
 2024-05-08
@@ -2462,7 +2468,7 @@ Function CopyFileIfNeeded ($source, $target)
     } # Target folder exists
     Return $retcode, $retmsg
 }
-Function CopyFilesIfNeeded ($source, $target,$CompareMethod="hash", $delete_extra=$false, $deeply=$true)
+Function CopyFilesIfNeeded ($source, $target,$CompareMethod="hash", $delete_extra=$false, $deeply=$true, $excludeFiles=@())
 # Copies the contents of a source folder into a target folder (which must exist)
 # Only copies files that need copying, based on date or hash of contents.
 # Source can be a directory, a file, or a file spec.
@@ -2523,6 +2529,15 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod="hash", $delete_extr
         else {
             $Files = Get-ChildItem -LiteralPath $source -File
         }
+        if ($null -ne $excludeFiles)
+        { # exclude?
+            if ($excludeFiles -is [string]){ # force it to be an array of strings
+                $excludeFiles = @($excludeFiles)
+            }
+            If ($excludeFiles.Count -gt 0){
+                $Files = $Files  | Where-Object {-not ($excludeFiles -contains $_.Name)}
+            }
+        } # exclude?
         ForEach ($File in $Files)
         { # Each file
             $files_same=$false
@@ -2548,10 +2563,11 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod="hash", $delete_extr
                 } #compare by hash
                 else
                 { #compare by date,size
+                    $tolerance_secs = 3 # allow for a few seconds of date diff due to OneDrive
                     $target_file = Get-ChildItem -LiteralPath $target_path -File
                     $compareresult = ($File.Name -eq $target_file.Name) `
                      -and ($File.Length -eq $target_file.Length) `
-                     -and ($File.LastWriteTimeUtc -eq $target_file.LastWriteTimeUtc)
+                     -and ([Math]::Abs(($File.LastWriteTimeUtc - $target_file.LastWriteTimeUtc).TotalSeconds) -lt $tolerance_secs)
                 } #compare by date,size
                 if ($compareresult)
                 {
@@ -2596,6 +2612,15 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod="hash", $delete_extr
             else {
                 $Files = Get-ChildItem -LiteralPath $target -File
             }
+            if ($null -ne $excludeFiles)
+            { # exclude?
+                if ($excludeFiles -is [string]){ # force it to be an array of strings
+                    $excludeFiles = @($excludeFiles)
+                }
+                If ($excludeFiles.Count -gt 0){
+                    $Files = $Files  | Where-Object {-not ($excludeFiles -contains $_.Name)}
+                }
+            } # exclude?
             ForEach ($File in $Files)
             { # Each file in target
                 $source_path = $file.FullName.Replace($target,$source)
@@ -3259,169 +3284,6 @@ Function FolderDelete {
         Write-Warning "Remove-ItemAlternative - Path $Path doesn't exists. Skipping. "
     }
 }
-Function LoadModule ($m, $providercheck = "", $checkver = $true) #nuget
-{
-    <# Example:
-    # Load the module and show results
-    $module= "ExchangeOnlineManagement" ; Write-Host "Loadmodule $($module)..." -NoNewline ; $lm_result=LoadModule $module ; Write-Host $lm_result
-    # Misc commands
-    Get-Module $module #shows modules available in this powershell session
-    Get-InstalledModule $module | Format-List Name,Version,InstalledLocation #shows installed modules available on this machine
-    Import-Module $module #brings module commands into powershell session (whatever module is installed on this machine)
-    Remove-Module $module #removes module from this powershell session (doesn't uninstall module)
-    # To Install/Update/Uninstall
-    Get-InstalledModule $module | Format-List Name,Version,InstalledLocation #shows installed modules available on this machine
-    Find-Module $module #Shows what is available online
-    Install-Module -Name $module (run as admin)
-    Install-Module -Name $module -RequiredVersion <PreviewVersion>  (run as admin)
-    Install-Module -Name $module -AllowClobber -AllowPrerelease -SkipPublisherCheck (run as admin)
-    Update-Module -Name $module #updates to latest (run as admin)
-    Uninstall-Module -Name $module #Uninstalls module on this machine (run as admin)
-    #>
-    $strReturn = @()
-    $bErr=$false
-    If ($providercheck -ne "")
-    { #install provider if needed
-        write-verbose "Checking for PackageProvider $($providercheck)..."
-        $prv = Get-PackageProvider|where-object{$_.name -eq $providercheck}
-        if (-not $prv)
-        {
-            Install-PackageProvider -Name $providercheck -Force
-            $strReturn +="(PackageProvider $($providercheck) installed)"
-        }
-    } #install provider if needed
-    write-verbose "Checking for Module $($m)..."
-    # If module is imported say that and do nothing
-    $minfo = @(Get-Module | Where-Object {$_.Name -eq $m})
-    If ($minfo)
-    { # has Get-Module
-        write-verbose "Module $($m) is already imported."
-        # see what the latest version online is
-        if ($checkver)
-        { # checkver
-            $mod_avail = Find-Module -Name $m -ErrorAction SilentlyContinue
-            if ($mod_avail)
-            { # found module online
-                if ($minfo[0].Version.ToString() -eq $mod_avail[0].Version.ToString())
-                {
-                    $strReturn+="v$($minfo[0].Version.ToString()) [Current version]"
-                }
-                else
-                {
-                    $strReturn+="v$($minfo[0].Version.ToString()) [Update available to v$($mod_avail[0].Version.ToString()) use Update-Module (as admin)]"
-                }
-            } # found module online
-            else
-            { # no found module online
-                $strReturn+="v$($minfo[0].Version.ToString()) (no online version found)"
-            } # no found module online
-        } # checkver
-        Else
-        { # not checkver
-            $strReturn+="v$($minfo[0].Version.ToString()) (not checked for updates)"
-        } # not checkver
-    } # has Get-Module
-    Else
-    { # no Get-Module
-        # If module is not imported, but available on disk then import
-        $minfo = @(Get-Module -ListAvailable -Name $m| Where-Object {$_.Name -eq $m})
-        if ($minfo)
-        { # ListAvailable
-            write-verbose "Module $($m) is available on disk, importing..."
-            Import-Module $m
-            $strReturn+="Imported v$($minfo[0].Version.ToString())"
-            if ($checkver)
-            { # checkver
-                # see what the latest version online is
-                $mod_avail = Find-Module -Name $m -ErrorAction SilentlyContinue
-                if ($mod_avail)
-                {
-                    if ($minfo[0].Version.ToString() -eq $mod_avail[0].Version.ToString())
-                    {
-                        $strReturn+="Imported v$($minfo[0].Version.ToString()) [Current version]"
-                    }
-                    else
-                    {
-                        $strReturn+="Imported v$($minfo[0].Version.ToString()) [Update available to v$($mod_avail[0].Version.ToString()) use Update-Module (as admin)]"
-                    }
-                    }
-                else
-                {
-                    $strReturn+="Imported v$($minfo[0].Version.ToString())"
-                }
-            } # checkver
-            Else
-            { # not checkver
-                $strReturn+="v$($minfo[0].Version.ToString()) (not checked for updates)"
-            } # not checkver   
-        } # ListAvailable
-        else
-        { # No ListAvailable
-            if ($checkver)
-            { # checkver
-                if (Find-Module -Name $m -ErrorAction SilentlyContinue)
-                { # If module is not imported, not available on disk, but is in online gallery then install and import
-                    If (IsAdmin)
-                    { # admin
-                        $msg = "About to run Install-Module $($m). You are an admin, is that OK?"
-                        if (AskForChoice -Message $msg)
-                        {
-                            write-verbose "Module $($m) is available online, downloading to disk (as admin to all users)..."
-                            Install-Module -Name $m -Force -Scope AllUsers
-                        }
-                        else
-                        {
-                            write-verbose "Module $($m) not installed (user aborted)"
-                            $strReturn +="NOT_INSTALLED_ABORT"
-                            $bErr=$true
-                        }
-                    } # admin
-                    Else
-                    { # no admin
-                        $msg = "About to run Install-Module $($m). You are not an admin, is that OK? (not recommended)"
-                        if (AskForChoice -Message $msg)
-                        {
-                            write-verbose "Module $($m) is available online, downloading to disk (not an admin so as user)..."
-                            Install-Module -Name $m -Force -Verbose -Scope CurrentUser
-                        }
-                        else
-                        {
-                            write-verbose "Module $($m) not installed (user aborted)"
-                            $strReturn +="NOT_INSTALLED_ABORT"
-                            $bErr=$true
-                        }
-                    } # no admin
-                    if (-not $bErr)
-                    {
-                        write-verbose "Module $($m) is available on disk, importing..."
-                        Import-Module $m
-                        $minfo = @(Get-Module -ListAvailable | Where-Object {$_.Name -eq $m})
-                        $strReturn+="INSTALL v$($minfo[0].Version.ToString())"
-                    }
-                }
-                else 
-                { # If the module is not imported, not available and not in the online gallery then abort
-                    write-verbose "Module $($m) not imported, not available and not in an online gallery, exiting."
-                    $strReturn +="NOT_FOUND"
-                    $bErr=$true
-                }
-            } # checkver
-            Else
-            { # not checkver
-                $strReturn +="NOT_FOUND (online version not checked)"
-                $bErr=$true
-            } # not checkver
-        } # No ListAvailable
-    } # no Get-Module
-    if ($bErr)
-    {
-        Return "ERR: "+ ($strReturn -join ", ")
-    }
-    Else
-    {
-        Return "OK: "+ ($strReturn -join ", ")
-    }
-}
 Function ChooseFromList ($package_paths, $title="Choose", $showmenu=$true)
 {
     <### Examples
@@ -3931,4 +3793,155 @@ Function Elevate
        Throw "Failed to start PowerShell elevated"
     }
 } # elevate
+Function LoadModule ($m, $providercheck = "", $checkver = $true) #nuget
+{
+    <#
+    Example:
+    # Load the module and show results
+    $module= "ExchangeOnlineManagement" ; Write-Host "Loadmodule $($module)..." -NoNewline ; $lm_result=LoadModule $module ; Write-Host $lm_result
+    # Misc commands
+    Get-Module $module #shows modules available in this powershell session
+    Get-InstalledModule $module | Format-List Name,Version,InstalledLocation #shows installed modules available on this machine
+    Import-Module $module #brings module commands into powershell session (whatever module is installed on this machine)
+    Remove-Module $module #removes module from this powershell session (doesn't uninstall module)
+    # To Install/Update/Uninstall
+    Get-InstalledModule $module | Format-List Name,Version,InstalledLocation #shows installed modules available on this machine
+    Find-Module $module #Shows what is available online
+    Install-Module -Name $module (run as admin)
+    Install-Module -Name $module -RequiredVersion <PreviewVersion>  (run as admin)
+    Install-Module -Name $module -AllowClobber -AllowPrerelease -SkipPublisherCheck (run as admin)
+    Update-Module -Name $module #updates to latest (run as admin)
+    Uninstall-Module -Name $module #Uninstalls module on this machine (run as admin)
+    #>
+    $strReturn = @()
+    $bErr=$false
+    If ($providercheck -ne "")
+    { #install provider if needed
+        write-verbose "Checking for PackageProvider $($providercheck)..."
+        $prv = Get-PackageProvider|where-object{$_.name -eq $providercheck}
+        if (-not $prv)
+        {
+            Install-PackageProvider -Name $providercheck -Force
+            $strReturn +="(PackageProvider $($providercheck) installed)"
+        }
+    } #install provider if needed
+    write-verbose "Checking for Module $($m)..."
+    # If module is imported say that and do nothing
+    $minfo = @(Get-Module | Where-Object {$_.Name -eq $m})
+    If ($minfo)
+    { # has Get-Module
+        write-verbose "Module $($m) is already imported."
+        # see what the latest version online is
+        if ($checkver)
+        { # checkver
+            $mod_avail = Find-Module -Name $m -ErrorAction SilentlyContinue
+            if ($mod_avail) { # found module online
+                if ($minfo[0].Version.ToString() -eq $mod_avail[0].Version.ToString()) {
+                    $strReturn+="v$($minfo[0].Version.ToString()) [Current version]"
+                }
+                else {
+                    $strReturn+="v$($minfo[0].Version.ToString()) [Update available to v$($mod_avail[0].Version.ToString()). Suggestion: Open Powershell (as admin) and run Update-Module $($m)]"
+                }
+            } # found module online
+            else { # no found module online
+                $strReturn+="v$($minfo[0].Version.ToString()) (no online version found)"
+            } # no found module online
+        } # checkver
+        Else { # not checkver
+            $strReturn+="v$($minfo[0].Version.ToString()) (not checked for updates)"
+        } # not checkver
+    } # has Get-Module
+    Else
+    { # no Get-Module
+        # If module is not imported, but available on disk then import
+        $minfo = @(Get-Module -ListAvailable -Name $m| Where-Object {$_.Name -eq $m})
+        if ($minfo)
+        { # ListAvailable
+            write-verbose "Module $($m) is available on disk, importing..."
+            Import-Module $m
+            $strReturn+="Imported v$($minfo[0].Version.ToString())"
+            if ($checkver)
+            { # checkver
+                # see what the latest version online is
+                $mod_avail = Find-Module -Name $m -ErrorAction SilentlyContinue
+                if ($mod_avail)
+                {
+                    if ($minfo[0].Version.ToString() -eq $mod_avail[0].Version.ToString())
+                    {
+                        $strReturn+="Imported v$($minfo[0].Version.ToString()) [Current version]"
+                    }
+                    else
+                    {
+                        $strReturn+="Imported v$($minfo[0].Version.ToString()) [Update available to v$($mod_avail[0].Version.ToString()). Suggestion: Open Powershell (as admin) and run Update-Module $($m)]"
+                    }
+                }
+                else {
+                    $strReturn+="Imported v$($minfo[0].Version.ToString())"
+                }
+            } # checkver
+            Else { # not checkver
+                $strReturn+="v$($minfo[0].Version.ToString()) (not checked for updates)"
+            } # not checkver   
+        } # ListAvailable
+        else
+        { # No ListAvailable
+            if ($checkver)
+            { # checkver
+                if (Find-Module -Name $m -ErrorAction SilentlyContinue)
+                { # If module is not imported, not available on disk, but is in online gallery then install and import
+                    If (IsAdmin)
+                    { # admin
+                        $msg = "About to run Install-Module $($m). You are an admin, is that OK?"
+                        if (AskForChoice -Message $msg) {
+                            write-verbose "Module $($m) is available online, downloading to disk (as admin to all users)..."
+                            Install-Module -Name $m -Force -Scope AllUsers
+                        }
+                        else {
+                            write-verbose "Module $($m) not installed (user aborted)"
+                            $strReturn +="NOT_INSTALLED_ABORT"
+                            $bErr=$true
+                        }
+                    } # admin
+                    Else
+                    { # no admin
+                        $msg = "About to run Install-Module $($m). You are not an admin, is that OK? (not recommended)"
+                        if (AskForChoice -Message $msg) {
+                            write-verbose "Module $($m) is available online, downloading to disk (not an admin so as user)..."
+                            Install-Module -Name $m -Force -Verbose -Scope CurrentUser
+                        }
+                        else {
+                            write-verbose "Module $($m) not installed (user aborted)"
+                            $strReturn +="NOT_INSTALLED_ABORT"
+                            $bErr=$true
+                        }
+                    } # no admin
+                    if (-not $bErr) {
+                        write-verbose "Module $($m) is available on disk, importing..."
+                        Import-Module $m
+                        $minfo = @(Get-Module -ListAvailable | Where-Object {$_.Name -eq $m})
+                        $strReturn+="INSTALL v$($minfo[0].Version.ToString())"
+                    }
+                }
+                else 
+                { # If the module is not imported, not available and not in the online gallery then abort
+                    write-verbose "Module $($m) not imported, not available and not in an online gallery, exiting."
+                    $strReturn +="NOT_FOUND"
+                    $bErr=$true
+                }
+            } # checkver
+            Else
+            { # not checkver
+                $strReturn +="NOT_FOUND (online version not checked)"
+                $bErr=$true
+            } # not checkver
+        } # No ListAvailable
+    } # no Get-Module
+    if ($bErr) {
+        Return "ERR: "+ ($strReturn -join ", ")
+    }
+    Else {
+        Return "OK: "+ ($strReturn -join ", ")
+    }
+} # Load Module
+
 # END OF FILE
