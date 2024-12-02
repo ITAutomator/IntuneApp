@@ -42,7 +42,7 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
             $scopes += "Domain.Read.All"                        # Read domain properties
             $scopes += "User.ReadWrite.All"                     # Read and update user properties
             $scopes += "Directory.Read.All"                     # Allows the app to read data in your organization's directory.
-            $scopes += "Application.Read.All"                   # Allows the app to read all applications and service principals without a signed-in user
+            #$scopes += "Application.Read.All"                   # Allows the app to read all applications and service principals without a signed-in user
             $scopes += "Application.ReadWrite.All"              # Allows the app to create, read, update and delete applications and service principals without a signed-in user. Does not allow management of consent grants.
             $scopes += "RoleManagement.ReadWrite.Directory"     # Allows the app to read and manage the role-based access control (RBAC) settings for your company's directory, without a signed-in user.
             $scopes += "DelegatedPermissionGrant.ReadWrite.All" # Manage app permission grants and app role assignments 
@@ -55,11 +55,12 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
                 if (-not (AskForChoice "Use this connection?"))
                 {
                     Disconnect-MgGraph -ErrorAction Ignore | Out-Null
+                    Write-Host "Connecting ... There may be a popup logon window in the background"
                     Connect-MgGraph -Scopes $scopes -TenantId $OrgDomain -erroraction Stop | Out-Null
                 }
             } # already connected
             else {
-                <# Action when all if and elseif conditions are false #>
+                Write-Host "Connecting ... There may be a popup logon window in the background"
                 Connect-MgGraph -Scopes $scopes -TenantId $OrgDomain -erroraction Stop | Out-Null
             }
             $connected = $true
@@ -217,6 +218,12 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
     Write-Host "                    AppId: " -NoNewline
     Write-Host                             $appRegistration.AppId -ForegroundColor Yellow
     Write-Host "-----------------------------------------------------------------------------"
+    Write-Host "Find it here: Entra Admin > Apps > App Registrations > All apps"
+    Write-Host "              https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade/quickStartType~/null/sourceType/Microsoft_AAD_IAM" -ForegroundColor Green
+    Write-Host "    and here: Entra Admin > Apps > App Registrations > $($AppName)"
+    Write-Host "              https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/appId/$($appRegistration.AppId )/isMSAApp~/false" -ForegroundColor Green
+    Write-Host "-----------------------------------------------------------------------------"
+    Start-Sleep 3 # pause
     $sResult = $appRegistration.AppId
     Return $sResult
 }
@@ -367,7 +374,7 @@ Function Ps1FileCheckUpdate ($ps1template, $file_checks, $pkgobj)
                 $sResult= "ERR: Required file missing: $($file_check)"
             }
         }
-        if ($filebase.EndsWith(".ps1"))
+        elseif ($filebase -in ("intune_install.ps1","intune_uninstall.ps1","intune_detection.ps1","intune_requirements.ps1")) 
         { #ps1 file, check/replace contents
             #$ps1name = Split-Path $file_check -Leaf
             # create object to pass to UpdatePS1File
@@ -394,17 +401,20 @@ Function Ps1FileCheckUpdate ($ps1template, $file_checks, $pkgobj)
             if ($update_result.StartsWith("Updated"))
             { #contents replaced
                 $updated_count +=1
-                #$sResult= "OK: Required file $($i): (Updated) $($filebase) [$($update_result)]"
             } #contents replaced
             elseif ($update_result.StartsWith("OK"))
             { #contents already OK
-                #$sResult= "OK: Required file $($i): (OK) $($filebase) [$($update_result)]"
             } #contents already OK
             else
             { #contents have an issue
                 $sResult= "ERR: Required file $($i): ($($update_result)) $($filebase)"
             } #contents have an issue
         } #ps1 file, check/replace contents
+        else
+        { # other files just copy
+            $src = "$(Split-path $ps1template -Parent)\!App Template\IntuneApp\IntuneUtils\$(Split-path $file_check -Leaf)"
+            $retcode, $retmsg = CopyFileIfNeeded -source $src -target $file_check -TargetIsFolder $false -CompareByHashOrDate "date"
+        } # other files just copy
     } #Each file
     If ($sResult.StartsWith("OK"))
     {
@@ -465,19 +475,24 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
         $IntuneAppFolder = Split-Path "$($search_root)\$($pkg)" -Parent
         #region check required files
         $intune_settings_csvpath=Join-Path $IntuneAppFolder "intune_settings.csv"
-        $intune_icon            =Join-Path $IntuneAppFolder "intune_icon.png"
-        $intune_install         =Join-Path $IntuneAppFolder "IntuneUtils\intune_install.ps1"
-        $intune_uninstall       =Join-Path $IntuneAppFolder "IntuneUtils\intune_uninstall.ps1"
-        $intune_detection       =Join-Path $IntuneAppFolder "IntuneUtils\intune_detection.ps1"
-        $intune_requirements    =Join-Path $IntuneAppFolder "IntuneUtils\intune_requirements.ps1"
-        #
         $file_checks = @(
-            $intune_settings_csvpath,
-            $intune_icon,
-            $intune_install,
-            $intune_uninstall,
-            $intune_detection,
-            $intune_requirements
+            # required (2 package files)
+            (Join-Path $IntuneAppFolder "intune_settings.csv"),
+            (Join-Path $IntuneAppFolder "intune_icon.png"),
+            # injected (4 IntuneUtils files)
+            (Join-Path $IntuneAppFolder "IntuneUtils\intune_install.ps1"),
+            (Join-Path $IntuneAppFolder "IntuneUtils\intune_uninstall.ps1"),
+            (Join-Path $IntuneAppFolder "IntuneUtils\intune_detection.ps1"),
+            (Join-Path $IntuneAppFolder "IntuneUtils\intune_requirements.ps1"),
+            # overwritten (8 IntuneUtils files)
+            (Join-Path $IntuneAppFolder "IntuneUtils\intune_command.cmd"),
+            (Join-Path $IntuneAppFolder "IntuneUtils\intune_command.ps1"),
+            (Join-Path $IntuneAppFolder "IntuneUtils\intune_detection_customcode_template.ps1"),
+            (Join-Path $IntuneAppFolder "IntuneUtils\intune_install_customcode_template.ps1"),
+            (Join-Path $IntuneAppFolder "IntuneUtils\intune_install_followup_template.ps1"),
+            (Join-Path $IntuneAppFolder "IntuneUtils\intune_requirements_customcode_template.ps1"),
+            (Join-Path $IntuneAppFolder "IntuneUtils\intune_uninstall_followup_template.ps1")
+            (Join-Path $IntuneAppFolder "IntuneUtils\Readme.txt")
             )
         #Write-Host "Checking \IntuneApp folder for required files..."
         $IntuneAppValues_csv = Import-Csv $intune_settings_csvpath
@@ -501,6 +516,10 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
         $pkgobj.PublishToOrgGroup= [System.Convert]::ToBoolean($pkgobj.PublishToOrgGroup)
         $pkgobj.CompanyPortalFeaturedApp= [System.Convert]::ToBoolean($pkgobj.CompanyPortalFeaturedApp)
         $pkgobj.AvailableInCompanyPortal= [System.Convert]::ToBoolean($pkgobj.AvailableInCompanyPortal)
+        # other info part ii
+        if ($pkgobj.PublishToOrgGroup) {$Required_Pkg = "Yes"} else {$Required_Pkg = ""}
+        $pkgobj.Add("Required_Pkg"            , $Required_Pkg)
+        $pkgobj.Add("Required_Org"            , "")
         # checks that all files exist, and injects them with updated variables and custom code (for detection and requirements files)
         $ps1template = "$($search_root)\!IntuneApp\AppsPublish_Template.ps1"
         $sResultps1 = Ps1FileCheckUpdate $ps1template $file_checks $pkgobj
@@ -626,7 +645,7 @@ Function PackagesLocalUpdateandCheck
         $search_root  = Split-Path -Path $scriptdir -Parent
         $sReturn,$pkgs = PackagesLocalChecks $search_root
         Write-Host $sReturn
-        if (-not $sReturn.Startswith("OK")) {Write-host $sReturn -ForegroundColor Yellow ;return}
+        if (-not $sReturn.Startswith("OK")) {Write-host $sReturn -ForegroundColor Yellow; PressEnterToContinue ;return}
         #endregion package hashes
         Return $pkgs
 }
@@ -646,13 +665,12 @@ Start-Transcript -path $Transcript | Out-Null
 #endregion Transcript Open
 Write-Host "-----------------------------------------------------------------------------"
 Write-Host "$($scriptName) $($scriptVer)       Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
-Write-Host $scriptName -ForegroundColor Yellow
 Write-Host ""
+Write-Host $scriptName -ForegroundColor Yellow
 Write-Host "This script publishes Apps to M365 Orgs via Intune."
 Write-Host ""
-Write-Host "Intune Windows Apps (Admin center):"
+Write-Host "Published Apps (named IntuneApps...) can be found in the Intune Windows Apps list here:"
 Write-Host "https://intune.microsoft.com/?ref=AdminCenter#view/Microsoft_Intune_DeviceSettings/AppsWindowsMenu/~/windowsApps" -ForegroundColor Green
-Write-Host ""
 Write-Host "-----------------------------------------------------------------------------"
 $bShowmenu=$true
 Do
@@ -667,15 +685,17 @@ Do
     }
     Write-Host "-----------------------------------------------------------------------------"
 	Write-Host "Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major)"
-    Write-Host $scriptName -ForegroundColor Green -nonewline
+    Write-Host $scriptName -ForegroundColor Yellow -nonewline
     Write-Host " Publish menu"
+    Write-Host "IntuneApps are published here: " -NoNewline
+    Write-Host "https://intune.microsoft.com/?ref=AdminCenter#view/Microsoft_Intune_DeviceSettings/AppsWindowsMenu/~/windowsApps" -ForegroundColor Green
     Write-Host "-----------------------------------------------------------------------------"
     Write-Host "C - Check local apps prior to publication$($chkInfo)" -ForegroundColor Yellow
     Write-Host "    Checks local apps for changes / updates hash (recommended for Publish option)"
     Write-Host "P - Publish apps" -ForegroundColor Yellow
     Write-Host "    Publishes apps to an og"
     Write-Host "O - Prep a new Org for publishing apps" -ForegroundColor Yellow
-    Write-Host "    Creates an entry in AppsPublish_Orgs.csv"
+    Write-Host "    Creates an entry in AppsPublish_Orgs.csv and creates an App publishing app used by this program in Entra."
     Write-Host "M - Install / upgrade modules" -ForegroundColor Yellow
     Write-Host "    Installs the PowerShell modules (required for Publish option)"
     Write-Host "-----------------------------------------------------------------------------"
@@ -746,7 +766,7 @@ Do
         Write-Host "     AppPublisherClientID : $($OrgValues.AppPublisherClientID)"
         if ($OrgValues."AppPublisherClientID" -eq "")
         {
-            Write-Host "ERR: AppPublisherClientID is missing for this Org. Suggestion: Use menu option [O]rg prep to fix up this TenantName.";Start-sleep  3; continue
+            Write-Host "ERR: AppPublisherClientID is missing for this Org. Suggestion: Use menu option [O]rg prep to fix up this TenantName." -ForegroundColor Red;Start-sleep  3; continue
         }
         #endregion choose tenant
         #region modules
@@ -776,8 +796,9 @@ Do
         $RequiredScopes += "Group.ReadWrite.All"
         $RequiredScopes += "GroupMember.ReadWrite.All"
         $RequiredScopes += "User.ReadWrite.All"
-        $RequiredScopes += "DeviceManagementApps.Read.All" # not sure about this one
+        #$RequiredScopes += "DeviceManagementApps.Read.All" # not sure about this one
         $RequiredScopes += "DeviceManagementApps.ReadWrite.All"
+        Write-Host "Connecting ... There may be a popup logon window in the background"
         $connected_ok = Connect-MgGraph -TenantId $OrgValues.TenantName -Scopes $RequiredScopes
         #
         if (!($connected_ok)) 
@@ -791,10 +812,22 @@ Do
         }
         Do { # menu loop
             # Get Required group ID
-            Write-Host "Required org group: $($OrgValues.PublishToGroupIncluded)..." -NoNewline
+            Write-Host "Required org group: " -NoNewline
+            Write-Host $OrgValues.PublishToGroupIncluded -NoNewline -ForegroundColor Yellow
+            Write-Host " ... " -NoNewline
             $group = Get-MgGroup -Filter "displayName eq '$($OrgValues.PublishToGroupIncluded)'"
             $Required_OrgGroupId = $group.Id
-            if ($Required_OrgGroupId) {Write-host "Found" -ForegroundColor Green} else {Write-Host "<not found - will be created>"}
+            if ($Required_OrgGroupId) {
+                Write-host "Found" -ForegroundColor Green
+            } else {
+                Write-Host "NOT FOUND" -ForegroundColor Red
+                Write-Host "If you have never published to this Org, this is OK, it will be created during publishing process."
+                Write-host "If you have published and the group has been renamed, rename them back to these values, then press [N] to check again."
+                Write-Host $OrgValues.PublishToGroupIncluded -NoNewline -ForegroundColor Yellow
+                Write-Host $OrgValues.PublishToGroupExcluded -NoNewline -ForegroundColor Yellow
+                if (-not (AskForChoice))
+                {Continue} # skip process
+            }
             #region Check published apps
             Write-Host "Checking published apps in $($OrgValues.TenantName)..." -NoNewline
             # Get List of apps
@@ -808,6 +841,8 @@ Do
                 $pkg.PublishedAppId = ""
                 $pkg.PublishedDate = ""
                 $pkg.PublicationStatus = "Unpublished"
+                $pkg.Required_Org = ""
+                $pkg.Required_Pkg = ""
             } # each pkg
             $i = 0
             $i_count = $IntuneApps.count
@@ -1400,6 +1435,7 @@ Do
             # Kind of like Pause but with a custom key and msg
             $retVal=AskForChoice -message "Done. Publish something else?"
             if ($retVal -eq 0) {
+                $showmenu_publish =$false
                 $bShowmenu=$false
             }
         } until (-not $showmenu_publish)
@@ -1411,7 +1447,26 @@ Do
         If (-not (Test-Path $orglistcsv)) {InitializeOrgList $orglistcsv}
         $orglist=Import-Csv $orglistcsv
         #
-        $OrgDomain = Read-Host "Enter Org domain (eg mydomain.com, blank to cancel)"
+        Write-Host "-----------------------------------------------------------------------------"
+        Write-Host "Package-publishing Application Creation"
+        Write-Host "                  AppName: " -NoNewline
+        Write-Host                             $AppName -ForegroundColor Yellow
+        Write-Host "-----------------------------------------------------------------------------"
+        Write-Host "This will create an Entra registered app." -ForegroundColor Yellow
+        Write-Host "In order to publish IntuneApp packages, a registered app will be created in the Entra registered App list."
+        Write-Host "This registered app will have delegated permission (vs application permission)."
+        Write-host ""
+        Write-host "A note about security:"
+        Write-Host "Apps with delegated permission are safer, because they require a user to logon, and can only do things that the user can already do."
+        Write-Host "(as opposed to application permission, which allows the app to operate independently from users.)"
+        Write-Host ""
+        Write-Host "What this means:"
+        Write-Host "When IntuneApps are published, this package-publishing app will prompt the user to logon, and verify they have required access before proceeding with publication."
+        Write-Host "-----------------------------------------------------------------------------"
+        Write-Host "To see existing registered Apps: Entra Admin > Apps > App Registrations > All apps"
+        Write-Host "                                 https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade/quickStartType~/null/sourceType/Microsoft_AAD_IAM" -ForegroundColor Green
+        Write-Host "-----------------------------------------------------------------------------"
+        $OrgDomain = Read-Host "Enter Org domain to connect to as admin (eg mydomain.com, blank to cancel)"
         if ($OrgDomain -eq "") {
             Write-Host "Canceled" -ForegroundColor Yellow;Start-Sleep 2;Continue}
         #region modules
@@ -1432,6 +1487,7 @@ Do
         }
         #endregion modules
         #region: Create the app in the org
+        Write-Host "Modules loaded." -ForegroundColor Green
         $OrgAppPublisherClientID = CreatePublishingApp $OrgDomain $AppName
         if ($OrgAppPublisherClientID.StartsWith("ERR"))
         { # auto didn't work
@@ -1499,7 +1555,7 @@ Do
         $orglist | Export-Csv $orglistcsv -NoTypeInformation
         Write-host "New org added: " -NoNewline
         Write-Host $OrgDomain -ForegroundColor Yellow
-        Start-Sleep 3
+        PressEnterToContinue
     } # Menu Choice: Org Create
     ElseIf ($action -eq 4)
     { # Menu Choice: Modules

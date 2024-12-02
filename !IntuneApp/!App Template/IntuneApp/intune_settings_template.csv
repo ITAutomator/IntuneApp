@@ -5,11 +5,15 @@ AppInstaller,winget,"(Required) winget,choco,exe,msi,ps1,cmd. If winget, choco i
 AppInstallName,7zip.7zip,(Required) winget appid (case sensitive) or choco appid or filename of .exe or .msi or .ps1 or .cmd (wildcard OK). See https://winstall.app or https://community.chocolatey.org/packages for package ids.
 AppInstallArgs,,"(Optional) Prefix with ARGS: Installer arguments for msi,ps1,exe,cmd (for msi usually /quiet or /q /norestart) (for ps1 with multi param try -var1 xyz -var2 pdq named format, else entire value is first param )"
 AppDescription,zip file management tool,(Required) Info for company portal
-AppUninstallName,,"(Optional) AddRemove Program Name (winget id - see winget list). App to uninstall (also done prior to install). This is in addition to the normal choco,winget uninstall. Uses winget to uninstall (winget list myproductid -e)"
-AppUninstallVersion,22,(Optional) AddRemove Product version below which to Uninstall (e.g. 4.5.0). Detection: versions below this will not be considered Detected. Blank=Any version is detected. Use this to repackage an app to upgrade everyone to latest version.
-AppUninstallProcess,*7z*,(Optional) Processes to end prior to uninstall. Acrob* style will work but better if no * is used. Show running names via powershell: get-process -Name Acrob*
+AppUninstallName,,"(Optional) winget name or winget id (Use 'winget list' to show them) to detect/uninstall (also done prior to install). This is in addition to the normal choco,winget uninstall. This field is required for non-winget packages, unless customcode.ps1 is used, as it is the only way to detect an app"
+AppUninstallVersion,22,(Optional) Winget product version (e.g. 4.5.0) below which to the app is considered not detected. Below this version will be uninstalled / reinstalled. Blank=All versions are OK and will not be reinstalled. Use current version to repackage an app to upgrade everyone to latest version.
+AppUninstallProcess,*7zip*,(Optional) Processes to end prior to uninstall. (e.g. Acrobat*) Show running names via powershell: get-process -Name Acrob*. Wildcards can be used
 SystemOrUser,system,"(Required) System to install as system, User to install as user"
 Publisher,Igor Pavlov of 7Zip,(Required) Info for company portal
+AppInstallerDownload1URL,,Enter a URL to download into install folder before installer starts. Can be a public share from Google Drive (drive.google.com). Zip files will be extracted automatically.
+AppInstallerDownload1Hash,,"Enter the file hash (optional) PSH: gci *.zip | Get-FileHash -Algorithm SHA256 | Select-Object Hash, @{n=""File"";e={Split-Path $_.Path -Leaf}}"
+AppInstallerDownload2URL,,
+AppInstallerDownload2Hash,,
 RestartBehavior,allow,Allow Installer to Restart (Default is allow)
 Developer,,Info for company portal
 Owner,,Info for company portal

@@ -1,4 +1,30 @@
-## To enable scrips, Run powershell 'as admin' then type
+##################################
+### Functions
+##################################
+Function IsAdmin() 
+{
+    $wid=[System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $prp=new-object System.Security.Principal.WindowsPrincipal($wid)
+    $adm=[System.Security.Principal.WindowsBuiltInRole]::Administrator
+    $IsAdmin=$prp.IsInRole($adm)
+    $IsAdmin
+}
+Function GetTempFolder (
+    $Prefix = "Powershell_"     
+    )
+    <#
+    Usage:
+    $TmpFld=GetTempFolder -Prefix "MyCode_"
+    Write-Host $TmpFld
+    #>
+{
+    $tempFolderPath = Join-Path $Env:Temp ($Prefix + $(New-Guid))
+    New-Item -Type Directory -Path $tempFolderPath | Out-Null
+    Return $tempFolderPath
+}
+######################
+## Main Procedure
+######################## To enable scrips, Run powershell 'as admin' then type
 ## Set-ExecutionPolicy Unrestricted
 $scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName }
 $scriptXML      = $scriptFullname.Substring(0, $scriptFullname.LastIndexOf('.'))+ ".xml"  ### replace .ps1 with .xml
@@ -19,6 +45,13 @@ Write-Host ""
 Write-Host "Note: Use AppsCopy.ps1 to copy installers to removable media."
 Write-Host "Note: Run this in user-mode, installers will self-elevate to admin-mode (if they are System packages)"
 Write-Host "-----------------------------------------------------------------------------"
+if (IsAdmin)
+{
+    Write-host "You have run this elevated (as admin). This is incorrect, so the program will end."
+    Write-host "Installers will self-elevate to admin-mode (if they are System packages)."
+    PressEnterToContinue
+    Exit
+}
 # Search for packages in folder tree (intune_settings.csv)
 $search_root  = Split-Path -Path $scriptdir -Parent
 $package_files= Get-ChildItem -Path $search_root -File -Recurse -Filter "intune_settings.csv"
@@ -209,7 +242,6 @@ Do { # menu loop
                 Write-Host "$($AppSelected)" -ForegroundColor Red
             }
         } # Each Selection
-    
         if ($packages_selected.Count -eq 0)
         {
             Write-Host "No packages selected, Exiting"
@@ -236,6 +268,7 @@ Do { # menu loop
             $action = AskForChoice "Action" -Choices "E&xit","&Install","&Uninstall","&Detect only"
             if ($action -eq 0) {Write-Host "Aborting";Start-Sleep -Seconds 3; continue}
         } # action
+        $tmp_folder = ""
         # loop through twice: 1 for system, 2 for user
         For ($sysuser= 1; $sysuser -le 2; $sysuser++)
         { # sysuser 1 is system, 2 is user
@@ -275,10 +308,21 @@ Do { # menu loop
                 else
                 { # multiple pkgs, no menu
                     if ($action -eq 1) {
-                        $ps1 = "intune_install.ps1"}
+                        $ps1 = "intune_install.ps1"
+                        if ($tmp_folder -eq "") {
+                            $tmp_folder=GetTempFolder -Prefix "IntuneAppsInstall_"
+                            Write-Host "Temp folder created: $(Split-Path $tmp_folder -Leaf)"
+                        }
+                        #copy folder to temp 
+                        $source = "$($pkg_folder)\IntuneApp"
+                        xcopy "$($source)" "$($tmp_folder)\$($pkg.AppName)" /E /I /H /Y > $null 2>&1
+                        #run from temp
+                        $intune_install="$($tmp_folder)\$($pkg.AppName)\IntuneUtils\$($ps1)"
+                    }
                     elseif ($action -eq 2) {
-                        $ps1 = "intune_uninstall.ps1"}
-                    $intune_install="$($pkg_folder)\IntuneApp\IntuneUtils\$($ps1)"
+                        $ps1 = "intune_uninstall.ps1"
+                        $intune_install="$($pkg_folder)\IntuneApp\IntuneUtils\$($ps1)"
+                    }
                 }
                 $ps1filelines+="& `"$($intune_install)`" -quiet"
             } # each pkg
@@ -341,6 +385,11 @@ Do { # menu loop
                     { # each pkg
                         $pkg.Detection          = "$($ps1) completed"
                     } # each pkg
+                    # cleanup temp folder
+                    if ($tmp_folder -ne "") {
+                        Remove-Item -Path $tmp_folder -Recurse -Force
+                        Write-Host "Temp folder removed: $(Split-Path $tmp_folder -Leaf)"
+                    }
                 } # installs and uninstalls
             } #ps1s to call
         } # sysuser 1 is system, 2 is user

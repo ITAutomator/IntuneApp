@@ -9,7 +9,19 @@ Function IsAdmin()
     $IsAdmin=$prp.IsInRole($adm)
     $IsAdmin
 }
-
+Function GetTempFolder (
+    $Prefix = "Powershell_"     
+    )
+    <#
+    Usage:
+    $TmpFld=GetTempFolder -Prefix "MyCode_"
+    Write-Host $TmpFld
+    #>
+{
+    $tempFolderPath = Join-Path $Env:Temp ($Prefix + $(New-Guid))
+    New-Item -Type Directory -Path $tempFolderPath | Out-Null
+    Return $tempFolderPath
+}
 ######################
 ## Main Procedure
 ######################
@@ -27,7 +39,6 @@ $scriptVer      = "v"+(Get-Item $scriptFullname).LastWriteTime.ToString("yyyy-MM
 #######################
 ## Main Procedure Start
 #######################
-
 Write-Host "-----------------------------------------------------------------------------"
 Write-Host "$($scriptName) $($scriptVer)       Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
 Write-Host ""
@@ -39,7 +50,6 @@ if (-not (Test-Path $package_path))
     pause
     Exit 0    
 }
-
 # read the intune_settings.csv for this package
 $IntuneAppValues_csv = Import-Csv $package_path
 $IntuneCSVValues = @{}
@@ -48,20 +58,35 @@ $IntuneCSVValues.Add("AppVersion"           , ($IntuneAppValues_csv | Where-Obje
 $IntuneCSVValues.Add("AppNameVer"           , "$($IntuneCSVValues.AppName)$(if ($IntuneCSVValues.AppVersion) {"-v"})$($IntuneCSVValues.AppVersion)")
 $IntuneCSVValues.Add("SystemOrUser"         , ($IntuneAppValues_csv | Where-Object Name -EQ SystemOrUser).Value)
 $IntuneCSVValues.Add("AppDescription"       , ($IntuneAppValues_csv | Where-Object Name -EQ AppDescription).Value)
+$IntuneCSVValues.Add("AppInstaller"         , ($IntuneAppValues_csv | Where-Object Name -EQ AppInstaller).Value)
+$IntuneCSVValues.Add("AppInstallName"       , ($IntuneAppValues_csv | Where-Object Name -EQ AppInstallName).Value)
+$IntuneCSVValues.Add("AppInstallArgs"       , ($IntuneAppValues_csv | Where-Object Name -EQ AppInstallArgs).Value)
+$IntuneCSVValues.Add("AppUninstallNameVer"  , "$($IntuneCSVValues.AppUninstallName)$(if ($IntuneCSVValues.AppUninstallVersion) {"-v"})$($IntuneCSVValues.AppUninstallVersion)")
+$IntuneCSVValues.Add("AppUninstallProcess"  , ($IntuneAppValues_csv | Where-Object Name -EQ AppUninstallProcess).Value)
 #
 $pkg=@([pscustomobject][ordered]@{
     AppName                       = $IntuneCSVValues.AppName
     AppVersion                    = $IntuneCSVValues.AppVersion
     AppType                       = $IntuneCSVValues.SystemOrUser
     AppDescription                = $IntuneCSVValues.AppDescription
+    AppInstaller                  = $IntuneCSVValues.AppInstaller
+    AppInstallName                = $IntuneCSVValues.AppInstallName
+    AppInstallArgs                = $IntuneCSVValues.AppInstallArgs
+    AppUninstallNameVer           = $IntuneCSVValues.AppUninstallNameVer
+    AppUninstallProcess           = $IntuneCSVValues.AppUninstallProcess
     })
-Write-Host "                intune_settings.csv"
+Write-Host "                     intune_settings.csv"
 Write-Host ""
-Write-Host "       AppName: " -NoNewline
+Write-Host "            AppName: " -NoNewline
 Write-Host $($pkg.AppName) -ForegroundColor Green
-Write-Host "AppDescription: $($pkg.AppDescription)"
-Write-Host "    AppVersion: $($pkg.AppVersion)"
-Write-Host "  SystemOrUser: $($pkg.AppType)"
+Write-Host "     AppDescription: $($pkg.AppDescription)"
+Write-Host "         AppVersion: $($pkg.AppVersion)"
+Write-Host "       SystemOrUser: $($pkg.AppType)"
+Write-Host "       AppInstaller: $($pkg.AppInstaller)"
+Write-Host "     AppInstallName: $($pkg.AppInstallName)"
+Write-Host "     AppInstallArgs: $($pkg.AppInstallArgs)"
+Write-Host "AppUninstallNameVer: $($pkg.AppUninstallNameVer)"
+Write-Host "AppUninstallProcess: $($pkg.AppUninstallProcess)"
 Write-Host ""
 If (($pkg.AppType -eq "System") -and (-not(IsAdmin)))
 { # elevate
@@ -92,7 +117,6 @@ If (($pkg.AppType -eq "System") -and (-not(IsAdmin)))
     }
     Exit
 } # elevate
-
 Do
 { # make choice
     Write-Host "-----------------------------------------------------------------------------"
@@ -122,10 +146,22 @@ Do
         } # no ps1
         else
         { # yes ps1
+            if ($choiceTxt -eq "Install") {
+                # copy to a temp folder and execute
+                $TmpFld = GetTempFolder -Prefix "intuneapp_$($pkg.AppName)"
+                Write-Host "- Creating temp folder: $(Split-Path $TmpFld -Leaf)"
+                $source = Split-Path $scriptDir -Parent
+                xcopy "$($source)" "$($TmpFld)" /E /I /H /Y > $null 2>&1
+                $ps1path = "$($TmpFld)\IntuneUtils\intune_$($choiceTxt).ps1"
+            } # copy to a temp folder and execute
             & $ps1path
+            if ($choiceTxt -eq "Install") {
+                Write-Host "- Removing temp folder: $(Split-Path $TmpFld -Leaf)"
+                Remove-Item -Path $TmpFld -Recurse -Force
+            } # cleanup temp folder
         } # yes ps1
     } # chose ps1
 } # make choice
 Until ($choiceTxt -eq "Exit")
 Write-Host "Done"
-Start-Sleep 3
+Start-Sleep 1

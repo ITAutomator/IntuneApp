@@ -1,6 +1,5 @@
 Function GetPackages ($search_root="C:\Users\Public\Documents\IntuneApps")
 {
-    $LogFolder = "C:\IntuneApp"
     #region Search for packages (files named intune_settings.csv)
     If (-not (Test-Path $search_root -PathType Container)) {Return "search_root not found: $($search_root)"}
     $package_files= Get-ChildItem -Path $search_root -File -Recurse -Filter "intune_settings.csv"
@@ -46,20 +45,24 @@ Function GetPackages ($search_root="C:\Users\Public\Documents\IntuneApps")
         {
             $pkgobj.Add( $IntuneAppValue_csv.Name , $IntuneAppValue_csv.Value )
         }
+        # add some calculated fields
         $pkgobj.Add("AppNameVer"           , "$($pkgobj.AppName)$(if ($pkgobj.AppVersion) {"-v"})$($pkgobj.AppVersion)")
         # other info
         $pkgobj.Add("Fullpath"            , $IntuneAppFolder)
         $pkgobj.Add("Relpath"             , $pkg)
         $pkgobj.Add("PackageFolder"       , (Split-Path (Split-path (Split-Path $pkg -Parent) -Parent) -Leaf))
         $pkgobj.Add("Hash"                , "") # Calculated hash (later)
-        $pkgobj.Add("PublishedAppId"      , "")
-        $pkgobj.Add("PublishedDate"       , "")
-        $pkgobj.Add("PublicationStatus"   , "Unpublished") #Unpublished, Published, Needs Update, Package Missing
         $pkgobj.Add("Warnings"            , "")
         # convert to booleans
         $pkgobj.PublishToOrgGroup= [System.Convert]::ToBoolean($pkgobj.PublishToOrgGroup)
         $pkgobj.CompanyPortalFeaturedApp= [System.Convert]::ToBoolean($pkgobj.CompanyPortalFeaturedApp)
         $pkgobj.AvailableInCompanyPortal= [System.Convert]::ToBoolean($pkgobj.AvailableInCompanyPortal)
+        #hash value
+        $intune_packagehashxml=Join-Path $IntuneAppFolder "intune_packagehash.xml"
+        if (Test-Path $intune_packagehashxml) {
+            $hash_xml = Import-Clixml $intune_packagehashxml
+            $pkgobj."Hash" = $hash_xml.hash
+        }
         #region warnings
         $warnings=@()
         if ($pkgobj.PackageFolder -ne $pkgobj.AppName)
@@ -104,7 +107,7 @@ Start-Transcript -path $Transcript | Out-Null
 Write-Host "-----------------------------------------------------------------------------"
 Write-Host "$($scriptName) $($scriptVer)       Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
 Write-Host ""
-Write-Host " Creates a basic App."
+Write-Host " Lists Apps. Creates a basic App."
 Write-Host ""
 Write-Host "-----------------------------------------------------------------------------"
 $pkg_root = Split-Path $scriptDir -Parent
@@ -120,45 +123,133 @@ Do {
         ,@{Name = 'AppDescription'   ; Expression = {CropString $_.AppDescription.Replace("`n","").Replace("`r","")}} | Sort-object AppName
         Write-host ($pkglist | Format-table | Out-String)
         Write-Host "Result: $($sResult)"
-        #
     }
     else
     { # don't show list
         # flip it back to true for next time
         $showlist = $true
     }
-    $choice = AskForChoice "Choice:" -Choices ("E&xit","&List apps","&Open apps folder","&Browse Winget for app ids","&Create a new app") -DefaultChoice 0
-    if ($choice -eq 0)
+    Write-Host "-----------------------------------------------------------------------------"
+	Write-Host "Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major)"
+    Write-Host $scriptName -ForegroundColor Green -nonewline
+    Write-Host " Main menu"
+    Write-Host "-----------------------------------------------------------------------------"
+    Write-Host "L - List apps (to screen)"
+    Write-Host "E - Export apps list to csv file"
+    Write-Host "O - Open apps folder in explorer"
+    Write-Host "B - Browse winget for app ids"
+    Write-Host "C - Create a new app (using wizard)"
+    Write-Host "-----------------------------------------------------------------------------"
+    $choices = "E&xit","&List apps","&Export to CSV","&Open apps folder","&Browse Winget for app ids","&Create a new app"
+    $choicen = AskForChoice "Choice:" -Choices ($choices) -DefaultChoice 0
+    $choice  = $choices[$choicen].Replace("&","")
+    if ($choice -eq "Exit")
     { # Exit
         $showmenu = $false
     }
-    elseif ($choice -eq 1)
+    elseif ($choice -eq "List apps")
     { # List
         Write-Host "Refreshing list..." 
     }
-    elseif ($choice -eq 2)
+    elseif ($choice -eq "Export to CSV")
+    { # Export
+        Write-Host "Exporting..." 
+        $sResult,$pkgobjs=GetPackages -search_root $pkg_root
+        #,@{Name = 'AppDescription'   ; Expression = {CropString $_.AppDescription.Replace("`n","").Replace("`r","")}} `
+        $pkglist = $pkgobjs | Select-Object `
+        @{Name = 'AppName'                    ; Expression = {$_.AppName                  }} `
+        ,@{Name = 'AppDescription'            ; Expression = {$_.AppDescription           }} `
+        ,@{Name = 'AppVersion'                ; Expression = {$_.AppVersion               }} `
+        ,@{Name = 'AppInstaller'              ; Expression = {$_.AppInstaller             }} `
+        ,@{Name = 'AppInstallName'            ; Expression = {$_.AppInstallName           }} `
+        ,@{Name = 'AppInstallArgs'            ; Expression = {$_.AppInstallArgs           }} `
+        ,@{Name = 'AppUninstallName'          ; Expression = {$_.AppUninstallName         }} `
+        ,@{Name = 'AppUninstallVersion'       ; Expression = {$_.AppUninstallVersion      }} `
+        ,@{Name = 'AppUninstallProcess'       ; Expression = {$_.AppUninstallProcess      }} `
+        ,@{Name = 'SystemOrUser'              ; Expression = {$_.SystemOrUser             }} `
+        ,@{Name = 'Publisher'                 ; Expression = {$_.Publisher                }} `
+        ,@{Name = 'AppInstallerDownload1URL'  ; Expression = {$_.AppInstallerDownload1URL }} `
+        ,@{Name = 'AppInstallerDownload1Hash' ; Expression = {$_.AppInstallerDownload1Hash}} `
+        ,@{Name = 'AppInstallerDownload2URL'  ; Expression = {$_.AppInstallerDownload2URL }} `
+        ,@{Name = 'AppInstallerDownload2Hash' ; Expression = {$_.AppInstallerDownload2Hash}} `
+        ,@{Name = 'RestartBehavior'           ; Expression = {$_.RestartBehavior          }} `
+        ,@{Name = 'Developer'                 ; Expression = {$_.Developer                }} `
+        ,@{Name = 'Owner'                     ; Expression = {$_.Owner                    }} `
+        ,@{Name = 'Notes'                     ; Expression = {$_.Notes                    }} `
+        ,@{Name = 'InformationURL'            ; Expression = {$_.InformationURL           }} `
+        ,@{Name = 'PrivacyURL'                ; Expression = {$_.PrivacyURL               }} `
+        ,@{Name = 'CompanyPortalFeaturedApp'  ; Expression = {$_.CompanyPortalFeaturedApp }} `
+        ,@{Name = 'AvailableInCompanyPortal'  ; Expression = {$_.AvailableInCompanyPortal }} `
+        ,@{Name = 'PublishToOrgGroup'         ; Expression = {if ($_.PublishToOrgGroup) {"Yes"} }} `
+        ,@{Name = 'AppVar1'                   ; Expression = {$_.AppVar1                  }} `
+        ,@{Name = 'AppVar2'                   ; Expression = {$_.AppVar2                  }} `
+        ,@{Name = 'AppVar3'                   ; Expression = {$_.AppVar3                  }} `
+        ,@{Name = 'AppVar4'                   ; Expression = {$_.AppVar4                  }} `
+        ,@{Name = 'AppVar5'                   ; Expression = {$_.AppVar5                  }} `
+        ,@{Name = 'AppNameVer'                ; Expression = {$_.AppNameVer               }} `
+        ,@{Name = 'Fullpath'                  ; Expression = {$_.Fullpath                 }} `
+        ,@{Name = 'Relpath'                   ; Expression = {$_.Relpath                  }} `
+        ,@{Name = 'PackageFolder'             ; Expression = {$_.PackageFolder            }} `
+        ,@{Name = 'Hash'                      ; Expression = {$_.Hash                     }} `
+        ,@{Name = 'warnings'                  ; Expression = {$_.warnings                 }} 
+        # fields
+        $csvfile = "$($pkg_root)\App list.csv"
+        $pkglist | Export-Csv $csvfile -Force -NoTypeInformation
+        Write-Host "Result: $($sResult)"
+        Write-Host "   CSV: " -NoNewline
+        Write-host $csvfile -ForegroundColor green
+        $showlist = $false
+    }
+    elseif ($choice -eq "Open apps folder")
     { # Explore
         $expl = Split-Path $scriptDir -Parent
         Write-Host "Exploring the folder: $($expl)"
         Start-process "explorer" "'/e,`"$($expl)`""
     }
-    elseif ($choice -eq 3)
+    elseif ($choice -eq "Browse Winget for app ids")
     { # Browse
-        $url = "https://winstall.app"
-        #$url = "https://winget.run"
+        Write-host "--------------------------------"
+        Write-host "Search for Winget apps here:"
+        Write-host "https://winstall.app"
+        Write-host "https://winget.run"
+        Write-host ""
+        Write-host "Search for Chocolatey apps here:"
+        Write-host "https://community.chocolatey.org/packages"
+        Write-host ""
+        Write-host "--------------------------------"
         Write-host "Browsing to: " -NoNewline
+        $url = "https://winstall.app"
         Write-host $url -ForegroundColor Green
         Start-Process $url
         $showlist = $false
     }
-    elseif ($choice -eq 4)
+    elseif ($choice -eq "Create a new app")
     { # Create
+        Write-host "App Creation Info"
+        Write-host "--------------------------------"
+        Write-host "Apps can use one of these installer technologies: winget,choco,msi,ps1"
+        Write-host "winget - Native Winodows internet-sourced package tool (recommended)"
+        Write-host "choco  - Popular Chocolatey internet-sourced package tool"
+        Write-host "msi    - Legacy software installer"
+        Write-host "ps1    - For custom PowerShell code"
+        Write-host ""
+        Write-host "Search for Winget apps here:"
+        Write-host "https://winstall.app"
+        Write-host "https://winget.run"
+        Write-host ""
+        Write-host "Search for Chocolatey apps here:"
+        Write-host "https://community.chocolatey.org/packages"
+        Write-host ""
+        Write-host "--------------------------------"
+        # check source
         $source = "$($scriptDir)\!App Template"
         if (-not (Test-Path($source) -PathType Container)){
             $showlist = $false;Write-Host "Couldn't find App Template folder: $($source)" -ForegroundColor Yellow;Start-Sleep 2;Continue}
+        # get app name
         $Appname = Read-Host "Enter App name (blank to cancel)"
         if ($Appname -eq ""){
             $showlist = $false;Write-Host "Canceled" -ForegroundColor Yellow;Start-Sleep 2;Continue}
+        # check target
         $target = "$(Split-Path $scriptDir -Parent)\$($Appname)"
         if (Test-Path $target -PathType Container)
         { # target folder exists
@@ -169,22 +260,68 @@ Do {
             Write-Host "Removing old folder..."
             Remove-Item -Path $target -Recurse
             Start-Sleep 2
+        } # target folder exists
+        #region: Prompts
+        Write-Host "Enter some info about the app. Everything can be changed later in the .CSV"
+        $AppDescription = Read-Host "Enter a brief description"
+        $AppInstaller = Read-Host "Enter AppInstaller type [winget,choco,msi,ps1]"
+        if ($AppInstaller -eq "winget") {
+            Write-host "--------------------------------"
+            Write-host "Winget is the native Winodows internet-sourced package tool."
+            Write-host "Use commands like 'winget -v' and 'winget list' at a command prompt."
+            Write-host "Search for Winget apps here:"
+            Write-host "https://winstall.app"
+            Write-host "https://winget.run"
+            Write-host "--------------------------------"
+            $prompt = "Enter Winget ID (eg 7zip.7zip)"
         }
+        elseif ($AppInstaller -eq "choco") {
+            Write-host "--------------------------------"
+            Write-host "Choco is the popular Chocolatey internet-sourced package tool."
+            Write-host "Use commands like 'choco -v' and 'choco list' at a command prompt."
+            Write-host "Search for Chocolatey apps here:"
+            Write-host "https://community.chocolatey.org/packages"
+            Write-host "--------------------------------"
+            $prompt = "Enter choco ID (eg 7zip)"
+        }
+        elseif ($AppInstaller -eq "msi") {
+            Write-host "--------------------------------"
+            Write-host "Msi installer."
+            Write-host "- The msi installer will be searched and found in the IntuneApp folder."
+            Write-host "- It can also be downloaded directly from a web path."
+            Write-host "- It can also be downloaded from Google Drive a public view only link (drive.google.com)."
+            Write-host "- Downloaded zips will be extracted automatically."
+            Write-host "- Add download URL to the intune_settings.csv under AppInstallerDownload1URL."
+            Write-host "--------------------------------"
+            $prompt = "Enter name of .msi file (eg setup.msi)"
+        }
+        elseif ($AppInstaller -eq "ps1") {
+            Write-host "--------------------------------"
+            Write-host "ps1 installer."
+            Write-host "- ps1 allows for custom PowerShell script (.ps1) that will be run on install"
+            Write-host "- See the _template.ps1 files in the IntuneUtils folder for samples. To use them, copy them to your IntuneApp folder and remove _template from the filename"
+            Write-host "- Install: See intune_install_customcode_template.ps1 for sample code."
+            Write-host "- Detection: (optional) Detection is normally handled automatically via the .csv in C:\IntuneApp. Use intune_detection_customcode_template.ps1 for more control."
+            Write-host "- Uninstall: (optional) See intune_uninstall_followup_template.ps1 for a sample of code that runs when product is removed."
+            Write-host "- Requirements: (optional) See intune_requirements_customcode_template.ps1 for a sample. Does the machine have the requirements to receive this package."
+            Write-host "--------------------------------"
+            $prompt = "Enter name of .ps1 file (eg setup.ps1)"
+        }
+        $AppID = Read-Host $prompt
+        #endregion: Prompts
         # copy template to target
         Copy-Item -Path $source -Destination $target -Recurse
         # Rename files
         Rename-Item -Path "$($target)\IntuneApp\intune_settings_template.csv" -NewName "intune_settings.csv"
         Rename-Item -Path "$($target)\IntuneApp\intune_icon_template.png"     -NewName "intune_icon.png"
-        # Get ID
-        $AppID = Read-Host "Enter Winget ID (eg 7zip.7zip) from web (https://winstall.app). It can be changed later"
         # Inject new name into CSV
         $csvpath = "$($target)\IntuneApp\intune_settings.csv"
         $IntuneAppValues_csv = Import-Csv $csvpath
         # Update CSV file
         ($IntuneAppValues_csv | Where-Object Name -EQ Appname).Value    = $Appname
         ($IntuneAppValues_csv | Where-Object Name -EQ AppInstallName).Value = $AppID
-        ($IntuneAppValues_csv | Where-Object Name -EQ AppInstaller).Value = "winget"
-        ($IntuneAppValues_csv | Where-Object Name -EQ AppDescription).Value = "This is the description of this app."
+        ($IntuneAppValues_csv | Where-Object Name -EQ AppInstaller).Value = $AppInstaller
+        ($IntuneAppValues_csv | Where-Object Name -EQ AppDescription).Value = $AppDescription
         ($IntuneAppValues_csv | Where-Object Name -EQ AppVersion).Value = "100"
         ($IntuneAppValues_csv | Where-Object Name -EQ AppUninstallVersion).Value = ""
         ($IntuneAppValues_csv | Where-Object Name -EQ AppUninstallProcess).Value = ""
