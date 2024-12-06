@@ -15,6 +15,7 @@ Writehost commands, once injected, will be converted to WriteLog commands, and w
 This is because detection checking gets tripped up by writehost so nothing should get displayed at all.
 This must be a stand-alone script - no local files are available, it will be copied to a temp folder and run under system context.
 However this script is a child process of intune_detection.ps1, and has those functions and variables available to it.
+For instance, $intuneapp.appvar1-5 which is injected from the intune_settings.csv, is usable.
 To debug this script, put a break in the script and run the parent ps1 file mentioned above.
 Do not allow Write-Output or other unintentional ouput, other than the return value.
  
@@ -70,9 +71,9 @@ if ($app_detected)
 Else
 {
 	$Filechecks = @()
-	## Look for dcu-cli
-	$Filechecks +="${Env:ProgramFiles}\Dell\CommandUpdate\dcu-cli.exe"
-	$Filechecks +="${Env:ProgramFiles(x86)}\Dell\CommandUpdate\dcu-cli.exe"
+	## Look for files
+    $Filechecks +="$($Env:ProgramData)\My Company\Wallpaper\$($intuneapp.appvar1)"
+	$Filechecks +="$($Env:ProgramFiles)\Dell\CommandUpdate\dcu-cli.exe"
 	$bOK = $false
 	$i = 0
 	ForEach ($Filecheck in $Filechecks)

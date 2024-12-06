@@ -2,6 +2,7 @@
 IntuneApp Utils README.txt
 -------------------------------------------------------------------------------------
 - Do not touch the files in IntuneUtils. This is a managed folder and the files will be ovewritten when the package is published.
+- Architects: These files are updated via the AppsPublish_Template.ps1 master file.
 
 Folder structure (AppPackages\AppName)
 -------------------------------------------------------------------------------------

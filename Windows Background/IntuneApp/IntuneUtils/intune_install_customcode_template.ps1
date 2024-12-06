@@ -15,7 +15,11 @@ $scriptName     = Split-Path -Path $scriptFullname -Leaf
 Write-Host "-----------------------------------------------------------------------------"
 Write-Host ("$scriptName        Computer:$env:computername User:$env:username PSver:"+($PSVersionTable.PSVersion.Major))
 Write-host "Mode: $($mode)"
-Write-Host "Installs latest version of Dell Command Update using winget."
+Write-Host "Installs a program using PowerShell. Use this when winget and .msi installers are not an option."
+Write-Host ""
+Write-Host "To enable this script:"
+Write-Host "- remove _template from the filename and put it in your IntuneApp folder"
+Write-Host "- IntuneSettings.csv should have AppInstallName:intune_install_customcode.ps1"
 Write-Host ""
 Write-Host "This script is meant to be called by intune_install.ps1 and has some dependence on it."
 Write-Host "-----------------------------------------------------------------------------"

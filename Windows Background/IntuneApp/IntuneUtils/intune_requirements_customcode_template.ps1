@@ -14,6 +14,7 @@ Writehost commands, once injected, will be converted to WriteLog commands, and w
 This is because requirements checking gets tripped up by writehost so nothing should get displayed at all.
 This must be a stand-alone script - no local files are available, it will be copied to a temp folder and run under system context.
 However this script is a child process of intune_requirements.ps1, and has those functions and variables available to it.
+For instance, $intuneapp.appvar1-5 which is injected from the intune_settings.csv, is usable.
 To debug this script, put a break in the script and run the parent ps1 file mentioned above.
 Do not allow Write-Output or other unintentional ouput, other than the return value.
  
@@ -62,8 +63,9 @@ ForEach ($app_found in $apps_found)
 # this sample code will check for required files
 # if any of the files are found, it's OK to install here
 $Filechecks = @()
-$Filechecks +="$env:USERPROFILE\AppData\Roaming\Microsoft\Teams\desktop-config.json"
-$Filechecks +="$env:USERPROFILE\AppData\Local\Packages\MSTeams_8wekyb3d8bbwe\LocalCache\Microsoft\MSTeams\app_settings.json"
+$Filechecks +="$($env:ProgramData)\My Company\Wallpaper\$($intuneapp.appvar1)"
+$Filechecks +="$($env:USERPROFILE)\AppData\Roaming\Microsoft\Teams\desktop-config.json"
+$Filechecks +="$($env:USERPROFILE)\AppData\Local\Packages\MSTeams_8wekyb3d8bbwe\LocalCache\Microsoft\MSTeams\app_settings.json"
 $bOK = $false
 $i = 0
 ForEach ($Filecheck in $Filechecks)

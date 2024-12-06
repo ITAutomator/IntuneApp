@@ -25,8 +25,8 @@ Do not allow Write-Output or other unintentional ouput, other than the return va
 # 
 $app_to_find     = "Adobe Acrobat*"
 $app_ver_atleast = "0"
-#$app_ver_atleast = $app_ver_atleast
-#
+#logic here is that if you have any other Adobe Acrobat product then you don't meet requirements to install or uninstall Adobe Acrobat Reader
+#so that translates to starts with Adobe Acrobat but isn't Adobe Acrobat Reader
 $apps = WingetList
 $apps_found = $apps | Where-Object Name -like $app_to_find
 ForEach ($app_found in $apps_found)
@@ -37,22 +37,22 @@ ForEach ($app_found in $apps_found)
     } # version is too low
     Else
     { # version ok
-		if ($app_found.id -eq $IntuneApp.AppInstallName)
-		{ # exact app installed aleady
-			Write-Host "$($app_found.name) v$($app_found.version): Installed (matches package id $($IntuneApp.AppInstallName))"
-		}
-		Else
-		{ # this is a different app
+		#if ($app_found.id -eq $IntuneApp.AppInstallName)
+		#{ # exact app installed aleady
+		#	Write-Host "$($app_found.name) v$($app_found.version): Installed (matches package id $($IntuneApp.AppInstallName))"
+		#}
+		#Else
+		#{ # this is a different app
 			if ($app_found.Name -like "Adobe Acrobat Reader*")
 			{ # but it's still Reader
 				Write-Host "$($app_found.name) v$($app_found.version): Installed (is some version of Reader)"
 			}
 			else
 			{ # not Reader
-				Write-Host "$($app_found.name) v$($app_found.version): OK (is at least v$($app_ver_atleast))"
+				Write-Host "$($app_found.name) v$($app_found.version): This app blocks the install of Reader"
 				if ($requirements_met) {$requirements_met = $false}
 			}
-		} # this is a different app
+		#} # this is a different app
     } # version ok
 } # each found app
 Write-Host "requirements_met (after): $($requirements_met)"

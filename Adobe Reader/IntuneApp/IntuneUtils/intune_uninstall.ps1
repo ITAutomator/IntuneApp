@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Adobe Reader-v176")
+    $IntuneAppValues.Add("AppName","Adobe Reader-v194")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Adobe.Acrobat.Reader.64-bit")
     $IntuneAppValues.Add("AppInstallArgs","")
@@ -100,7 +100,8 @@ Function IntuneLog ($line, $quiet=$false,$appname="",$logfolder="",$appfunction=
     { # logfolder exists
         # delete logfile if over 1MB
         $logfile = "$($logfolder)\Log_$($IntuneAppName).txt"
-        if (Test-Path -Path $logfile) {if (((Get-Item $logfile).length) -gt 1MB) {Remove-Item $logfile}}
+        if (Test-Path -Path $logfile) {if (((Get-Item $logfile).length) -gt 1MB) {Remove-Item $logfile;Add-Content $logfile "$($dt) [Log file was reset because it grew over 1MB]"}}
+        if (-not (Test-Path -Path $logfile)) {Add-Content $logfile "$($dt) [Log file initialized - will reset if it grows over 1MB]"} # 1st line has info about logfile itself
         # append to logfile
         Add-Content $logfile $logline
     } # logfolder exists
@@ -293,7 +294,7 @@ Function FindInstall ($installer_path,$installer)
     else {
         $intReturnCode = 0
         $strReturnMsg= "OK: Found installer ($($installer.Name))"
-        $strInstaller = $installer.FullName
+        $strInstaller = $installer[0].FullName
     }
     Return $intReturnCode,$strReturnMsg,$strInstaller
 }
@@ -572,10 +573,9 @@ Function PS1WithLogging ($ps1, $ps1args="")
     Return $ps1_exit,$ps1_out
 }
 function StartProcAsJob_Function {
-    # called by StartProc
+    # not to be called directly: called by StartProc as a ScriptBlock argument
     Param ($xcmd, $xargs)
-    $esc = '--%'
-    & $xcmd $esc $xargs
+    & $xcmd $xargs
     Write-Output "LASTEXITCODE:$($LASTEXITCODE)"
 }
 function StartProcAsJob {
@@ -587,10 +587,15 @@ function StartProcAsJob {
         $ShowOutputToHost=$true
         )
     <# Usage:
-    $retOutput,$retStatus,$retExitCode= StartProcAsJob "winget" "-v" -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 20 
+    $retOutput,$retStatus,$retExitCode = StartProcAsJob "winget" "-v" -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 20 
     Write-Host "  retOutput: $($retOutput)"
     Write-Host "  retStatus: $($retStatus)"
     Write-Host "retExitCode: $($retExitCode)"
+    Note: $xargs can be a string, or an array of strings expected as arguments (if quotes and spaces are involved)
+    $xcmd = "winget"
+    $xargs = "list","Workspot Client"
+	# To test, break here and run this command:
+    & $xcmd $xargs
     #>
     $retStatus = ""
     $retExitCode = 0
@@ -613,7 +618,7 @@ function StartProcAsJob {
             if (([DateTime]::Now - $job.PSBeginTime).TotalSeconds -gt $TimeoutSecs) {
                 break
             }
-            Start-Sleep -Milliseconds 200 #breath
+            Start-Sleep -Milliseconds 200 #breathe
         }
         #region show output
         $outsofar = $job.ChildJobs[0].Output
@@ -698,7 +703,7 @@ Function StartProc($command, $arguments)
     }
     Return $exitcode,$stdout,$stderr
 }
-Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appname")
+Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appname", $ChocoArgs="")
 {
     <#
     Usage:
@@ -745,9 +750,8 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
             If (IsAdmin)
             { # try to upgrade
                 # upgrade
-                $choco_command="upgrade chocolatey --yes"
-                #$exitcode,$proc_return,$stderr=StartProc "choco" $choco_command
-                $proc_return,$retStatus,$exitcode= StartProcAsJob "choco" $choco_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
+                $choco_command="upgrade","chocolatey","--yes"
+                $proc_return,$retStatus,$exitcode = StartProcAsJob "choco" $choco_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
                 #Start-Sleep 2 # wait a bit
                 if ($proc_return -like "*is the latest*")
                 { # already at the latest
@@ -779,12 +783,11 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
     } # check choco ver
     if ($intReturnCode -eq 0)
     { # chocoverb
+        $chocoargs_arr=@($ChocoArgs -split " ")
         if ($chocoverb -eq "list")
         { #verb:list
             $choco_command="list"
-            #$choco_apps = choco list
-            #$exitcode,$proc_return,$stderr=StartProc "choco" $choco_command
-            $proc_return,$retStatus,$exitcode= StartProcAsJob "choco" $choco_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
+            $proc_return,$retStatus,$exitcode = StartProcAsJob "choco" $choco_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
             if ($proc_return -like "*$($ChocoApp)*")
             {
                 $intReturnCode=0
@@ -798,10 +801,8 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
         } #verb:list
         elseif ($chocoverb -eq "install")
         {
-            $choco_command="install $($ChocoApp) -y"
-            #$choco_return = choco install $ChocoApp -y
-            #$exitcode,$proc_return,$stderr=StartProc "choco" $choco_command
-            $proc_return,$retStatus,$exitcode= StartProcAsJob "choco" $choco_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
+            $choco_command="install",$ChocoApp,"-y",$chocoargs_arr
+            $proc_return,$retStatus,$exitcode = StartProcAsJob "choco" $choco_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
             if ($exitcode  -ne 0) {
                 $intReturnCode = 185
                 $strReturnMsg="ERR $($intReturnCode): Chocolately app [$($ChocoApp)] not installed. Choco err: $($exitcode) [choco $($choco_command)]"
@@ -813,10 +814,8 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
         }
         elseif ($chocoverb -eq "uninstall")
         {
-            $choco_command="uninstall $($ChocoApp) -y -a -x"
-            #$choco_return = choco uninstall $ChocoApp -y -a -x
-            #$exitcode,$proc_return,$stderr=StartProc "choco" $choco_command
-            $proc_return,$retStatus,$exitcode= StartProcAsJob "choco" $choco_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
+            $choco_command="uninstall",$ChocoApp,"-y","-a","-x",$chocoargs_arr
+            $proc_return,$retStatus,$exitcode = StartProcAsJob "choco" $choco_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
             if ($exitcode  -ne 0) {
                 $intReturnCode = 178
                 $strReturnMsg="ERR $($intReturnCode): Chocolately app [$($ChocoApp)] not uninstalled. Choco err: $($exitcode) [choco $($choco_command)]"
@@ -931,7 +930,14 @@ Function winget_verb_to_obj ($verb="list", $Appid="")
 { # converts winget list and search to powershell object array
     $wgcommand = "winget $($verb)"
     If ($Appid -ne "")
-    {$wgcommand += " --id $($Appid) --exact"}
+    {
+        If ($Appid.contains(".")) { # id is passed
+            $wgcommand += " --id $($Appid) --exact"
+        }
+        else { # name is passed
+            $wgcommand += " --name `"$($Appid)`""
+        }
+    }
     $wglines = Invoke-Expression $wgcommand
     $wgobjs = @()
     $wgobjs += $wglines | winget_lines_clean  | # filter out progress-display lines
@@ -995,7 +1001,7 @@ Function winget_core ($WingetMin ="1.6")
                 If ($pass -eq 1)
                 { # Pass 1 - try adding a path
                     $strPassInfo=" PassInfo:PathAdjust"
-                    $ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe"
+                    $ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*__8wekyb3d8bbwe"
                     if ($ResolveWingetPath)
                     { # change path to include winget.exe (for this session) to try again in for loop pass 2
                         $WingetPath = $ResolveWingetPath[-1].Path
@@ -1048,7 +1054,7 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
     #>
     $intReturnCode = 0
     $strReturnMsg = ""
-    # set winget scope option (--scope user,--scope machine, or nothing)
+    # set winget scope options:--scope user,--scope machine, or nothing
     if ($SystemOrUser -eq "")
     {$strScope = ""}
     Elseif ($SystemOrUser -eq "user")
@@ -1067,13 +1073,16 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
         winget_init
         if ($Wingetverb -eq "list")
         { #verb:list
-            $Winget_command = "list --id $($WingetApp) --exact"
-            #$Winget_return = winget list --id $WingetApp --exact
-            #$exitcode,$Winget_return,$stderr=StartProc "winget" $Winget_command
-            $Winget_return,$retStatus,$exitcode= StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
+            if ($WingetApp.Contains(".")){ # exact match (by id)
+                $Winget_command = "list","--id",$WingetApp,"--exact"
+            }
+            else { # name match
+                $Winget_command = "list","--name",$WingetApp
+            }
+            $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
             #  (https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md)
             # exitcode: -1978335212=APPINSTALLER_CLI_ERROR_NO_APPLICATIONS_FOUND
-            # No installed package found matching input criteria.
+            # Any installed package found?
             $detect = $Winget_return -like "*$($WingetApp)*"
             if ($detect) 
             { # winget detected a version
@@ -1084,7 +1093,7 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
                 } # detect any version
                 Else
                 { # detect at or above min
-                    $Winget_return = winget_verb_to_obj -verb "list" -Appid $WingetApp
+                    $Winget_return = @(winget_verb_to_obj -verb "list" -Appid $WingetApp)
                     if (-not $Winget_return.Version)
                     { # no version from winget
                         $intReturnCode=99
@@ -1092,16 +1101,23 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
                     }
                     else
                     { # has version from winget
-                        if ((GetVersionFromString $Winget_return.Version) -lt (GetVersionFromString $WingetAppMin))
-                        { # ver too low
-                            $intReturnCode=99
-                            $strReturnMsg="ERR $($intReturnCode): Winget app ($($WingetApp)) detected, but version is too low ($($detect)) compared to minver ($($WingetAppMin)) [winget $($Winget_command)]"
-                        } # ver too low
-                        else
-                        { # ver is ok
-                            $intReturnCode=0
-                            $strReturnMsg="OK $($intReturnCode): Winget app ($($WingetApp)) detected ($($detect)) at or above minver ($($WingetAppMin)) [winget $($Winget_command)]"
-                        } # ver is ok
+                        if ($Winget_return.count -ne 1) {
+                            $intReturnCode=98
+                            $strReturnMsg="ERR $($intReturnCode): Winget app ($($WingetApp)) detected multiple times [winget $($Winget_command)]"
+                        }
+                        else {
+                            $detect = $Winget_return.Version
+                            if ((GetVersionFromString $Winget_return.Version) -lt (GetVersionFromString $WingetAppMin))
+                            { # ver too low
+                                $intReturnCode=99
+                                $strReturnMsg="ERR $($intReturnCode): Winget app ($($WingetApp)) detected, but version is too low ($($detect)) compared to minver ($($WingetAppMin)) [winget $($Winget_command)]"
+                            } # ver too low
+                            else
+                            { # ver is ok
+                                $intReturnCode=0
+                                $strReturnMsg="OK $($intReturnCode): Winget app ($($WingetApp)) detected ($($detect)) at or above minver ($($WingetAppMin)) [winget $($Winget_command)]"
+                            } # ver is ok
+                        }
                     } # has version from winget
                 } # detect at or above min
             } # winget detected a version
@@ -1113,9 +1129,9 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
         } #verb:list
         elseif ($Wingetverb -eq "install")
         { # winget install
-            $Winget_command = "install --id $($WingetApp) --exact$($strScope)"
+            $Winget_command = "install","--id",$WingetApp,"--exact","--accept-package-agreements"
             #$exitcode,$Winget_return,$stderr=StartProc "winget" $Winget_command
-            $Winget_return,$retStatus,$exitcode= StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
+            $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
             # exitcode: (https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md)
             # exitcode: 0=OK 	-1978335216=APPINSTALLER_CLI_ERROR_NO_APPLICABLE_INSTALLER
             $chkresults = ($Winget_return -like "*Successfully installed*") -or ($Winget_return -like "*Found an existing package already installed*")
@@ -1133,14 +1149,15 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
                 } # 2nd install can't be tried
                 else
                 { # 2nd install attempt, without scope
-                    $Winget_command = "install --id $($WingetApp) --exact"
-                    #$exitcode,$Winget_return,$stderr=StartProc "winget" $Winget_command
-                    $Winget_return,$retStatus,$exitcode= StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
+                    $Winget_command = "install","--id",$WingetApp,"--exact","--accept-package-agreements"
+                    $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
                     $chkresults = (($Winget_return -like "*Successfully installed*") -or ($Winget_return -like "*Found an existing package already installed*"))
-                    if (-not $chkresults)
-                    {
+                    if (-not $chkresults) {
                         $intReturnCode = 385
                         $strReturnMsg="ERR $($intReturnCode): Winget app [$($WingetApp)] not installed (even with $($strScope) option removed). Winget err: $($exitcode) [winget $($Winget_command)]"
+                        $winget_lines = $winget_return |  Where-Object {$_.Trim() -ne ""} | Where-Object { -not ($_ -match '^\s')} # remove blanks
+                        $winget_msgs = @("`r`n[winget $($Winget_command -join " ")]") + $winget_lines + @("[winget returned:$($exitcode)]") # header and footer added
+                        $strReturnMsg += $winget_msgs -join "`r`n" # append as a long string with crlfs
                     }
                     else {
                         $intReturnCode=0
@@ -1151,21 +1168,39 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
         } # winget install
         elseif ($Wingetverb -eq "uninstall")
         { # winget uninstall
-            $Winget_command = "uninstall --id $($WingetApp) --exact --disable-interactivity --silent --force$($strScope)"
-            #1603 means admin needed
-            #$exitcode,$Winget_return,$stderr=StartProc "winget" $winget_command
-            $Winget_return,$retStatus,$exitcode= StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
+            $Winget_command = @()
+            if ($WingetApp.Contains(".")){ # exact match (by id)
+                $Winget_command = "uninstall","--id",$WingetApp,"--disable-interactivity","--silent","--force"
+            }
+            else { # name match
+                $Winget_command = "uninstall","--name",$WingetApp,"--disable-interactivity","--silent","--force"
+            }
+            if ($SystemOrUser -ne "") {
+                $Winget_command += "--scope"
+                If ($SystemOrUser -eq "user") {
+                    $Winget_command += "user"}
+                Else { # translate all else incl system to machine
+                    $Winget_command += "machine"}
+            }
+            #1603 means elevation needed, -1978335212 means app not found
+            $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
             #Successfully uninstalled or No installed package found matching input criteria are OK results
-            if ($exitcode  -eq 0)
+            if (($exitcode  -eq 0) -or ($exitcode -eq -1978335212))
             { # 1st uninstall ok
                 $intReturnCode=0
                 $strReturnMsg="OK $($intReturnCode): Winget [$($WingetApp)] app uninstalled. [$($Winget_command)]"
             } # 1st uninstall ok
             else
             { # 2nd uninstall attempt, without scope
-                $Winget_command = "uninstall --id $($WingetApp) --exact --disable-interactivity --silent --force"
-                #$exitcode,$Winget_return,$stderr=StartProc "winget" $winget_command
-                $Winget_return,$retStatus,$exitcode= StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
+				$Winget_command = @()
+				if ($WingetApp.Contains(".")){ # exact match (by id)
+					$Winget_command = "uninstall","--id",$WingetApp,"--disable-interactivity","--silent","--force"
+				}
+				else { # name match
+					$Winget_command = "uninstall","--name",$WingetApp,"--disable-interactivity","--silent","--force"
+				}
+				#1603 means elevation needed, -1978335212 means app not found
+                $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
                 if ($exitcode  -eq 0)
                 { # 2nd uninstall ok
                     $intReturnCode=0
@@ -1186,6 +1221,137 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
         # Winget verb package 
     } # winget is OK
     Return $intReturnCode,$strReturnMsg
+}
+Function GetTempFolder (
+    $Prefix = "Powershell_"
+    )
+{
+    $tempFolderPath = Join-Path $Env:Temp ($Prefix + $(New-Guid))
+    New-Item -Type Directory -Path $tempFolderPath | Out-Null
+    Return $tempFolderPath
+}
+Function DownloadFileFromWeb {
+    param (
+        [string]$WebUrl = "https://download.workspot.com/WorkspotClientSetup64.msi" ,
+        [string]$filename = $null, #"WorkspotClientSetup64.msi",
+        [string]$hash          = $null, # (Get-FileHash "$TmpFld\$filename" -Algorithm SHA256).Hash
+        [boolean]$hideprogress = $false
+    )
+    $strInfo = ""
+    $intErr  = 0
+    if ($filename -eq "") {$filename = $null}
+    $TmpFld = GetTempFolder -Prefix "webdownload_"
+    Write-Host "- Creating temp folder: $(Split-Path $TmpFld -Leaf)"
+    if ($hideprogress) {
+        $Pp_old=$ProgressPreference;$ProgressPreference = 'SilentlyContinue' # Change from default (Continue). Prevents byte display in Invoke-WebRequest (speeds it up)
+    }
+    if (-not $filename){
+        $filename = Split-Path $WebUrl -Leaf
+    }
+    Write-Host "Downloading $($filename) ... " -NoNewline
+    $startTime = Get-Date
+    Invoke-WebRequest -Uri $WebUrl -OutFile "$TmpFld\$filename"
+    Write-Host "Done"
+    $endTime = Get-Date
+    $duration = $endTime - $startTime
+    Write-Host "Download took (hh:mm:ss): $($duration.ToString("hh\:mm\:ss"))"
+    if ($hideprogress) {
+        $ProgressPreference = $Pp_old
+    }
+    Write-Host "Downloaded: " -NoNewline
+    Write-Host $filename -ForegroundColor Green
+    # Check downloaded hash
+    if ($hash){
+        Write-Host "- Checking hash ... " -NoNewline
+        $hash_dl = (Get-FileHash "$TmpFld\$filename" -Algorithm SHA256).Hash
+        if ($hash_dl -ne $hash) {
+            $strInfo =  "Err 100: Hash downloaded [$($hash_dl)] didn't match."
+            $interr = 100
+            Write-Host $strInfo
+        }
+        else {Write-Host "OK" -ForegroundColor Green}
+    }
+    # Create and return a custom object
+    return [PSCustomObject]@{
+        intErr  = $interr
+        strFullpath = "$TmpFld\$filename"
+        strInfo = "Download took (hh:mm:ss): $($duration.ToString("hh\:mm\:ss"))"
+    }
+}
+Function DownloadFileFromGoogleDrive {
+    param (
+        [string]$GoogleDriveUrl = "https://drive.google.com/file/d/xxxxxxxxxxx/view?usp=sharing"  ,
+        [string]$filename = $null, #"MyFile.zip",
+        [string]$hash           = $null, #(Get-FileHash "$TmpFld\$filename" -Algorithm SHA256).Hash
+        [boolean]$hideprogress  = $false
+    )
+    $strInfo = ""
+    $intErr  = 0
+    if ($filename -eq "") {$filename = $null}
+    # create temp folder
+    $TmpFld = GetTempFolder -Prefix "googledownload_"
+    Write-Host "- Creating temp folder: $(Split-Path $TmpFld -Leaf)"
+    if ($hideprogress) {
+        $Pp_old=$ProgressPreference;$ProgressPreference = 'SilentlyContinue' # Change from default (Continue). Prevents byte display in Invoke-WebRequest (speeds it up)
+    }
+    if (-not $filename)
+    { # need a filename
+        $htmlContent = Invoke-WebRequest -Uri $GoogleDriveUrl -UseBasicParsing -OutFile "$TmpFld\google.txt" -PassThru
+        $pattern = '<meta property="og:title" content="(.+?)">'
+        if ($htmlContent.RawContent -match $pattern) {
+            $filename = $matches[1] # Captured group 1 contains the uuid value
+        } else {
+            write-host "Err 103: Couldn't find '$($pattern)' in 'google.txt'. Using GoogleDownload.zip"
+            $filename = "GoogleDownload.zip"
+        }
+    } # need a filename
+    $FileID=$GoogleDriveUrl.split("/")[5]
+    Write-Host "Downloading $($filename) ... " -NoNewline
+    $startTime = Get-Date
+    Invoke-WebRequest -Uri "https://drive.usercontent.google.com/download?id=$($FileID)&export=download&confirm=t" -OutFile "$TmpFld\$filename"
+    Write-Host "Done"
+    $endTime = Get-Date
+    $duration = $endTime - $startTime
+    $strInfo = "Download took (hh:mm:ss): $($duration.ToString("hh\:mm\:ss"))"
+    Write-Host $strInfo
+    if ($hideprogress) {
+        $ProgressPreference = $Pp_old
+    }
+    Write-Host "Downloaded: " -NoNewline
+    Write-Host $filename -ForegroundColor Green
+    # Check downloaded hash
+    if ($hash){
+        Write-Host "- Checking hash ... " -NoNewline
+        $hash_dl = (Get-FileHash "$TmpFld\$filename" -Algorithm SHA256).Hash
+        if ($hash_dl -ne $hash) {
+            $strInfo =  "Err 100: Hash downloaded [$($hash_dl)] didn't match."
+            $interr = 100
+            Write-Host $strInfo
+        }
+        else {Write-Host "OK" -ForegroundColor Green}
+    }
+    # Create and return a custom object
+    return [PSCustomObject]@{
+        intErr  = $intErr
+        strFullpath = "$TmpFld\$filename"
+        strInfo = $strInfo
+    }
+}
+Function DownloadFileFromWebOrGoogleDrive {
+    param (
+        [string]$Url = "https://drive.google.com/file/d/xxxxxxxxxxx/view?usp=sharing"  ,
+        [string]$Filename = $null, #"MyFile.zip",
+        [string]$hash           = $null, #(Get-FileHash "$TmpFld\$filename" -Algorithm SHA256).Hash
+        [boolean]$hideprogress  = $false
+    )
+
+    if ($Url -like "*drive.google.com*"){
+        $retVal =  DownloadFileFromGoogleDrive -GoogleDriveUrl $url -filename $Filename -hash $hash -hideprogress $hideprogress
+    }
+    else{
+        $retVal =  DownloadFileFromWeb -WebUrl $url -filename $Filename -hash $hash -hideprogress $hideprogress
+    }
+    $retVal
 }
 #endregion Function Definitions
 #region scriptinfo
@@ -1283,8 +1449,8 @@ If ($IntuneApp.Function -in ("intune_Detection.ps1"))
         } # detect old version (pass1 winget test of AppUninstallName)
         if (-not $app_detected)
         { # not detected yet
-            if (($IntuneApp.AppInstaller) -in ("msi","exe","ps1","cmd"))
-            { # "msi","exe","ps1","cmd" detect
+            if (($IntuneApp.AppInstaller -in ("msi","exe","ps1","cmd")) -and ($IntuneApp.AppUninstallName -eq ""))
+            { # "msi","exe","ps1","cmd" detect and no winget uninstaller specified
                 # Just check the CSV file
                 $approw = IntuneAppsCSV -mode "GetStatus" -appnamever $IntuneApp.AppName -setstatus "" -setdescription "" -systemoruser $IntuneApp.SystemorUser -logfolder $IntuneApp.LogFolder
                 $verthresh = ""
@@ -1320,7 +1486,12 @@ If ($IntuneApp.Function -in ("intune_Detection.ps1"))
             elseif (($IntuneApp.AppInstaller) -eq "winget")
             { # winget detect
                 $WingetApp   = $IntuneApp.AppInstallName.Trim()
-                $WingetAppMin = $IntuneApp.AppUninstallVersion.Trim()
+                if ($LogFnParent -eq "intune_uninstall.ps1") { # if called from uninstall, don't bother with the winget version
+                    $WingetAppMin = ""
+                }
+                else {
+                    $WingetAppMin = $IntuneApp.AppUninstallVersion.Trim()
+                }
                 $intReturnCode, $strReturnMsg = WingetAction -WingetVerb "list" -WingetApp $WingetApp -SystemOrUser $IntuneApp.SystemorUser -WingetAppMin $WingetAppMin
                 If ($intReturnCode -eq 0)
                 { # version ok
@@ -1332,10 +1503,6 @@ If ($IntuneApp.Function -in ("intune_Detection.ps1"))
                     IntuneLog "Detection failed: $($strReturnMsg)"
                 } # version too low
             } # winget detect
-            else
-            { #unknown
-                IntuneLog ("Unknown AppInstaller: $($IntuneApp.AppInstaller)")
-            } #unknown
         } # not detected yet
     }# ready for detection method
     # region intune_detection_customcode.ps1
@@ -1476,12 +1643,52 @@ If ($IntuneApp.Function -in ("intune_Install.ps1"))
     } # Check System/User
     if (($exitcode -eq 0) -and (-not $app_detected))
     { # ready for install method
+        # Pre-downloads
+        foreach ($i in 1..2) { # Each URL (csv allows for 2 URLs)
+            if ($i -eq 1) {
+                $DownloadURL=$intuneapp.AppInstallerDownload1URL
+                $DownloadHash=$intuneapp.AppInstallerDownload1Hash
+            }
+            else {
+                $DownloadURL=$intuneapp.AppInstallerDownload2URL
+                $DownloadHash=$intuneapp.AppInstallerDownload2Hash
+            }
+            if ($DownloadURL -eq "") {$DownloadURL = $null}
+            if ($DownloadHash -eq "") {$DownloadHash = $null}
+            If ($DownloadURL)
+            { # download and unzip
+                $retVal =  DownloadFileFromWebOrGoogleDrive -Url $DownloadURL -hash $DownloadHash -hideprogress $true
+                $strReturnMsg = "$($retval.intErr) $($retval.strInfo) $($retval.strFullpath)"
+                IntuneLog "DownloadFileFromWebOrGoogleDrive: $($strReturnMsg)"
+                if ($retVal.intErr -ne 0){
+                    $exitcode = $retval.intErr
+                }
+                else { # download ok
+                    $folder_target = Split-Path -Path $scriptDir -Parent # the package folder is the parent of the script folder
+                    if ($retval.strFullpath.EndsWith(".zip")) {
+                        IntuneLog "Extracting Zip: $(Split-Path $retval.strFullpath -Leaf)"
+                        Expand-Archive -Path $retval.strFullpath -DestinationPath $folder_target -Force
+                    } # zip file
+                    else {
+                        Move-Item -Path $retval.strFullpath -Destination $folder_target -Force
+                    } # non-zip
+                } # download ok
+                # folder to remove
+                if (Test-path ($retVal.strFullpath)){
+                    $TmpFolder = (Split-Path $retVal.strFullpath -Parent)
+                    if (Test-path ($TmpFolder)){
+                        Remove-Item -Path $TmpFolder -Recurse -Force
+                    }
+                } # found a folder to remove
+            } # download and unzip
+        } # Each URL
         # Stop running processes
         if ($IntuneApp.AppUninstallProcess) {StopProcess $IntuneApp.AppUninstallProcess}
         if ($IntuneApp.AppUninstallVersion -ne "")
         { # uninstall old version
             If ($IntuneApp.AppUninstallName -ne "")
             { # has additional winget AppUninstallName (installer will uninstall this too)
+                IntuneLog "Checking to see if there is an installed app named '$($IntuneApp.AppUninstallName)' below this version: $($IntuneApp.AppUninstallVersion)"
                 # The csv specifies a winget app version to uninstall if found
                 $WingetApp    = $IntuneApp.AppUninstallName
                 $WingetAppMin = $IntuneApp.AppUninstallVersion
@@ -1503,8 +1710,9 @@ If ($IntuneApp.Function -in ("intune_Install.ps1"))
                 IntuneLog $strReturnMsg
             } # FindInstall err
             elseif (-not $app_detected)
-            { # Found, not already_installed
+            { # Found installer, not already_installed
                 ## -------- Uninstall
+                IntuneLog "Before running installer, run uninstaller"
                 [string]$result=&"$($scriptDir)\intune_uninstall.ps1" -LogFnParent $($IntuneApp.Function)
                 if ($LASTEXITCODE  -ne 0)
                 {
@@ -1512,9 +1720,8 @@ If ($IntuneApp.Function -in ("intune_Install.ps1"))
                     IntuneLog "Err: Uninstall failed"
                 }
                 ## -------- Install
-                IntuneLog ("Installing " + $installer[0].VersionInfo.ProductName + " ("+ $installer[0].VersionInfo.Productversion+ ")..." )
                 # build command line to installer
-                if ($IntuneApp.AppInstallName -eq ".msi")
+                if ($IntuneApp.AppInstaller -eq "msi")
                 { # msi
                     $exename = "msiexec.exe"
                     $arglist = "/i ""$($strInstaller)"" "
@@ -1525,12 +1732,19 @@ If ($IntuneApp.Function -in ("intune_Install.ps1"))
                     $exename = $strInstaller
                     $arglist = $IntuneApp.AppInstallArgs.Replace("ARGS:","")
                 } # exe
+                IntuneLog ("Installing $(split-path (split-path $strinstaller -parent) -leaf)\$(split-path $strinstaller -leaf)" )
+                IntuneLog ("via: $($exename) $($arglist)" )
+                if ($arglist -eq "") {$arglist = $null}
                 # execute installer
-                IntuneLog ("$(Split-Path $strInstaller -Leaf) $($arglist)")
-                [string]$result=Start-Process $exename -ArgumentList $arglist -PassThru -Wait -NoNewWindow
-                if ($result.ExitCode -ne 0 )
+                if ($arglist) {
+                    $proc = Start-Process $exename -ArgumentList $arglist -PassThru -Wait -NoNewWindow
+                } # has args
+                else {
+                    $proc = Start-Process $exename -PassThru -Wait -NoNewWindow
+                } # no args
+                if ($proc.ExitCode -ne 0 )
                 {
-                    $exitcode=105; IntuneLog ("Err $exitcode : Application install failed with error (" + $result.exitcode.tostring()+ ")")
+                    $exitcode=105; IntuneLog ("Err $exitcode : Application install failed with error code $($proc.ExitCode)")
                 }
             } # Found, not already_installed
         } #msi,exe install
@@ -1585,9 +1799,10 @@ If ($IntuneApp.Function -in ("intune_Install.ps1"))
         } #cmd install
         elseif (($IntuneApp.AppInstaller) -eq "choco")
         { #choco install
-            $ChocoApp   = $IntuneApp.AppInstallName.Trim()
-            IntuneLog "Starting Choco install --id $($ChocoApp) -y"
-            $intReturnCode, $strReturnMsg = ChocolateyAction -ChocoVerb "install" -ChocoApp $ChocoApp
+            $ChocoApp = $IntuneApp.AppInstallName.Trim()
+            $arglist = $IntuneApp.AppInstallArgs.Replace("ARGS:","")
+            IntuneLog "Starting Choco install --id $($ChocoApp) -y $($arglist)"
+            $intReturnCode, $strReturnMsg = ChocolateyAction -ChocoVerb "install" -ChocoApp $ChocoApp -ChocoArgs $arglist
             IntuneLog $strReturnMsg
             $exitcode = $intReturnCode
         } #choco install
@@ -1597,16 +1812,7 @@ If ($IntuneApp.Function -in ("intune_Install.ps1"))
             # uninstall
             if ($IntuneApp.AppUninstallVersion -ne "")
             { # uninstall old version
-                # The csv specifies a winget app version to uninstall if found
-                #$WingetApp    = $IntuneApp.AppUninstallName
-                $WingetAppMin = $IntuneApp.AppUninstallVersion
-                $intReturnCode, $strReturnMsg = WingetAction -WingetVerb "list" -WingetApp $WingetApp -SystemOrUser $IntuneApp.SystemorUser -WingetAppMin $WingetAppMin
-                if ($strReturnMsg -like "*version is too low*")
-                { # version too low
-                    IntuneLog "AppUninstallVersion uninstall requested: $($strReturnMsg)"
-                    $intReturnCode, $strReturnMsg = WingetAction -WingetVerb "uninstall" -WingetApp $WingetApp -SystemOrUser $IntuneApp.SystemorUser
-                    IntuneLog "AppUninstallVersion uninstall result: $($strReturnMsg)"
-                } # version too low
+                [string]$result=&"$($scriptDir)\intune_uninstall.ps1" -LogFnParent $($IntuneApp.Function) -quiet $quiet
             } # uninstall old version
             # install
             IntuneLog "Starting Winget install --id $($WingetApp) --exact"
@@ -1649,6 +1855,7 @@ If ($IntuneApp.Function -in ("intune_Install.ps1"))
 } # intune_Install.ps1
 If ($IntuneApp.Function -in ("intune_Uninstall.ps1"))
 { # intune_Uninstall.ps1
+    IntuneLog "Check if app is detected. (uninstall not needed if it isn't)"
     $app_detected=$false # assume it's not detected
     if ($exitcode -eq 0)
     { # Check Detection
@@ -1674,84 +1881,24 @@ If ($IntuneApp.Function -in ("intune_Uninstall.ps1"))
             { # uninstall old version
                 If ($IntuneApp.AppUninstallName -ne "")
                 { # has additional winget AppUninstallName (in uninstall mode - use this to uninstall something else too)
+                    IntuneLog "Checking to see if there is an installed app named '$($IntuneApp.AppUninstallName)' below this version: $($IntuneApp.AppUninstallVersion)"
                     # The csv specifies a winget app version to uninstall if found (besides the main winget app itself)
                     $WingetApp    = $IntuneApp.AppUninstallName
                     $WingetAppMin = $IntuneApp.AppUninstallVersion
                     $intReturnCode, $strReturnMsg = WingetAction -WingetVerb "list" -WingetApp $WingetApp -SystemOrUser $IntuneApp.SystemorUser -WingetAppMin $WingetAppMin
                     if ($strReturnMsg -like "*version is too low*")
-                    { # version too low
+                    {
+                        IntuneLog "AppUninstallVersion uninstall detected version is too low: $($strReturnMsg)"
+                    }
+                    else
+                    { # version can be uninstalled  - it's above the threshold that shows the package as installed 
                         IntuneLog "AppUninstallVersion uninstall requested: $($strReturnMsg)"
                         $intReturnCode, $strReturnMsg = WingetAction -WingetVerb "uninstall" -WingetApp $WingetApp -SystemOrUser $IntuneApp.SystemorUser
                         IntuneLog "AppUninstallVersion uninstall result: $($strReturnMsg)"
-                    } # version too low
+                    } # version can be uninstalled
                 } # has additional winget AppUninstallName
             } # uninstall old version
-            if (($IntuneApp.AppInstaller) -in ("msi","exe"))
-            { #msi,exe        
-                # Method2: App uninstall
-                $version_in=$IntuneApp.AppUninstallVersion
-                ### convert to valid System.Version string
-                $appver_arr=$version_in.Split(".")
-                if ($appver_arr.count -eq 0)
-                { # nothing -> 0.0
-                    $appver_arr="0","0"
-                }
-                elseif ($appver_arr.count -eq 1)
-                { # no minor -> x.0
-                    $appver_arr+="0"
-                }
-                $version_out=$appver_arr -join(".")
-                ### convert to valid System.Version string
-                $msg = "App not found"
-                #$gp=$null
-                $exitcode=0
-                ### get list of packages
-                $gps=@(Get-Package -Provider Programs -IncludeWindowsInstaller -Name $IntuneApp.AppUninstallName -ErrorAction SilentlyContinue)
-                foreach ($gp in $gps)
-                { ## each package
-                    if ([System.Version]$gp.Version -le $version_out)
-                        {
-                            $gp_lowver=$true
-                            $gp_msg="version is lower or equal than expected"
-                        }
-                    else
-                        {
-                            $gp_lowver=$false
-                            $gp_msg="version is higher than expected"
-                            $exitcode+=10
-                        }
-                    $msg = "$($gp.Name) v$($gp.Version) ($($gp_msg) [v$($version_out)])"
-                    IntuneLog "Installed App: $($msg)" -quiet $quiet
-                    ## ------- Uninstall
-                    IntuneLog "Uninstalling: $($msg)" -quiet $quiet
-                    $gp_result = Uninstall-Package -Name $gp.Name -ForceBootstrap
-                    if ($gp_result)
-                    { # Uninstall-Package actually worked
-                        IntuneLog "Uninstall-Package: OK" -quiet $quiet
-                    } # Uninstall-Package actually worked
-                    else
-                    { # Uninstall-Package didn't work
-                        ###
-                        $cmd=$gp.Metadata["QuietUninstallString"]
-                        if ($cmd -eq "") {$cmd=$gp.Metadata["UninstallString"]}
-                        $exeargs = CommandLineSplit $cmd
-                        #
-                        if ($exeargs[0].EndsWith("OfficeClickToRun.exe")) {$exeargs[1]+=" DisplayLevel=False"}
-                        #
-                        [string]$result=Start-Process $exeargs[0] -ArgumentList ($exeargs[1]) -PassThru -Wait
-                        if ($result.ExitCode -ne 0 )
-                        {
-                            $exitcode=105
-                            Write-Host ("Err $exitcode : Uninstall failed with error ($([string]$result.exitcode))")
-                        }
-                    } # Uninstall-Package didn't work
-                } ## each package
-                if ($gps.Count -eq 0)
-                {
-                    IntuneLog "Nothing to uninstall, mark as uninstalled" -quiet $quiet
-                }
-            } #msi,exe
-            elseif (($IntuneApp.AppInstaller) -in ("ps1","cmd"))
+            if (($IntuneApp.AppInstaller) -in ("ps1","cmd"))
             { #ps1
                 # do nothing - use the intune_uninstall_followup.ps1 feature for these
             } #cmd
@@ -1762,28 +1909,40 @@ If ($IntuneApp.Function -in ("intune_Uninstall.ps1"))
                 IntuneLog $strReturnMsg
                 $exitcode = $intReturnCode
             } #choco
-            elseif (($IntuneApp.AppInstaller) -eq "winget")
+            elseif (($IntuneApp.AppInstaller) -in ("winget"))
             { #winget
                 $WingetApp   = $IntuneApp.AppInstallName.Trim()
                 # uninstall
-                if ($IntuneApp.AppUninstallVersion -ne "")
-                { # uninstall old version
-                    # The csv specifies a winget app version to uninstall if found
-                    #$WingetApp    = $IntuneApp.AppUninstallName
-                    $WingetAppMin = $IntuneApp.AppUninstallVersion
-                    $intReturnCode, $strReturnMsg = WingetAction -WingetVerb "list" -WingetApp $WingetApp -SystemOrUser $IntuneApp.SystemorUser -WingetAppMin $WingetAppMin
-                    if ($strReturnMsg -like "*version is too low*")
-                    { # version too low
-                        IntuneLog "AppUninstallVersion uninstall requested: $($strReturnMsg)"
-                        $intReturnCode, $strReturnMsg = WingetAction -WingetVerb "uninstall" -WingetApp $WingetApp -SystemOrUser $IntuneApp.SystemorUser
-                        IntuneLog "AppUninstallVersion uninstall result: $($strReturnMsg)"
-                    } # version too low
-                } # uninstall old version
-                # uninstall
-                $intReturnCode, $strReturnMsg = WingetAction -WingetVerb "uninstall" -WingetApp $WingetApp -SystemOrUser $IntuneApp.SystemorUser
-                IntuneLog $strReturnMsg
-                $exitcode = $intReturnCode
+                if ($WingetApp -eq ""){
+                    IntuneLog "There is no AppUninstallName in the .CSV settings. Nothing to uninstall so marking as uninstalled."
+                    $exitcode = 0
+                }
+                else { # has winget to uninstall
+                    if ($IntuneApp.AppUninstallVersion -ne "")
+                    { # uninstall old version
+                        # The csv specifies a winget app version to uninstall if found
+                        #$WingetApp    = $IntuneApp.AppUninstallName
+                        $WingetAppMin = $IntuneApp.AppUninstallVersion
+                        $intReturnCode, $strReturnMsg = WingetAction -WingetVerb "list" -WingetApp $WingetApp -SystemOrUser $IntuneApp.SystemorUser -WingetAppMin $WingetAppMin
+                        if ($strReturnMsg -like "*version is too low*")
+                        { # version too low
+                            IntuneLog "AppUninstallVersion uninstall requested: $($strReturnMsg)"
+                            $intReturnCode, $strReturnMsg = WingetAction -WingetVerb "uninstall" -WingetApp $WingetApp -SystemOrUser $IntuneApp.SystemorUser
+                            IntuneLog "AppUninstallVersion uninstall result: $($strReturnMsg)"
+                        } # version too low
+                    } # uninstall old version
+                    # uninstall
+                    $intReturnCode, $strReturnMsg = WingetAction -WingetVerb "uninstall" -WingetApp $WingetApp -SystemOrUser $IntuneApp.SystemorUser
+                    IntuneLog $strReturnMsg
+                    $exitcode = $intReturnCode
+                } # has winget to uninstall
             } #winget
+            elseif (($IntuneApp.AppInstaller) -in ("msi"))
+            { #msi
+                if (($IntuneApp.AppUninstallName.Trim() -eq "") -and (-not (Test-Path "$(Split-Path -Path $scriptDir -Parent)\intune_uninstall_followup.ps1" -PathType Leaf))) {
+                    IntuneLog ("This msi installer can't be uninstalled but will be marked as uninstalled. There is no AppUninstallName setting (with a winget name or winget id) in intune_settings.csv. Alternatively, intune_uninstall_followup.ps1 can be used.")
+                }
+            } #msi
             else
             { #unknown
                 IntuneLog ("Unknown AppInstaller: $($IntuneApp.AppInstaller)")
