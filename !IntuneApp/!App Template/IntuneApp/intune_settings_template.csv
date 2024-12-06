@@ -22,7 +22,7 @@ InformationURL,https://www.7-zip.org/?ref=winstall,Info for company portal
 PrivacyURL,,Info for company portal
 CompanyPortalFeaturedApp,FALSE,(Required) Company Portal Featured (Default is FALSE)
 AvailableInCompanyPortal,TRUE,(Required) Company Portal Availability (Default is TRUE)
-PublishToOrgGroup,TRUE,"(Required) When uploaded to Intune, the PublishToGroup values from the AppsPublish_OrgList.csv will be used to push this to the existing org-wide Group as a required app. False means do not publish. Apps are always published to its own Intune WindowsApp XYZ group (Default is FALSE)"
+PublishToOrgGroup,TRUE,"(Required) App will be pushed immediately to the PublishToGroup group from AppsPublish_OrgList.csv (as a required app). False means do not push app to that group. Independent of this, apps are always published to its own IntuneApp [appname] group (Default is FALSE)"
 AppVar1,,Custom var useable by ps1 files
 AppVar2,,Custom var useable by ps1 files
 AppVar3,,Custom var useable by ps1 files
