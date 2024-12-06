@@ -703,7 +703,7 @@ Function StartProc($command, $arguments)
     }
     Return $exitcode,$stdout,$stderr
 }
-Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appname")
+Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appname", $ChocoArgs="")
 {
     <#
     Usage:
@@ -783,6 +783,7 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
     } # check choco ver
     if ($intReturnCode -eq 0)
     { # chocoverb
+        $chocoargs_arr=@($ChocoArgs -split " ")
         if ($chocoverb -eq "list")
         { #verb:list
             $choco_command="list"
@@ -800,7 +801,7 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
         } #verb:list
         elseif ($chocoverb -eq "install")
         {
-            $choco_command="install",$ChocoApp,"-y"
+            $choco_command="install",$ChocoApp,"-y",$chocoargs_arr
             $proc_return,$retStatus,$exitcode = StartProcAsJob "choco" $choco_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
             if ($exitcode  -ne 0) {
                 $intReturnCode = 185
@@ -813,7 +814,7 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
         }
         elseif ($chocoverb -eq "uninstall")
         {
-            $choco_command="uninstall",$ChocoApp,"-y","-a","-x"
+            $choco_command="uninstall",$ChocoApp,"-y","-a","-x",$chocoargs_arr
             $proc_return,$retStatus,$exitcode = StartProcAsJob "choco" $choco_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
             if ($exitcode  -ne 0) {
                 $intReturnCode = 178
@@ -1151,10 +1152,12 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
                     $Winget_command = "install","--id",$WingetApp,"--exact","--accept-package-agreements"
                     $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
                     $chkresults = (($Winget_return -like "*Successfully installed*") -or ($Winget_return -like "*Found an existing package already installed*"))
-                    if (-not $chkresults)
-                    {
+                    if (-not $chkresults) {
                         $intReturnCode = 385
                         $strReturnMsg="ERR $($intReturnCode): Winget app [$($WingetApp)] not installed (even with $($strScope) option removed). Winget err: $($exitcode) [winget $($Winget_command)]"
+                        $winget_lines = $winget_return |  Where-Object {$_.Trim() -ne ""} | Where-Object { -not ($_ -match '^\s')} # remove blanks
+                        $winget_msgs = @("`r`n[winget $($Winget_command -join " ")]") + $winget_lines + @("[winget returned:$($exitcode)]") # header and footer added
+                        $strReturnMsg += $winget_msgs -join "`r`n" # append as a long string with crlfs
                     }
                     else {
                         $intReturnCode=0
@@ -1796,9 +1799,10 @@ If ($IntuneApp.Function -in ("intune_Install.ps1"))
         } #cmd install
         elseif (($IntuneApp.AppInstaller) -eq "choco")
         { #choco install
-            $ChocoApp   = $IntuneApp.AppInstallName.Trim()
-            IntuneLog "Starting Choco install --id $($ChocoApp) -y"
-            $intReturnCode, $strReturnMsg = ChocolateyAction -ChocoVerb "install" -ChocoApp $ChocoApp
+            $ChocoApp = $IntuneApp.AppInstallName.Trim()
+            $arglist = $IntuneApp.AppInstallArgs.Replace("ARGS:","")
+            IntuneLog "Starting Choco install --id $($ChocoApp) -y $($arglist)"
+            $intReturnCode, $strReturnMsg = ChocolateyAction -ChocoVerb "install" -ChocoApp $ChocoApp -ChocoArgs $arglist
             IntuneLog $strReturnMsg
             $exitcode = $intReturnCode
         } #choco install
