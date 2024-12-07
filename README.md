@@ -65,11 +65,11 @@ Push (Assign) Apps to Users
 This will push apps to endpoint machines  
   
 Published apps are assigned by Entra Groups.  
-IntuneApp Windows Users  
+- IntuneApp Windows Users  
 This group is where mandatory apps get published. Put all your Windows users in this group. It can be dynamic.  
-IntuneApp Windows Users Excluded  
+- IntuneApp Windows Users Excluded  
 This group excludes people from any publishing  
-IntuneApp [Appname]  
+- IntuneApp [Appname]  
 Each app will have a group where you can add people that are supposed to get the app.  
   
 Manually install an App for a User  
@@ -83,8 +83,7 @@ Check the C:\IntuneApps folder on the endpoint for logging etc.
 Admins looking to manually install can copy the individual app folders to the endpoint and run intune_command.cmd (see above).  
   
 ## Intune Apps  
-  
--------------------------------  
+    
 This app package is structured in a way that's friendly to Intune.  
 The IntuneApp codebase facilitate installing and publishing apps.  
 For up-to-date information (and to download the IntuneApp system) see here: <https://github.com/ITAutomator/IntuneApp>  
