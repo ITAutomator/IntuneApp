@@ -9,25 +9,34 @@ foreach($module in $GraphModules){
 ##################################
 ### Functions
 ##################################
-Function ModuleAction ($module="<none>",$action="update") #check,update,install,uninstall,reinstall
+Function ModuleAction ($module="<none>",$action="update") 
 {
+    #check,update,install,uninstall,reinstall
+    if ($action -notin ("check","update","install","uninstall","reinstall")) {
+        Write-Host "Invalid action: $($action)" -ForegroundColor Red
+        return
+    }
+    $action = -join ($action.Substring(0,1).ToUpper() + $action.Substring(1))
     Write-Host "$($action) module: " -NoNewline
     Write-Host $module -ForegroundColor Green
+    Write-Host "Checking versions..."
+    # latest online
     $fm = Find-Module $module
-    Write-host "Latest Version Online:"
-    Write-Host ($fm | Select-Object Name,Version | Format-Table | Out-String)
-    $gms = @(Get-Module -ListAvailable $module)
-    #Get-InstalledModule $module | Format-List Name,Version,InstalledLocation 
+    Write-host "-------------------- Latest Version Online --------------------"
+    (($fm | Select-Object Name,Version | Format-Table -AutoSize | Out-String) -split "`r?`n")| Where-Object { $_.Trim() -ne "" } | Write-Host
+    Write-host ""
+    # installed
+    $gms = @(Get-Module $module -ListAvailable)
     $gms = @($gms|Select-Object Name,Version,@{Name = 'NeedsUpdate';Expression = {$_.Version -lt $fm.Version}},@{Name = 'NeedsAdmin';Expression = {-not $_.ModuleBase.StartsWith("C:\Users")}},ModuleBase)
-    Write-host "Local Version:"
+    Write-host "-------------------- Local Version(s)      --------------------"
     if ($gms.count -eq 0) {
         Write-Host "<none installed>"}
     else {
-        Write-host ($gms | Select-Object Name,Version,NeedsUpdate,NeedsAdmin,ModuleBase | Format-Table | Out-String)
+        (($gms | Select-Object Name,Version,NeedsUpdate,NeedsAdmin,ModuleBase | Format-Table -AutoSize | Out-String) -split "`r?`n")| Where-Object { $_.Trim() -ne "" } | Write-Host
     }
+    Write-host ""
     # gms needing update?
     $gmneedsupd= @($gms | Where-Object NeedsUpdate -eq $true)
-    $actions=@()
     $bOk=$true
     if ($action -eq "check")
     { # check
@@ -42,77 +51,55 @@ Function ModuleAction ($module="<none>",$action="update") #check,update,install,
     { # action ne check
         ForEach ($gm in $gms)
         { # each module that needs an update
-            if ($gm.NeedsAdmin)
-            { # this module needs admin rights to update
-                If (IsAdmin)
-                {
-                    if (($action -eq "update") -and ($gm.needsupdate))
-                    {
-                        Write-Host "Updating to $($fm.Version) from $($gm.version) [$($gm.modulebase)]"
-                        Update-Module -Name $module
-                    }
-                    if ($action -in "uninstall","reinstall")
-                    {
-                        Write-Host "Uninstalling $($gm.version) [$($gm.modulebase)]"
-                        Uninstall-Module -Name $module
-                        Pause
-                    }
-                    if ($action -in "install","reinstall")
-                    {
-                        Write-Host "Installing $($fm.version)"
-                        Install-Module -Name $module
-                        Write-host "Finished installing." -ForegroundColor Green
-                        Write-Host "Some modules will not work properly without a restart."
-                        Pause
-                    }
-                }
-                else
-                {
-                    $bOk=$false
-                    Write-Host "Can't action $($gm.version) to $($fm.version). Can't update a system level module as user. [$($gm.modulebase)]"
-                }
-            } # admin
+            if ($gm.NeedsAdmin -ne (IsAdmin))
+            { # admin / user conflict
+                $bOk=$false
+                Write-Host "Can't update a system level module as user. [$($gm.modulebase)]"
+
+            }
             else
-            { # this module must be run as the user
-                If (IsAdmin)
-                {
-                    $bOk=$false
-                    Write-Host "Can't action $($gm.version) to $($fm.version). Can't update a user level module as admin. [$($gm.modulebase)]"
-                }
-                else
-                {                
-                    if (($action -eq "update") -and ($gm.needsupdate))
-                    {
-                        Write-Host "Updating to $($fm.Version) from $($gm.version) [$($gm.modulebase)]"
-                        Update-Module -Name $module
-                    }
-                    if ($action -in "uninstall","reinstall")
-                    {
-                        Write-Host "Uninstalling $($gm.version) [$($gm.modulebase)]"
-                        Uninstall-Module -Name $module
-                        Pause
-                    }
-                    if ($action -in "install","reinstall")
-                    {
-                        Write-Host "Installing $($fm.version)"
-                        Install-Module -Name $module
-                        Write-host "Finished installing." -ForegroundColor Green
-                        Write-Host "Some modules will not work properly without a restart."
-                        Pause
-                    }
-                }
-            } # user      
+            { # admin / user ok
+                if (($action -eq "update") -and ($gm.needsupdate))
+                { # update
+                    Write-Host "Updating to $($fm.Version) from $($gm.version) [$($gm.modulebase)]"
+                    Write-Host "Update-Module -Name $module" -ForegroundColor Yellow
+                    Update-Module -Name $module -Force
+                    PressEnterToContinue
+                } # update
+                if ($action -in "uninstall","reinstall")
+                { # uninstall reinstall
+                    Write-Host "Uninstalling $($gm.version) [$($gm.modulebase)]"
+                    Write-Host "Uninstall-Module -Name $module -RequiredVersion $($gm.version)" -ForegroundColor Yellow
+                    Uninstall-Module -Name $module -RequiredVersion $gm.version
+                    if (Test-Path $gm.ModuleBase) {
+                        Write-Host "Failed to remove: $($gm.ModuleBase)"
+                        if (AskForChoice "Force removal (remove this directory)?") {
+                            Remove-Item $gm.ModuleBase -Force -Recurse | Out-Null
+                            if (Test-Path $gm.ModuleBase) {
+                                Write-Host "Failed to remove directory" -ForegroundColor Red
+                                PressEnterToContinue
+                            }
+                            else {
+                                Write-Host "Removal succeeded" -ForegroundColor Green
+                                # is the module folder now empty? (remove it)
+                                $DirectoryPath = Split-Path $gm.ModuleBase -parent
+                                if ((Get-ChildItem -Path $DirectoryPath -Recurse | Measure-Object).Count -eq 0) {
+                                    Remove-Item $DirectoryPath
+                                } # remove parent
+                            } # removed ok
+                        } # force remove?
+                    } # module still there
+                } # uninstall reinstall
+            } # admin / user ok    
         } # each module that needs an update
-        #### install 
         if ($action -in "install","reinstall")
-        {
+        { # install reinstall
             Write-Host "Installing $($fm.version)"
-            Install-Module -Name $module
+            Write-Host "Install-Module -Name $module" -ForegroundColor Yellow
+            Install-Module -Name $module -Force
             Write-host "Finished installing." -ForegroundColor Green
-            Write-Host "Some modules will not work properly without a restart."
-            Pause
-        }
-        #
+            PressEnterToContinue
+        } # install reinstall
         if ($bOk)
         {
             $sReturn= "OK"
@@ -148,16 +135,23 @@ if ((Test-Path("$scriptDir\ITAutomator.psm1"))) {Import-Module "$scriptDir\ITAut
 Write-Host "-----------------------------------------------------------------------------"
 Write-Host "$($scriptName) $($scriptVer)       Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
 Write-Host ""
-Write-Host "This script manages the modules needed."
+Write-Host "PowerShell module management."
 Write-Host ""
-Write-Host "You may need to re-launch as admin in order to manage machine-level modules."
+Write-Host "Modules can be installed in user context (default) or machine context (-Scope AllUsers)"
+Write-Host "Using machine context is preferred (requires local admin rights) to avoid version conflicts"
+Write-Host "You may need to re-launch this script as admin in order to manage machine-level modules."
+Write-Host ""
+Write-Host "PowerShell searches for modules in `$env:PSModulePath, which may be different for different versions of PowerShell"
+Write-Host ""
+Write-Host "Microsoft.Graph modules should be updated to the same version (at the same time)"
 Write-Host "-----------------------------------------------------------------------------"
 Write-Host ""
 $modules = @()
-$modules += "IntuneWin32App"
-$modules += "Microsoft.Graph"
-$modules += "MicrosoftTeams"
-$modules += "ExchangeOnlineManagement"
+$modules+="IntuneWin32App"
+$modules+="Microsoft.Graph.Authentication"
+$modules+="Microsoft.Graph.Users"
+$modules+="Microsoft.Graph.Groups"
+$modules+="Microsoft.Graph.Devices.CorporateManagement"
 Do { # choose a module
     $i = 0
     Write-Host "Modules:" -ForegroundColor Yellow
@@ -179,41 +173,54 @@ Do { # choose a module
         else
         {Write-host "Invalid"}
     }
+    $bMenuFirstDisplay=$true
     if ($module)
     { # has a module
         Do { # action
+            if ($bMenuFirstDisplay){
+                $sReturn = ModuleAction -module $module -action "check"
+                $bMenuFirstDisplay = $false
+            }
             Write-Host "------------------"
             Write-Host "Module: " -NoNewline
             Write-Host $module -ForegroundColor Green
             Write-Host "IsAdmin: $(IsAdmin)" -ForegroundColor Yellow
-            Write-Host "R - Relaunch as admin"
-            Write-Host "C - Check version"
+            if (isAdmin) {
+                Write-Host "A - Relaunch as admin" -ForegroundColor DarkGray
+            }
+            else {
+                Write-Host "A - Relaunch as admin"
+            }
+            Write-Host "C - Check Version"
+            Write-Host "D - Update"
             Write-Host "U - Uninstall"
             Write-Host "I - Install"
+            Write-Host "R - Reinstall (Uninstall / Install)"
             Write-Host "------------------"
-            $choice = AskforChoice -Message "What do you want to do." -choices @("E&xit this module","&Relaunch as Admin","&Check","&Uninstall","&Install") -DefaultChoice 2
-            if ($choice -eq 0)
-            {break}
-            elseif ($choice -eq 1)
+            $choices = @("E&xit this module","Relaunch as &Admin","&Check","Up&date","&Uninstall","&Install","&Reinstall")
+            $choicenum = AskforChoice -Message "What do you want to do." -choices $choices -DefaultChoice 0
+            $choice = $choices[$choicenum].replace("&","")
+            if ($choice -eq "Exit this module") {
+                break
+            }
+            elseif ($choice -eq "Relaunch as Admin")
             { # elevate
-                Elevate
+                if (IsAdmin) {
+                    "This process is already elevated as admin."
+                    PressEnterToContinue
+                }
+                Else {
+                    Elevate
+                }
             }
-            elseif ($choice -eq 2)
-            { # check
-                $sReturn = ModuleAction -module $module -action "check"
-            }
-            elseif ($choice -eq 3)
-            { # uninstall
-                $sReturn = ModuleAction -module $module -action "uninstall"
-            }
-            elseif ($choice -eq 4)
+            else
             { # install
-                if (-not (IsAdmin))
+                if ((-not (IsAdmin)) -and ($choice -eq "install"))
                 {
                     If (0 -eq (AskForChoice "Are you sure you want to install as non-admin (in the user context)?"))
                     {Continue}
                 }
-                $sReturn = ModuleAction -module $module -action "install"
+                $sReturn = ModuleAction -module $module -action $choice
             }
             #
             Start-Sleep 2
