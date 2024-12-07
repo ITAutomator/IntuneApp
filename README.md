@@ -12,7 +12,8 @@ See here for the admin guide: [pdf](https://github.com/ITAutomator/IntuneApp/blo
 Download IntuneApps
 -------------------------------
 
-Go here and click Code (the green button) > Download Zip
+Download as [ZIP](https://github.com/ITAutomator/IntuneApp/archive/refs/heads/main.zip)
+Or Go [here](https://github.com/ITAutomator/IntuneApp) and click Code (the green button) > Download Zip
 Extract Zip into C:\IntuneAppMain (or anywhere)
 
 Test a pre-packaged installer
