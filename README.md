@@ -1,12 +1,80 @@
 # IntuneApp
 Create and publish Windows apps to your Intune endpoints  
-See here for the blog post: https://www.itautomator.com/intuneapp
+See here for the blog post: https://www.itautomator.com/intuneapp 
 See here for the admin guide: https://github.com/ITAutomator/IntuneApp/blob/main/Readme%20IntuneApp.pdf 
 
 - Main Screen2
 ![image](https://github.com/user-attachments/assets/a5307e75-4a19-424a-8bfe-4f68f78d4d72)
 
-This is an Intune App
+
+# Quick Start
+Download IntuneApps
+-------------------------------
+
+Go here and click Code (the green button) > Download Zip
+Extract Zip into C:\IntuneAppMain (or anywhere)
+
+Test a pre-packaged installer
+-------------------------------
+This will test a package on your machine.
+
+Open C:\IntuneAppMain \7zip
+Double click intune_command.cmd
+Choose (D)etect – Look for the last line of info – it should say whether you already have 7zip.
+Choose (I)nstall – This will install 7zip
+Note: (D)etect, (R)equirements, (I)nstall, (U)ninstall are the four core Intune actions for Windows packages. Here, you are able to run them manually to see what Intune does behind the scenes.
+
+Test installing a few apps at once
+-------------------------------
+Open C:\IntuneAppMain and run AppsMenu_Launcher.cmd
+Choose (I)nstall apps
+On the list of apps that pops up, ctrl – click (select) one or more apps.
+Choose (I)nstall
+The installers should run for all the apps
+
+Publish Prep
+-------------------------------
+This will prep your org for publishing
+
+Choose (P) to begin publishing
+Choose (O) Prep a new Org for publishing apps
+Enter your org’s primary domain name.
+Modules: There are modules that need to be on the publishing machine: Microsoft.Graph and IntuneWin32App
+These will be checked during the process, but you may need to install these before proceeding.
+Follow the prompts to install the publishing app in Entra.
+
+Publish Apps
+-------------------------------
+This will publish / update apps to your org
+
+Choose (P) to begin publishing
+Choose your org from the list of prepped orgs (see above)
+On the list of apps that pops up, ctrl – click (select) one or more apps.
+After publishing the apps, look in Intune for the Apps themselves.
+Look in Entra for assignment groups starting with IntuneApp
+
+Push (Assign) Apps to Users
+-------------------------------
+This will push apps to endpoint machines
+
+Published apps are assigned by Entra Groups.
+IntuneApp Windows Users
+This group is where mandatory apps get published. Put all your Windows users in this group. It can be dynamic.
+IntuneApp Windows Users Excluded
+This group excludes people from any publishing
+IntuneApp [Appname]
+Each app will have a group where you can add people that are supposed to get the app.
+
+Manually install an App for a User
+-------------------------------
+This is how you can manually install an app (as a user).
+
+Published apps are available to users in the Company Portal app and can be installed from there (no admin rights are required).
+Check the C:\IntuneApps folder on the endpoint for logging etc.
+
+Admins looking to manually install can copy the individual app folders to the endpoint and run intune_command.cmd (see above).
+
+# Intune Apps
 -------------------------------
 This app package is structured in a way that's friendly to Intune.
 The IntuneApp codebase facilitate installing and publishing apps.
