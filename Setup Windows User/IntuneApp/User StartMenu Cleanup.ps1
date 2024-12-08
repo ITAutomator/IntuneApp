@@ -31,9 +31,9 @@ Write-Host "--------------------------------------------------------------------
 Write-Host ("$scriptName        Computer:$env:computername User:$env:username OS:"+ $OS[1]+" PSver:"+($PSVersionTable.PSVersion.Major)) 
 Write-host "Mode: $($mode)"
 Write-Host ""
-Write-Host "Windows 10 Start Menu cleanup"
+Write-Host "Windows Start Menu cleanup"
 Write-Host ""
-Write-Host "- (Win 10) Pin/Unpin Apps"
+Write-Host "- Pin/Unpin Apps"
 Write-Host ""
 Write-Host "-----------------------------------------------------------------------------"
 
