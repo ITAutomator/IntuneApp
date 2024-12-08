@@ -12,33 +12,33 @@ See here for the admin guide: [pdf](https://github.com/ITAutomator/IntuneApp/blo
 ### Download IntuneApps  
 
 Download as [ZIP](https://github.com/ITAutomator/IntuneApp/archive/refs/heads/main.zip)  
-Or Go [here](https://github.com/ITAutomator/IntuneApp) and click "Code" (the green button) > Download Zip  
-Extract Zip into `C:\Intune Packages` or a shared folder `Z:\Intune Packages` (or anywhere)  
+Or Go [here](https://github.com/ITAutomator/IntuneApp) and click `Code` (the green button) `> Download Zip`  
+Extract Zip into `C:\Apps` or a shared folder `Z:\Apps` (or anywhere)  
   
 ### Test a pre-packaged installer  
 
 This will test a package on your machine.  
   
-Open C:\IntuneAppMain \7zip  
-Double click intune_command.cmd  
-Choose (D)etect – Look for the last line of info – it should say whether you already have 7zip.  
-Choose (I)nstall – This will install 7zip  
-Note: (D)etect, (R)equirements, (I)nstall, (U)ninstall are the four core Intune actions for Windows packages. Here, you are able to run them manually to see what Intune does behind the scenes.  
+Open `Z:\Apps\7zip`  
+Double click `intune_command.cmd`  
+Choose `(D)etect` – Look for the last line of info – it should say whether you already have 7zip.  
+Choose `(I)nstall` – This will install 7zip  
+Note: `(D)etect`, `(R)equirements`, `(I)nstall`, `(U)ninstall` are the four core Intune actions for Windows packages. Here, you are able to run them manually to see what Intune does behind the scenes.  
   
 ### Test installing a few apps at once  
 
-Open C:\IntuneAppMain and run AppsMenu_Launcher.cmd  
-Choose (I)nstall apps  
+Open `Z:\Apps` and run `AppsMenu_Launcher.cmd` 
+Choose `(I)nstall apps`  
 On the list of apps that pops up, ctrl – click (select) one or more apps.  
-Choose (I)nstall  
+Choose `(I)nstall`  
 The installers should run for all the apps  
   
 ### Publish Prep  
 
 This will prep your org for publishing  
   
-Choose (P) to begin publishing  
-Choose (O) Prep a new Org for publishing apps  
+Choose `(P) Publish` to begin publishing  
+Choose `(O) Org Prep` a new Org for publishing apps  
 Enter your org’s primary domain name.  
 Modules: There are modules that need to be on the publishing machine: Microsoft.Graph and IntuneWin32App  
 These will be checked during the process, but you may need to install these before proceeding.  
@@ -48,7 +48,7 @@ Follow the prompts to install the publishing app in Entra.
 
 This will publish / update apps to your org  
   
-Choose (P) to begin publishing  
+Choose `(P) Publish` to begin publishing  
 Choose your org from the list of prepped orgs (see above)  
 On the list of apps that pops up, ctrl – click (select) one or more apps.  
 After publishing the apps, look in Intune for the Apps themselves.  
@@ -60,11 +60,11 @@ This will push apps to endpoint machines
   
 Published apps are assigned by Entra Groups.  
 
-- IntuneApp Windows Users  
+`IntuneApp Windows Users`  
 This group is where mandatory apps get published. Put all your Windows users in this group. It can be dynamic.  
-- IntuneApp Windows Users Excluded  
+`IntuneApp Windows Users Excluded`  
 This group excludes people from any publishing  
-- IntuneApp [Appname]  
+`IntuneApp <Appname>`  
 Each app will have a group where you can add people that are supposed to get the app.  
   
 ### Manually install an App for a User  
@@ -72,9 +72,9 @@ Each app will have a group where you can add people that are supposed to get the
 This is how you can manually install an app (as a user).  
   
 Published apps are available to users in the Company Portal app and can be installed from there (no admin rights are required).  
-Check the C:\IntuneApps folder on the endpoint for logging etc.  
+Check the `C:\IntuneApps folder` on the endpoint for logging etc.  
   
-Admins looking to manually install can copy the individual app folders to the endpoint and run intune_command.cmd (see above).  
+Admins looking to manually install can copy the individual app folders to the endpoint and run `intune_command.cmd` (see above).  
   
 ## Intune Apps  
 
@@ -91,39 +91,39 @@ For up-to-date information (and to download the IntuneApp system) see here: <htt
   
 ### Setup your App  
 
-- Choose [L] List / Create apps  
-- Choose [B] Browse Winget library for an AppID (e.g. Google.Chrome)  
-- Choose [C] Create a new app  
+- Choose `[L] List / Create apps`  
+- Choose `[B] Browse Winget library` for an AppID (e.g. Google.Chrome)  
+- Choose `[C] Create a new app`  
 - Update the 2 required files `Z:\Apps\Google Chrome\IntuneApp\intune_icon.png`, `intune_settings.csv`  
 - Install, Test, Publish  
   
 ### Install and Test your App  
 
-- Test by running intune_command.cmd (or choose [I] - Install / Uninstall apps)  
-- Requirements - should say REQUIREMENTS_MET on any machine that can have the app (others will say Not available in Intune).  
-- Detected - should say Detected or not detected (if the app is already installed)  
-- Install - installs the app  
-- Uninstall - uninstalls the app  
-- Logs can be found in C:\IntuneApp  
+- Test by running `intune_command.cmd` (or choose `[I] - Install` / Uninstall apps)  
+- `Requirements` - should say `REQUIREMENTS_MET` on any machine that can have the app (others will say Not available in Intune).  
+- `Detected` - should say Detected or not detected (if the app is already installed)  
+- `Install` - installs the app  
+- `Uninstall` - uninstalls the app  
+- Logs can be found in `C:\IntuneApp`  
   
 ### Prep your M365 Org for apps  
 
 - Must be done once per M365 tenant  
-- Choose P - Publish / Unpublish apps  
-- Choose O - Prep an Org for publishing  
+- Choose `P - Publish` / Unpublish apps  
+- Choose `O - Prep` an Org for publishing  
 - Creates the registered app (in Entra) required to publish: IntuneApp Publisher  
 - Requires admin credentials  
   
 ### Publish your app
 
-- Choose P - Publish app  
+- Choose `P - Publish app`  
 - Publishing your app does the following  
-- Puts the app in the company portal so users can self-install manually  
-- Creates your app in the Intune apps list <https://intune.microsoft.com/>  
-- Creates 3 groups (as needed) and attaches them to your app  
-- IntuneApp Windows Users - Will receive mandatory apps (apps having PublishToOrgGroup in settings.csv)  If you want this to be everyone, convert it to a dynamic group with the dynamic rules neeced.  
-- IntuneApp Windows Users Excluded - Are excluded from above  
-- IntuneApp WindowsApp Google Chrome - Users that will get this app (and future versions) even if it isn't mandatory  
+  - Puts the app in the company portal so users can self-install manually  
+  - Creates your app in the Intune apps list <https://intune.microsoft.com/>  
+  - Creates 3 groups (as needed) and attaches them to your app  
+    - IntuneApp Windows Users - Will receive mandatory apps (apps having PublishToOrgGroup in settings.csv)  If you want this to be everyone, convert it to a dynamic group with the dynamic rules neeced.  
+    - IntuneApp Windows Users Excluded - Are excluded from above  
+    - IntuneApp WindowsApp Google Chrome - Users that will get this app (and future versions) even if it isn't mandatory  
   
 ### Manually Installing Apps  
 
@@ -168,18 +168,18 @@ For up-to-date information (and to download the IntuneApp system) see here: <htt
   
 ### AppInstallArgs For Ps1 packages  
   
-- (Optional) Prefix your arguments with the 'ARGS:' keyword  
-- for ps1 with multiple parameters, it's best to use named parameters  
-- ARGS:-var1 xyz -var2 pdq  
-- for ps1 with single parameter, you can just pass the contents  
-- ARGS:use settings file.xml  
+- (Optional) Prefix your arguments with the `ARGS:` keyword  
+- for `ps1` with multiple parameters, it's best to use named parameters  
+`ARGS:-var1 xyz -var2 pdq`  
+- for `ps1` with single parameter, you can just pass the contents  
+`ARGS:use settings file.xml`  
   
 ### AppInstallArgs For msi exe packages  
   
 - (Optional) Prefix your arguments with the 'ARGS:' keyword  
 - for msi usually  
-- ARGS:/quiet  
-- ARGS:/q /norestart  
+`ARGS:/quiet`  
+`ARGS:/q /norestart`  
   
 ### Folder structure  
 
