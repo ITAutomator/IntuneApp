@@ -10,13 +10,15 @@ See here for the admin guide: [pdf](https://github.com/ITAutomator/IntuneApp/blo
 ## Quick Start  
   
 Download IntuneApps  
+
 -------------------------------  
   
 Download as [ZIP](https://github.com/ITAutomator/IntuneApp/archive/refs/heads/main.zip)  
 Or Go [here](https://github.com/ITAutomator/IntuneApp) and click Code (the green button) > Download Zip  
-Extract Zip into C:\IntuneAppMain (or anywhere)  
+Extract Zip into `C:\Intune Packages` or a shared folder `Z:\Intune Packages` (or anywhere)  
   
 Test a pre-packaged installer  
+
 -------------------------------  
   
 This will test a package on your machine.  
@@ -28,6 +30,7 @@ Choose (I)nstall – This will install 7zip
 Note: (D)etect, (R)equirements, (I)nstall, (U)ninstall are the four core Intune actions for Windows packages. Here, you are able to run them manually to see what Intune does behind the scenes.  
   
 Test installing a few apps at once  
+
 -------------------------------  
   
 Open C:\IntuneAppMain and run AppsMenu_Launcher.cmd  
@@ -37,6 +40,7 @@ Choose (I)nstall
 The installers should run for all the apps  
   
 Publish Prep  
+
 -------------------------------  
   
 This will prep your org for publishing  
@@ -49,6 +53,7 @@ These will be checked during the process, but you may need to install these befo
 Follow the prompts to install the publishing app in Entra.  
   
 Publish Apps  
+
 -------------------------------  
   
 This will publish / update apps to your org  
@@ -60,11 +65,13 @@ After publishing the apps, look in Intune for the Apps themselves.
 Look in Entra for assignment groups starting with IntuneApp  
   
 Push (Assign) Apps to Users  
+
 -------------------------------  
   
 This will push apps to endpoint machines  
   
 Published apps are assigned by Entra Groups.  
+
 - IntuneApp Windows Users  
 This group is where mandatory apps get published. Put all your Windows users in this group. It can be dynamic.  
 - IntuneApp Windows Users Excluded  
@@ -73,6 +80,7 @@ This group excludes people from any publishing
 Each app will have a group where you can add people that are supposed to get the app.  
   
 Manually install an App for a User  
+
 -------------------------------  
   
 This is how you can manually install an app (as a user).  
@@ -83,12 +91,13 @@ Check the C:\IntuneApps folder on the endpoint for logging etc.
 Admins looking to manually install can copy the individual app folders to the endpoint and run intune_command.cmd (see above).  
   
 ## Intune Apps  
-    
+
 This app package is structured in a way that's friendly to Intune.  
 The IntuneApp codebase facilitate installing and publishing apps.  
 For up-to-date information (and to download the IntuneApp system) see here: <https://github.com/ITAutomator/IntuneApp>  
   
 Setup your central Apps folder (do this once)  
+
 -------------------------------  
   
 - Create a folder for all your apps                     (Z:\Apps)  
@@ -97,6 +106,7 @@ Setup your central Apps folder (do this once)
 - Double-click the main menu (AppsMenu_Launcher.cmd)  
   
 Setup your App  
+
 -------------------------------  
   
 - Choose [L] List / Create apps  
@@ -106,8 +116,9 @@ Setup your App
 - Install, Test, Publish  
   
 Install and Test your App  
---------------------------------  
-  
+
+-------------------------------  
+
 - Test by running intune_command.cmd (or choose [I] - Install / Uninstall apps)  
 - Requirements - should say REQUIREMENTS_MET on any machine that can have the app (others will say Not available in Intune).  
 - Detected - should say Detected or not detected (if the app is already installed)  
@@ -116,7 +127,8 @@ Install and Test your App
 - Logs can be found in C:\IntuneApp  
   
 Prep your M365 Org for apps  
---------------------------------  
+
+-------------------------------  
   
 - Must be done once per M365 tenant  
 - Choose P - Publish / Unpublish apps  
@@ -124,8 +136,9 @@ Prep your M365 Org for apps
 - Creates the registered app (in Entra) required to publish: IntuneApp Publisher  
 - Requires admin credentials  
   
-Publish your app  
---------------------------------  
+Publish your app
+
+-------------------------------  
   
 - Choose P - Publish app  
 - Publishing your app does the following  
@@ -137,13 +150,15 @@ Publish your app
 - IntuneApp WindowsApp Google Chrome - Users that will get this app (and future versions) even if it isn't mandatory  
   
 Manually Installing Apps  
---------------------------------  
+
+-------------------------------  
   
 - Copy the App folder to the target machine Downloads folder  
 - Run intune_command.cmd and choose Install  
   
 Manually Installing Multiple Apps  
---------------------------------  
+
+-------------------------------  
   
 - Copy the Apps folders to the target machine (e.g. to Downloads folder)  
 - Or use your USB-based installer (see below) and run from there  
@@ -151,13 +166,15 @@ Manually Installing Multiple Apps
 - Run AppsInstall.cmd to install multiple apps without stopping  
   
 Creating a USB-based installer  
---------------------------------  
+
+-------------------------------  
   
 - This is useful to set up a machine without waiting for Intune  
 - Choose [C] - Copy apps (to a USB key)  
 - Copies your Apps to a thumbdrive folder (D:\Apps) using robocopy to make it fast.  
   
 Setting up your App package (Misc Info)  
+
 -------------------------------  
   
 - AppInstaller - one of these installer types  
@@ -175,8 +192,7 @@ Setting up your App package (Misc Info)
 - provide the installer file and any files / folders needed by the installer  
   
 ### AppInstallName For Winget and Chocolatey packages  
-  
-  
+
 - These are the most common package types.  
 - You will need the package id for the AppInstallName settings  
 - For Winget apps search here: <https://winstall.app/>  
@@ -190,8 +206,7 @@ Setting up your App package (Misc Info)
 - for ps1 with single parameter, you can just pass the contents  
 - ARGS:use settings file.xml  
   
-AppInstallArgs For msi exe packages  
--------------------------------  
+### AppInstallArgs For msi exe packages  
   
 - (Optional) Prefix your arguments with the 'ARGS:' keyword  
 - for msi usually  
@@ -199,7 +214,8 @@ AppInstallArgs For msi exe packages
 - ARGS:/q /norestart  
   
 ### Folder structure  
-  
+
+```text
 App Name  
 | intune_command.cmd                                   (Double click to manually launch Intune commands. Optional but convenient)  
 | Misc un-packaged files                               (These files are not copied to Intune)  
@@ -223,3 +239,4 @@ App Name
         | intune_uninstall.ps1                         {App Uninstall}  
         | intune_uninstall_followup_template.ps1       {Template}  
         | README.txt                                   (Readme}  
+```
