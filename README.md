@@ -111,7 +111,7 @@ For up-to-date information (and to download the IntuneApp system) see here: <htt
 - Must be done once per M365 tenant  
 - Choose `P - Publish` / Unpublish apps  
 - Choose `O - Prep` an Org for publishing  
-- Creates the registered app (in Entra) required to publish: IntuneApp Publisher  
+- Creates the registered app (in Entra) required to publish: `IntuneApp Publisher`  
 - Requires admin credentials  
   
 ### Publish your app
@@ -121,9 +121,9 @@ For up-to-date information (and to download the IntuneApp system) see here: <htt
   - Puts the app in the company portal so users can self-install manually  
   - Creates your app in the Intune apps list <https://intune.microsoft.com/>  
   - Creates 3 groups (as needed) and attaches them to your app  
-    - IntuneApp Windows Users - Will receive mandatory apps (apps having PublishToOrgGroup in settings.csv)  If you want this to be everyone, convert it to a dynamic group with the dynamic rules neeced.  
-    - IntuneApp Windows Users Excluded - Are excluded from above  
-    - IntuneApp WindowsApp Google Chrome - Users that will get this app (and future versions) even if it isn't mandatory  
+    - `IntuneApp Windows Users` - Will receive mandatory apps (apps having PublishToOrgGroup in settings.csv)  If you want this to be everyone, convert it to a dynamic group with the dynamic rules neeced.  
+    - `IntuneApp Windows Users Excluded` - Are excluded from above  
+    - `IntuneApp Google Chrome` - Users that will get this app (and future versions) even if it isn't mandatory  
   
 ### Manually Installing Apps  
 
