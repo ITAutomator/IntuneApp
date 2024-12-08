@@ -9,18 +9,14 @@ See here for the admin guide: [pdf](https://github.com/ITAutomator/IntuneApp/blo
   
 ## Quick Start  
   
-Download IntuneApps  
+### Download IntuneApps  
 
--------------------------------  
-  
 Download as [ZIP](https://github.com/ITAutomator/IntuneApp/archive/refs/heads/main.zip)  
-Or Go [here](https://github.com/ITAutomator/IntuneApp) and click Code (the green button) > Download Zip  
+Or Go [here](https://github.com/ITAutomator/IntuneApp) and click "Code" (the green button) > Download Zip  
 Extract Zip into `C:\Intune Packages` or a shared folder `Z:\Intune Packages` (or anywhere)  
   
-Test a pre-packaged installer  
+### Test a pre-packaged installer  
 
--------------------------------  
-  
 This will test a package on your machine.  
   
 Open C:\IntuneAppMain \7zip  
@@ -29,20 +25,16 @@ Choose (D)etect – Look for the last line of info – it should say whether you
 Choose (I)nstall – This will install 7zip  
 Note: (D)etect, (R)equirements, (I)nstall, (U)ninstall are the four core Intune actions for Windows packages. Here, you are able to run them manually to see what Intune does behind the scenes.  
   
-Test installing a few apps at once  
+### Test installing a few apps at once  
 
--------------------------------  
-  
 Open C:\IntuneAppMain and run AppsMenu_Launcher.cmd  
 Choose (I)nstall apps  
 On the list of apps that pops up, ctrl – click (select) one or more apps.  
 Choose (I)nstall  
 The installers should run for all the apps  
   
-Publish Prep  
+### Publish Prep  
 
--------------------------------  
-  
 This will prep your org for publishing  
   
 Choose (P) to begin publishing  
@@ -52,10 +44,8 @@ Modules: There are modules that need to be on the publishing machine: Microsoft.
 These will be checked during the process, but you may need to install these before proceeding.  
 Follow the prompts to install the publishing app in Entra.  
   
-Publish Apps  
+### Publish Apps  
 
--------------------------------  
-  
 This will publish / update apps to your org  
   
 Choose (P) to begin publishing  
@@ -64,10 +54,8 @@ On the list of apps that pops up, ctrl – click (select) one or more apps.
 After publishing the apps, look in Intune for the Apps themselves.  
 Look in Entra for assignment groups starting with IntuneApp  
   
-Push (Assign) Apps to Users  
+### Push (Assign) Apps to Users  
 
--------------------------------  
-  
 This will push apps to endpoint machines  
   
 Published apps are assigned by Entra Groups.  
@@ -79,10 +67,8 @@ This group excludes people from any publishing
 - IntuneApp [Appname]  
 Each app will have a group where you can add people that are supposed to get the app.  
   
-Manually install an App for a User  
+### Manually install an App for a User  
 
--------------------------------  
-  
 This is how you can manually install an app (as a user).  
   
 Published apps are available to users in the Company Portal app and can be installed from there (no admin rights are required).  
@@ -96,28 +82,22 @@ This app package is structured in a way that's friendly to Intune.
 The IntuneApp codebase facilitate installing and publishing apps.  
 For up-to-date information (and to download the IntuneApp system) see here: <https://github.com/ITAutomator/IntuneApp>  
   
-Setup your central Apps folder (do this once)  
+### Setup your central Apps folder (do this once)  
 
--------------------------------  
-  
-- Create a folder for all your apps                     (Z:\Apps)  
-- Copy the !IntuneApp folder here                       (Z:\Apps\!IntuneApp)  
-- Put the main menu here                                (Z:\Apps\AppsMenu_Launcher.cmd and .ps1)  
+- Create a folder for all your apps                     `Z:\Apps`  
+- Copy the !IntuneApp folder here                       `Z:\Apps\!IntuneApp`  
+- Put the main menu here                                `Z:\Apps\AppsMenu_Launcher.cmd` and `.ps1`  
 - Double-click the main menu (AppsMenu_Launcher.cmd)  
   
-Setup your App  
+### Setup your App  
 
--------------------------------  
-  
 - Choose [L] List / Create apps  
 - Choose [B] Browse Winget library for an AppID (e.g. Google.Chrome)  
 - Choose [C] Create a new app  
-- Update the 2 required files (Z:\Apps\Google Chrome\IntuneApp\intune_icon.png, intune_settings.csv  
+- Update the 2 required files `Z:\Apps\Google Chrome\IntuneApp\intune_icon.png`, `intune_settings.csv`  
 - Install, Test, Publish  
   
-Install and Test your App  
-
--------------------------------  
+### Install and Test your App  
 
 - Test by running intune_command.cmd (or choose [I] - Install / Uninstall apps)  
 - Requirements - should say REQUIREMENTS_MET on any machine that can have the app (others will say Not available in Intune).  
@@ -126,20 +106,16 @@ Install and Test your App
 - Uninstall - uninstalls the app  
 - Logs can be found in C:\IntuneApp  
   
-Prep your M365 Org for apps  
+### Prep your M365 Org for apps  
 
--------------------------------  
-  
 - Must be done once per M365 tenant  
 - Choose P - Publish / Unpublish apps  
 - Choose O - Prep an Org for publishing  
 - Creates the registered app (in Entra) required to publish: IntuneApp Publisher  
 - Requires admin credentials  
   
-Publish your app
+### Publish your app
 
--------------------------------  
-  
 - Choose P - Publish app  
 - Publishing your app does the following  
 - Puts the app in the company portal so users can self-install manually  
@@ -149,34 +125,26 @@ Publish your app
 - IntuneApp Windows Users Excluded - Are excluded from above  
 - IntuneApp WindowsApp Google Chrome - Users that will get this app (and future versions) even if it isn't mandatory  
   
-Manually Installing Apps  
+### Manually Installing Apps  
 
--------------------------------  
-  
 - Copy the App folder to the target machine Downloads folder  
 - Run intune_command.cmd and choose Install  
   
-Manually Installing Multiple Apps  
+### Manually Installing Multiple Apps  
 
--------------------------------  
-  
 - Copy the Apps folders to the target machine (e.g. to Downloads folder)  
 - Or use your USB-based installer (see below) and run from there  
 - Copy the !IntuneApp folder and the root AppsMenu files along with your apps  
 - Run AppsInstall.cmd to install multiple apps without stopping  
   
-Creating a USB-based installer  
+### Creating a USB-based installer  
 
--------------------------------  
-  
 - This is useful to set up a machine without waiting for Intune  
 - Choose [C] - Copy apps (to a USB key)  
 - Copies your Apps to a thumbdrive folder (D:\Apps) using robocopy to make it fast.  
   
-Setting up your App package (Misc Info)  
+### Setting up your App package (Misc Info)  
 
--------------------------------  
-  
 - AppInstaller - one of these installer types  
 - winget   Microsoft newish packaging system  
 - choco    Chocolate is a popular pre-Microsoft packaging system (Open source)  
