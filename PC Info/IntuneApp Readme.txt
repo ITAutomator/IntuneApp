@@ -1,19 +1,10 @@
 Description of this App
 -------------------------------
-Additional fonts are installed by this app.
-This is useful for distributing company fonts.
+PC Info provides comprehensive information about your PC
+See <https://www.itautomator.com/generate-pc-info/> for more information.
 
-Sample fonts included here (replace the fonts in the `\Fonts` folder with your fonts)
-Roboto Mono: https://fonts.google.com/specimen/Roboto+Mono
-Tangerine: https://fonts.google.com/specimen/Tangerine
-
-To remove fonts, list the font filenames here: `FontsToRemove.csv`
-```
-FontsToRemove
-font1_toremove.ttf
-font2_toremove.ttf
-font3_toremove.ttf
-```
+An install-free way of running this is press Windows-R (Run) and paste the entire next line:
+powershell -executionpolicy bypass Invoke-Expression (Invoke-WebRequest https://raw.githubusercontent.com/ITAutomator/pcinfo/main/PC%20Info.ps1 -UseBasicParsing).Content
 
 Description of this App
 -------------------------------
