@@ -1,0 +1,2 @@
+Username,DisplayName,Description,Groups,EncryptionKey,Password,Comment
+AdminUser,,This pw is randomly generated.,Administrators,<Random>,<Random>,This is a good account to use for your LAPS admin account (it must exist for LAPS to work with it)

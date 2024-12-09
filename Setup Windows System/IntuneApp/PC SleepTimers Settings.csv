@@ -1,0 +1,5 @@
+Name,Value
+display_battery,5
+sleep_battery,10
+display_plugggedin,10
+sleep_plugggedin,30
