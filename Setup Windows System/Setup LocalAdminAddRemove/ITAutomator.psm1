@@ -70,6 +70,8 @@ If (-not(IsAdmin))
 2024-12-08
 EncryptString Added KeyAsString to allow for string-based keys
 DecryptString Added KeyAsString
+2024-12-01
+CopyFileIfNeeded ($source, $target, $CompareByHashOrDate="hash")
 2024-11-29
 DownloadFileFromWeb
 DownloadFileFromGoogleDrive
@@ -258,7 +260,7 @@ ConvertIPv4ToInt
 ConvertIntToIPv4
 ConvertPSObjectToHashtable
 ContentsHaveChanged - Given an array of strings from 2 files, identifies if they match or not.
-CopyFileIfNeeded  ($source, $target)
+CopyFileIfNeeded ($source, $target, $CompareByHashOrDate="hash")
 CopyFilesIfNeeded ($source, $target,$CompareMethod = "hash", $delete_extra=$false)
 CreateLocalUser($username, $password, $desc, $computername, $GroupsList="Administrators")
 CreateShortcut -lnk_path $lnk_path -SourceExe $exe_path -exe_args $exe_args
@@ -2437,102 +2439,125 @@ Function GetTempFolder (
     New-Item -Type Directory -Path $tempFolderPath | Out-Null
     Return $tempFolderPath
 }
-Function CopyFileIfNeeded ($source, $target)
-# Copies a source file to a target 
-# Only copies files that need copying (based on hash)
-# Returns a list of files with status of each (an array of strings)
-# Usage: 
-#        $retcode, $retmsg= CopyFileIfNeeded $src $trg
-#        $retmsg | Write-Host
-
+Function CopyFileIfNeeded ($source, $target, $CompareByHashOrDate="hash", $TargetIsFolder = $false)
+# Copies a source file to a target file or folder
 {
+    # Only copies files that need copying (based on hash)
+    # Returns status of copy
+    # Usage: 
+    #        $retcode, $retmsg= CopyFileIfNeeded $src $trg
+    #        $retmsg | Write-Host
     $retcode=0 # 0 no files needed copying, 10 files needed copying but OK, 20 Error copying files
     $retmsg=@()
-    ##
-
     if (-not (Test-Path -LiteralPath $source -PathType Leaf))
-    {
+    { # no source file
         $retcode=20
         $retmsg+="ERR:20 Couldn't find source file '$($source)'"
     }
-    
-    if (-not (Test-Path -LiteralPath $target -PathType Container))
-    {
-        $retcode=20
-        $retmsg+="ERR:20 Couldn't find target folder '$($target)'"
-    }
-    else
-    { # Target folder exists
-        $retcode=0 #Assume OK
-        $target_path = Join-Path $target (Split-Path $source -Leaf)
-        if (Test-Path -LiteralPath $target_path -PathType Leaf)
-        { # File exists on both sides
-            $source_check=Get-FileHash $source
-            $target_check=Get-FileHash $target_path
-            if ($source_check.Hash -eq $target_check.Hash)
-            {
-                $files_same=$true
+    else 
+    { # has source file
+        if (Test-Path -LiteralPath $target -PathType Leaf)
+        { # target was passed as a file path (filename might be different)
+            If ($TargetIsFolder) {
+                $retcode=20
+                $retmsg+="ERR:21 There is a conflict. Target is a file, but TargetIsFolder True expects a folder: $($target)"
             }
+        }
+        if ($retcode -eq 0)
+        { # no target error
+            If ($TargetIsFolder) { # target is a folder (might not even exist yet) so use the source filename
+                $target_path = Join-Path $target (Split-Path $source -Leaf)
+            }
+            else { # target is apath
+                $target_path = $target
+            }
+            # check target
+            if (Test-Path -LiteralPath $target_path -PathType Leaf)
+            { # File exists on both sides
+                $File = Get-ChildItem -LiteralPath $source -File
+                if ($CompareByHashOrDate -eq "hash")
+                { #compare by hash
+                    $source_check=Get-FileHash $File.FullName
+                    $target_check=Get-FileHash $target_path
+                    $compareresult = ($source_check.Hash -eq $target_check.Hash)
+                } #compare by hash
+                else
+                { #compare by date,size
+                    $tolerance_secs = 3 # allow for a few seconds of date diff due to OneDrive
+                    $target_file = Get-ChildItem -LiteralPath $target_path -File
+                    $compareresult = ($File.Length -eq $target_file.Length) `
+                    -and ([Math]::Abs(($File.LastWriteTimeUtc - $target_file.LastWriteTimeUtc).TotalSeconds) -lt $tolerance_secs)
+                } #compare by date,size
+                if ($compareresult)
+                {
+                    $files_same=$true
+                }
+                else
+                {
+                    $files_same=$false
+                    $copy_reason="Updated"
+                }
+            } # File exists on both sides
             else
-            {
+            { # No Target file (or folder)
                 $files_same=$false
-                $copy_reason="Updated"
-            }
-        } # File exists on both sides
-        else
-        { # No Target file (or folder)
-            $files_same=$false
-            $copy_reason="Missing"
-        } # No Target file (or folder)
-        #########
-        if ($files_same)
-        { #files_same!
-            $retmsg+= "OK:00 $($source) [already same file]"
-        } #files_same!
-        else
-        { #not files_same
-            New-Item -Type Dir (Split-Path $target_path -Parent) -Force |Out-Null #create folder if needed
-            Copy-Item -LiteralPath $source -destination $target_path -Force
-            $retmsg+= "CP:10 $($source) [$($copy_reason)]"
-            if ($retcode -eq 0) {$retcode=10} #adjust return
-        } #not files_same
-        
-    } # Target folder exists
+                $copy_reason="Missing"
+            } # No Target file (or folder)
+            #########
+            if ($files_same)
+            { #files_same!
+                $retmsg+= "OK:00 $($source) [already same file]"
+            } #files_same!
+            else
+            { #not files_same
+                New-Item -Type Dir (Split-Path $target_path -Parent) -Force | Out-Null #create folder if needed
+                $result = Copy-Item -LiteralPath $source -destination $target_path -Force -PassThru
+                if (-not($result)) {
+                    $retmsg+= "CP:90 $($source) [$($copy_reason) but copy failed]"
+                    if ($retcode -eq 0) {$retcode=90} #adjust return
+                }
+                Else {
+                    $retmsg+= "CP:10 $($source) [$($copy_reason)]"
+                    if ($retcode -eq 0) {$retcode=10} #adjust return
+                }
+            } #not files_same
+        } # no target error
+    } # has source file
     Return $retcode, $retmsg
 }
 Function CopyFilesIfNeeded ($source, $target,$CompareMethod="hash", $delete_extra=$false, $deeply=$true, $excludeFiles=@())
 # Copies the contents of a source folder into a target folder (which must exist)
-# Only copies files that need copying, based on date or hash of contents.
-# Source can be a directory, a file, or a file spec.
-# Target must be a directory (will be created if missing)
-<# Usage:
-    $src = "C:\Downloads\src"
-    $trg = "C:\Downloads\trg"
-    $retcode, $retmsg= CopyFilesIfNeeded $src $trg -CompareMethod "date"
-    $retmsg | Write-Host
-    Write-Host "Return code: $($retcode)"
-#>
-# $comparemethod
-# hash : based on hash (hash computation my take a long time for large files)
-# date : based on date,size
-#
-# $retcode
-# 0    : No files copied
-# 10   : Some files copied
-# 90   : Some files failed
-#
-# $delete_extra
-# false : extra files in target are left alone (default)
-# true  : extra files in target are deleted. resulting empty folders also deleted. Careful with this.
-#
-# $deeply
-# true  : subdirs are included (default)
-# false : no subdirs are traversed
-#
-# $retmsg
-# Returns a list of files with status of each (an array of strings)
-#
 {
+    # Only copies files that need copying, based on date or hash of contents.
+    # Source can be a directory, a file, or a file spec.
+    # Target must be a directory (will be created if missing)
+    <# Usage:
+        $src = "C:\Downloads\src"
+        $trg = "C:\Downloads\trg"
+        $retcode, $retmsg= CopyFilesIfNeeded $src $trg -CompareMethod "date"
+        $retmsg | Write-Host
+        Write-Host "Return code: $($retcode)"
+    #>
+    # $comparemethod
+    # hash : based on hash (hash computation my take a long time for large files)
+    # date : based on date,size
+    #
+    # $retcode
+    # 0    : No files copied
+    # 10   : Some files copied
+    # 90   : Some files failed
+    #
+    # $delete_extra
+    # false : extra files in target are left alone (default)
+    # true  : extra files in target are deleted. resulting empty folders also deleted. Careful with this.
+    #
+    # $deeply
+    # true  : subdirs are included (default)
+    # false : no subdirs are traversed
+    #
+    # $retmsg
+    # Returns a list of files with status of each (an array of strings)
+    #
     $retcode=0 # 0 no files needed copying, 10 files needed copying but OK, 20 Error copying files
     $retmsg=@()
     ##
@@ -2623,7 +2648,7 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod="hash", $delete_extr
             } #files_same!
             else
             { #not files_same
-                New-Item -Type Dir (Split-Path $target_path -Parent) -Force |Out-Null #create folder if needed
+                New-Item -Type Dir (Split-Path $target_path -Parent) -Force | Out-Null #create folder if needed
                 $result = Copy-Item -LiteralPath $File.FullName -destination $target_path -Force -PassThru
                 if (-not($result)) {
                     $retmsg+= "CP:90 $($file.FullName.Replace($sourceroot,'')) [$($copy_reason) but copy failed]"

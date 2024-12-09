@@ -14,6 +14,15 @@ See here for the admin guide: [pdf](https://github.com/ITAutomator/IntuneApp/blo
 Download as [ZIP](https://github.com/ITAutomator/IntuneApp/archive/refs/heads/main.zip)  
 Or Go [here](https://github.com/ITAutomator/IntuneApp) and click `Code` (the green button) `> Download Zip`  
 Extract Zip into `C:\Apps` or a shared folder `Z:\Apps` (or anywhere)  
+
+### Unblock Downloaded Files  
+
+Windows native security will [block](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/unblock-file?view=powershell-7.4) downloaded .cmd and .ps1 files.  
+You can unblock each .cmd manually via File > Properties > Unblock  
+Or use these steps to unblock all the code files at once  
+Open `Z:\Apps` and run `AppsMenu_Launcher.cmd`  (Click run anyway on the block message)
+Choose `[L] - List / Create apps`  
+Choose `[U] - Unblock any downloaded apps`  
   
 ### Test a pre-packaged installer  
 
@@ -23,7 +32,8 @@ Open `Z:\Apps\7zip`
 Double click `intune_command.cmd`  
 Choose `(D)etect` – Look for the last line of info – it should say whether you already have 7zip.  
 Choose `(I)nstall` – This will install 7zip  
-Note: `(D)etect`, `(R)equirements`, `(I)nstall`, `(U)ninstall` are the four core Intune actions for Windows packages. Here, you are able to run them manually to see what Intune does behind the scenes.  
+Note: `(D)etect`, `(R)equirements`, `(I)nstall`, `(U)ninstall` are the four core Intune actions for Windows packages.  
+Here, you are able to run them manually to see what Intune does behind the scenes.  
   
 ### Test installing a few apps at once  
 
@@ -40,9 +50,12 @@ This will prep your org for publishing
 Choose `(P) Publish` to begin publishing  
 Choose `(O) Org Prep` a new Org for publishing apps  
 Enter your org’s primary domain name.  
-Modules: There are modules that need to be on the publishing machine: Microsoft.Graph and IntuneWin32App  
-These will be checked during the process, but you may need to install these before proceeding.  
 Follow the prompts to install the publishing app in Entra.  
+A note about modules.
+Modules: These modules need to be on the publishing machine: 
+`Microsoft.Graph` 
+`IntuneWin32App`   
+Use the `(M) Modules` menu to install them. Using the `Relaunch as (A)dmin` option is recommended so that modules are installed machine-wide.  
   
 ### Publish Apps  
 

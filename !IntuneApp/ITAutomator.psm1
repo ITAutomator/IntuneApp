@@ -67,6 +67,9 @@ If (-not(IsAdmin))
 ########################################################################
 <# 
 # Version History
+2024-12-08
+EncryptString Added KeyAsString to allow for string-based keys
+DecryptString Added KeyAsString
 2024-12-01
 CopyFileIfNeeded ($source, $target, $CompareByHashOrDate="hash")
 2024-11-29
@@ -717,14 +720,23 @@ Function CreateLocalUser($username, $password, $desc, $computername, $GroupsList
 			}
         }
     }
-Function EncryptString ($StringToEncrypt, $Key)
+Function EncryptString ($StringToEncrypt, $Key = $null, $KeyAsString = "")
     {
-    if (-not ($Key)) ## default to a simple key
-        {
-        [Byte[]] $key = (1..16)
-        }
     $EncryptedSS = ConvertTo-SecureString -AsPlainText -Force -String $StringToEncrypt
-    $Encrypted = ConvertFrom-SecureString -key $key -SecureString $EncryptedSS
+    if ($KeyAsString -eq "") {
+        if (-not ($Key)) { ## default to a simple key
+            [Byte[]] $Key = (1..16)
+        }
+    } # no KeyAsString
+    else {  # KeyAsString
+        # Input string (could be any length), convert the string to bytes and hash it using SHA256
+        $longkey = [System.Text.Encoding]::UTF8.GetBytes($KeyAsString)
+        $hashedKey = (New-Object System.Security.Cryptography.SHA256Managed).ComputeHash($longkey)
+        # Use the first 16, 24, or 32 bytes, depending on the encryption requirements
+        # Use the first 32 bytes for a 256-bit key
+        $Key = $hashedKey[0..31]
+    } # KeyAsString
+    $Encrypted = ConvertFrom-SecureString -key $Key -SecureString $EncryptedSS
     return $Encrypted
 }
 Function EncryptStringSecure ($StringToEncrypt)
@@ -733,17 +745,25 @@ Function EncryptStringSecure ($StringToEncrypt)
     $Encrypted = ConvertFrom-SecureString -SecureString $EncryptedSS
     return $Encrypted
 }
-Function DecryptString ($StringToDecrypt, $Key)
-    {
-    if (-not ($Key)) ## default to a simple key
-        {
-        [Byte[]] $key = (1..16)
+Function DecryptString ($StringToDecrypt, $Key = $null, $KeyAsString = "")
+{
+    if ($KeyAsString -eq "") {
+        if (-not ($Key)) { ## default to a simple key
+            [Byte[]] $Key = (1..16)
         }
+    } # no KeyAsString
+    else {  # KeyAsString
+        # Input string (could be any length), convert the string to bytes and hash it using SHA256
+        $longkey = [System.Text.Encoding]::UTF8.GetBytes($KeyAsString)
+        $hashedKey = (New-Object System.Security.Cryptography.SHA256Managed).ComputeHash($longkey)
+        # Use the first 16, 24, or 32 bytes, depending on the encryption requirements
+        # Use the first 32 bytes for a 256-bit key
+        $Key = $hashedKey[0..31]
+    } # KeyAsString
     $StringToDecryptSS= ConvertTo-SecureString -Key $key -String $StringToDecrypt
     $Decrypted=(New-Object System.Management.Automation.PSCredential 'N/A', $StringToDecryptSS).GetNetworkCredential().Password
     return $Decrypted
 }
-
 Function DecryptStringSecure ($StringToDecrypt)
     {
     $StringToDecryptSS= ConvertTo-SecureString -String $StringToDecrypt

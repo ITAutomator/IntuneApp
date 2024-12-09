@@ -107,40 +107,24 @@ Start-Transcript -path $Transcript | Out-Null
 Write-Host "-----------------------------------------------------------------------------"
 Write-Host "$($scriptName) $($scriptVer)       Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
 Write-Host ""
-Write-Host " Lists Apps. Creates a basic App."
+Write-Host " Lists and creates apps."
 Write-Host ""
-Write-Host "-----------------------------------------------------------------------------"
 $pkg_root = Split-Path $scriptDir -Parent
 $showmenu = $true
-$showlist = $true
 Do {
-    if ($showlist)
-    { # show list
-        $sResult,$pkgobjs=GetPackages -search_root $pkg_root
-        $pkglist = $pkgobjs | Select-Object `
-        @{Name = 'AppName'          ; Expression = {$_.AppName}} `
-        ,@{Name = 'PublishToOrgGroup'; Expression = {if ($_.PublishToOrgGroup) {"Yes"} }} `
-        ,@{Name = 'AppDescription'   ; Expression = {CropString $_.AppDescription.Replace("`n","").Replace("`r","")}} | Sort-object AppName
-        Write-host ($pkglist | Format-table | Out-String)
-        Write-Host "Result: $($sResult)"
-    }
-    else
-    { # don't show list
-        # flip it back to true for next time
-        $showlist = $true
-    }
     Write-Host "-----------------------------------------------------------------------------"
 	Write-Host "Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major)"
     Write-Host $scriptName -ForegroundColor Green -nonewline
-    Write-Host " Main menu"
+    Write-Host " Menu"
     Write-Host "-----------------------------------------------------------------------------"
     Write-Host "L - List apps (to screen)"
     Write-Host "E - Export apps list to csv file"
     Write-Host "O - Open apps folder in explorer"
+    Write-Host "U - Unblock any downloaded apps (Ticks the Unblock option in file properties)"
     Write-Host "B - Browse winget for app ids"
     Write-Host "C - Create a new app (using wizard)"
     Write-Host "-----------------------------------------------------------------------------"
-    $choices = "E&xit","&List apps","&Export to CSV","&Open apps folder","&Browse Winget for app ids","&Create a new app"
+    $choices = "E&xit","&List apps","&Export to CSV","&Open apps folder","&Unblock","&Browse Winget for app ids","&Create a new app"
     $choicen = AskForChoice "Choice:" -Choices ($choices) -DefaultChoice 0
     $choice  = $choices[$choicen].Replace("&","")
     if ($choice -eq "Exit")
@@ -150,6 +134,50 @@ Do {
     elseif ($choice -eq "List apps")
     { # List
         Write-Host "Refreshing list..." 
+        $sResult,$pkgobjs=GetPackages -search_root $pkg_root
+        $pkglist = $pkgobjs | Select-Object `
+        @{Name = 'AppName'          ; Expression = {$_.AppName}} `
+        ,@{Name = 'PublishToOrgGroup'; Expression = {if ($_.PublishToOrgGroup) {"Yes"} }} `
+        ,@{Name = 'AppDescription'   ; Expression = {CropString $_.AppDescription.Replace("`n","").Replace("`r","")}} | Sort-object AppName
+        Write-host ($pkglist | Format-table | Out-String)
+        Write-Host "Result: $($sResult)"
+    }
+    elseif ($choice -eq "Unblock")
+    { # List
+        Write-Host "Unblocking all app files ... "
+        $count_unblocked = 0
+        $count_untouched = 0
+        $folder = Split-Path $scriptDir -Parent
+        if (-not (Test-Path $folder)) {
+            Write-Host "Couldn't find folder: $($folder)"
+            PressEnterToContinue
+            Continue
+        }
+        Write-Host "Unblocking: " -NoNewline
+        Write-Host $folder -ForegroundColor Green -NoNewline
+        Write-Host " ..."
+        Get-ChildItem -Path $folder -File -Recurse | ForEach-Object {
+            # Check if the file is blocked by looking for the "Zone.Identifier" ADS
+            if (Test-Path -LiteralPath "$($_.FullName):Zone.Identifier") {
+                try {
+                    # Unblock the file
+                    Unblock-File -Path $_.FullName
+                    # Write-Host "Unblocked: $($_.FullName)" -ForegroundColor Green
+                    $count_unblocked += 1
+                } catch {
+                    Write-Host "Failed to unblock: $($_.FullName) - $_" -ForegroundColor Red
+                }
+            } else {
+                # Write-Host "File is not blocked: $($_.FullName)" -ForegroundColor Yellow
+                $count_untouched += 1
+            }
+        }
+        # Get-ChildItem -Path "$($env:USERPROFILE)\Downloads" -Recurse | Unblock-File
+        Write-Host "              Files unblocked: " -NoNewline
+        Write-Host $count_unblocked -ForegroundColor Yellow
+        Write-Host "Files already where unblocked: " -NoNewline
+        Write-Host $count_untouched -ForegroundColor Green
+        PressEnterToContinue
     }
     elseif ($choice -eq "Export to CSV")
     { # Export
