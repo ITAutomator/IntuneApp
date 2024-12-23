@@ -153,9 +153,6 @@ $scriptVer      = "v"+(Get-Item $scriptFullname).LastWriteTime.ToString("yyyy-MM
 $psm1="$($scriptDir)\ITAutomator.psm1";if ((Test-Path $psm1)) {Import-Module $psm1 -Force} else {write-output "Err 99: Couldn't find '$(Split-Path $psm1 -Leaf)'";Start-Sleep -Seconds 10;Exit(99)}
 # Get-Command -module ITAutomator  ##Shows a list of available functions
 ######################
-#######################
-## Main Procedure Start
-#######################
 $Arch = GetArchitecture # Get OS Arch type (x64 or ARM64)
 $CmdLineInfo = "(none)"
 if ($mode -ne ''){
@@ -175,7 +172,7 @@ Write-Host "Use [A] dd to ingest a new printer and driver to your list from the 
 Write-Host "Use [U] pdate to update drivers (or add ARM drivers to an existing driver folder) using the current device's drivers."
 Write-Host "Use [S] etup to apply this list to the current device. (Use -mode auto to automate)"
 Write-Host ""
-Write-Host "Note: You will need to be an admin to remove ports, but you can still remove printers as non-admin"
+Write-Host "Note: You will need to be an admin to remove drivers, but you can still remove printers as non-admin"
 $PrnCSVPathAdd = "$($scriptDir)\$($scriptBase) PrintersToAdd.csv"
 $PrnCSVPathRmv = "$($scriptDir)\$($scriptBase) PrintersToRemove.csv"
 $PrnCSVSettings = "$($scriptDir)\$($scriptBase) Settings.csv"
@@ -342,7 +339,7 @@ Do { # action
             PressEnterToContinue
         } # found intune_settings.csv
     } # intune_settings
-    if ($choice -in ("U","A")) {
+    if ($choice -in ("U","A","S","O")) {
         # Update, Add: need a list of drivers from pnputil extraction tool
         $pnpdrivers = PNPUtiltoObject "pnputil.exe /enum-drivers"
     }
@@ -589,6 +586,7 @@ Do { # action
         Write-Host "----- Printers Before Setup -----------------" -ForegroundColor Yellow
         (($PrintersNum       | Select-Object Num,Name,DriverName,PortName | Format-Table -AutoSize | Out-String) -split "`r?`n")| Where-Object { $_.Trim() -ne "" } | Write-Host
         Write-Host ""
+        #region PrnCSVRowsRmv
         if (($choice -eq "S") -and ($PrnCSVRowsRmv.count -gt 0))
             { # Remove
                 # filter PrintersToRemove for printers we have
@@ -596,42 +594,19 @@ Do { # action
                 $i = 0
                 foreach ($x in $entries)
                 { #each printer to remove
+                    $i+=1
                     $printername   = $x.("Name")
                     $printerdriver = $x.("DriverName")
                     $printerport   = $x.("PortName")
-                    $i++
-                    write-host "-----Printer $($printername)----- $($i) of $($entries.count) Printers to Remove"
-                    $processed++
-                    ####### Start code for object $x
-                    Try {
-                        Remove-Printer -Name $printername
-                        Write-Host "$($printername) removed"
-                    }
-                    Catch { # catch
-                        $ErrorMessage = $_.Exception.Message
-                        $FailedItem = $_.Exception.ItemName
-                        Write-Warning "Could not remove $($printername) $($FailedItem)- $($ErrorMessage)"
-                    } # catch   
-                    Try {
-                        Remove-PrinterDriver -Name $printerdriver -RemoveFromDriverStore -ErrorAction Stop
-                        Write-Host "Driver $($printerdriver) removed"
-                    }
-                    Catch { # catch
-                        $ErrorMessage = $_.Exception.Message
-                        $FailedItem = $_.Exception.ItemName
-                        Write-Warning "Could not remove $($printerdriver) $($FailedItem)- $($ErrorMessage)"
-                    } # catch
-                    Try {
-                        Remove-PrinterPort -Name $printerport -ErrorAction Stop
-                        Write-Host "Port $($printerport) removed"
-                    }
-                    Catch { # catch
-                        $ErrorMessage = $_.Exception.Message
-                        $FailedItem = $_.Exception.ItemName
-                        Write-Warning "Could not remove $($printerport) $($FailedItem)- $($ErrorMessage)"     
-                    } # catch   
+                    write-host "----- Removing $($i) of $($entries.count): $($printername)"
+                    $strReturn = RemovePrinter $printername
+                    if ($strReturn.StartsWith("ERR")) {
+                        $strWarnings += $strReturn
+                    } # removeprinter error
                 } #each printer to remove
             } # Remove
+        #endregion PrnCSVRowsRmv
+        #region PrnCSVRowsAdd
         if ($PrnCSVRowsAdd.count -eq 0)
         { # no printers in csv
             Write-Host "No Printers in CSV"
@@ -653,8 +628,10 @@ Do { # action
                     $entries = $PrnCSVRowsAdd[$choice-1]
                 }
             } # Setup one
+            $i = 0
             ForEach ($item in $entries)
             { ## each entry
+                $i += 1
                 $printername  = $item.("Printer")
                 $inffile      = $item.("Driver-$($Arch)")
                 $infDriverName= ($inffile -split "\\")[0]
@@ -662,7 +639,7 @@ Do { # action
                 $comments     = $item.("Comments")
                 $location     = $item.("Location")
                 $settings     = $item.("Settings")
-                Write-Host "----------------- $($printername) -----------------"
+                write-host "----- Adding $($i) of $($entries.count): $($printername)"
                 if ($choice -eq "N") { # Uninstall
                     $strReturn = RemovePrinter $printername
                     Write-Host $strReturn
@@ -671,59 +648,54 @@ Do { # action
                     } # removeprinter error
                     Continue # move to next entry
                 } # Uninstall
+                if ($choice -ne "N") { # Setup or One
+                    if ($Printers.Name -contains $printername) {
+                        Write-Host "OK: skipping (already has this printer)"
+                        Continue # move to next entry
+                    } # skip if printer already here
+                } # Uninstall
                 if ($inffile -eq "") {
                     Write-Host "No driver for this CPU Arch (skipping): $($Arch)"
                     Continue # move to next entry
                 }
                 $OKtoinstall = $true
-                ######## Port
-                if ($printerports | Where-Object Name -eq $port)
-                {
+                ######## Add Port
+                if ($printerports | Where-Object Name -eq $port) {
                     Write-Host "OK: Port $($port) already exists"
                 }
                 Else
-                { ## no port
-                    if (!(IsAdmin)) {
-                        $strWarning = "ERR: Admin privs required to add port '$($port)'.  (Re-run as admin)"
+                { ## no port already: add
+                    Try {  
+                        Add-PrinterPort -Name $port -PrinterHostAddress $port
+                        Write-Host "OK: Added Port $($port)"
+                    }
+                    Catch { # catch
+                        $ErrorMessage = $_.Exception.Message
+                        $FailedItem = $_.Exception.ItemName
+                        $strWarning = "ERR: Port $($FailedItem). The error message was $($ErrorMessage)"
                         Write-Host $strWarning -ForegroundColor Yellow
                         $strWarnings += $strWarning
                         $OKtoinstall = $false
-                    }
-                    else
-                    { #is admin
-                        Try {  
-                            Add-PrinterPort -Name $port -PrinterHostAddress $port
-                            Write-Host "OK: Added Port $($port)"
-                        }
-                        Catch { # catch
-                            $ErrorMessage = $_.Exception.Message
-                            $FailedItem = $_.Exception.ItemName
-                            $strWarning = "ERR: Port $($FailedItem). The error message was $($ErrorMessage)"
-                            Write-Host $strWarning -ForegroundColor Yellow
-                            $strWarnings += $strWarning
-                            $OKtoinstall = $false
-                            #Break
-                        } # catch
-                    } #is admin
-                } ## no port
-                ######## Driver
+                        #Break
+                    } # catch
+                } ## no port already: add
+                ######## Add Driver
                 $printDriverExists = Get-PrinterDriver -Name $infDriverName -ErrorAction SilentlyContinue
-                if ($printDriverExists)
-                {
+                if ($printDriverExists) {
                     Write-Host "OK: Driver $($infDriverName) already exists"
-                }
+                } # driver already exists
                 Else
-                { # no driver installed   
+                { # no driver already: add   
                     if  ([string]::IsNullOrEmpty($inffile))
                     { #empty csv
-                        $strWarning = "ERR: The driver $($infDriverName) doesn't exist and no .inf file was specified"
+                        $strWarning = "ERR: The .inf file entry $("Driver-$($Arch)") is empty in the CSV"
                         Write-Host $strWarning -ForegroundColor Yellow
                         $strWarnings += $strWarning
                         $OKtoinstall = $false
                     } #empty csv
                     else
                     { #nonempty csv
-                        ### Search for driver in these paths
+                        # Search for driver in these paths
                         $inffilepaths=@()
                         $inffilepaths+="$($scriptDir)\Drivers\$($Arch)\$($inffile)"
                         $inffilefound = $false
@@ -741,48 +713,55 @@ Do { # action
                             $OKtoinstall = $false 
                         }
                         else
-                        { #found file
-                            if (!(IsAdmin)) {
-                                $strWarning ="ERR: Admin privs required to add driver '$($inffile)'.  (Re-run as admin)"
+                        { #found driver file
+                            Write-Host "OK: Adding Driver $($infDriverName)"
+                            #region driverstore
+                            $inf_orig = Split-Path $inffile -leaf
+                            $pnp = $pnpdrivers | Where-Object {$_."Original Name" -eq $inf_orig}
+                            if (-not $pnp)
+                            { # not in driverstore: add to driverstore
+                                if (!(IsAdmin)) {
+                                    $strWarning ="ERR: Admin privs required to add driver '$($inffile)'.  (Re-run as admin)"
+                                    Write-Host $strWarning -ForegroundColor Yellow
+                                    $strWarnings += $strWarning
+                                    $OKtoinstall = $false
+                                }
+                                else
+                                { #is admin
+                                    # Add Driver to Windows Driver store area using pnputil
+                                    Try {
+                                        Write-Host "--- Adding Driver"
+                                        Write-Host "> pnputil.exe /add-driver $(Split-Path $inffilepath -Leaf) /install" -ForegroundColor Green
+                                        pnputil.exe /add-driver $inffilepath /install | Out-Host
+                                        Write-Host "---"
+                                    }
+                                    Catch { # catch
+                                        $ErrorMessage = $_.Exception.Message
+                                        $FailedItem = $_.Exception.ItemName
+                                        $strWarning = "ERR: pnputil $($FailedItem). The error message was $($ErrorMessage)"
+                                        Write-Host $strWarning -ForegroundColor Yellow
+                                        $strWarnings += $strWarning
+                                        $OKtoinstall = $false
+                                    } # catch
+                                } #is admin
+                                # Add-PrinterDriver from Windows Driver store area
+                            } # not in driverstore: add to driverstore
+                            #endregion driverstore
+                            Try {
+                                Add-PrinterDriver -Name $infDriverName -ErrorAction Stop
+                            }
+                            Catch { # catch
+                                $ErrorMessage = $_.Exception.Message
+                                $FailedItem = $_.Exception.ItemName
+                                $strWarning = "ERR: Add-PrinterDriver $($FailedItem). The error message was $($ErrorMessage)"
                                 Write-Host $strWarning -ForegroundColor Yellow
                                 $strWarnings += $strWarning
                                 $OKtoinstall = $false
-                            }
-                            else
-                            { #is admin
-                                Write-Host "OK: Adding Driver $($infDriverName)"
-                                ### check to make sure admin first
-                                Try {
-                                    ### Add Driver to Windows Driver store area using pnputil
-                                    Write-Host "--- Adding Driver"
-                                    Write-Host "> pnputil.exe /add-driver $(Split-Path $inffilepath -Leaf) /install" -ForegroundColor Green
-                                    pnputil.exe /add-driver $inffilepath /install | Out-Host
-                                    Write-Host "---"
-                                }
-                                Catch { # catch
-                                    $ErrorMessage = $_.Exception.Message
-                                    $FailedItem = $_.Exception.ItemName
-                                    $strWarning = "ERR: pnputil $($FailedItem). The error message was $($ErrorMessage)"
-                                    Write-Host $strWarning -ForegroundColor Yellow
-                                    $strWarnings += $strWarning
-                                    $OKtoinstall = $false
-                                } # catch
-                                Try {   
-                                    Add-PrinterDriver -Name $infDriverName
-                                }
-                                Catch { # catch
-                                    $ErrorMessage = $_.Exception.Message
-                                    $FailedItem = $_.Exception.ItemName
-                                    $strWarning = "ERR: Add-PrinterDriver $($FailedItem). The error message was $($ErrorMessage)"
-                                    Write-Host $strWarning -ForegroundColor Yellow
-                                    $strWarnings += $strWarning
-                                    $OKtoinstall = $false
-                                } # catch
-                            } #is admin
-                        } #found file
+                            } # catch
+                        } #found driver file
                     } #nonempty csv
-                } #no driver installed
-                ######## Printer
+                } # no driver already: add
+                # Install the Printer, now that the port and driver are established
                 if (!($OKtoinstall)) {
                     $strWarning = "ERR: Not installing printer due to above warnings: $($printername)"
                     Write-Host $strWarning -ForegroundColor Yellow
@@ -800,8 +779,9 @@ Do { # action
                         $strWarning = "ERR: Can't replace exising printer [try manual deletion]: $($printername)"
                         Write-Host $strWarning -ForegroundColor Yellow
                         $strWarnings += $strWarning
-                    }
-                    Else { # Add Printer
+                    } # couldn't remove old printer
+                    Else 
+                    { # Add Printer
                         $AddedOK=$false
                         # comments 
                         if([string]::IsNullOrEmpty($comments)) {
@@ -873,7 +853,7 @@ Do { # action
                                 }# each setting
                             } # settings
                         }# add printer
-                    } # couldn't remove old printer
+                    } # Add Printer
                 } # ok to install
             } ## each entry
             #
@@ -885,7 +865,7 @@ Do { # action
             # Add numbered columns (for menu selection)
             $PrinterPortsNum   = $PrinterPorts   | ForEach-Object -Begin {$i = 1} -Process {$_ | Add-Member -MemberType NoteProperty -Name "Num" -Value $i -PassThru | Add-Member -MemberType NoteProperty -Name "Used By" -Value ($Printers | Where-Object Port -eq $_.Name | Select-Object Name -ExpandProperty Name) -PassThru; $i++}
             $PrinterDriversNum = $PrinterDrivers | ForEach-Object -Begin {$i = 1} -Process {$_ | Add-Member -MemberType NoteProperty -Name "Num" -Value $i -PassThru | Add-Member -MemberType NoteProperty -Name "Used By" -Value ($Printers | Where-Object DriverName -eq $_.Name | Select-Object Name -ExpandProperty Name) -PassThru; $i++}
-            $PrintersNum      = $Printers       | ForEach-Object -Begin {$i = 1} -Process {$_ | Add-Member -MemberType NoteProperty -Name "Num" -Value $i -PassThru; $i++}
+            $PrintersNum       = $Printers       | ForEach-Object -Begin {$i = 1} -Process {$_ | Add-Member -MemberType NoteProperty -Name "Num" -Value $i -PassThru; $i++}
             # 
             Write-Host "----- Printers After Setup -----------------" -ForegroundColor Yellow
             (($PrintersNum       | Select-Object Num,Name,DriverName,PortName | Format-Table -AutoSize | Out-String) -split "`r?`n")| Where-Object { $_.Trim() -ne "" } | Write-Host
@@ -896,6 +876,7 @@ Do { # action
             }
             PressEnterToContinue
         } # printers in csv
+        #endregion PrnCSVRowsAdd
     } # setup all, one or uninstall
 } While ($true) # loop until Break 
 Write-Host "Done"
