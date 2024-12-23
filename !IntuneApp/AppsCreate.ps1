@@ -156,19 +156,28 @@ Do {
         Write-Host "Unblocking: " -NoNewline
         Write-Host $folder -ForegroundColor Green -NoNewline
         Write-Host " ..."
-        Get-ChildItem -Path $folder -File -Recurse | ForEach-Object {
+        $files = Get-ChildItem -Path $folder -File -Recurse
+        ForEach ($file in $files) {
             # Check if the file is blocked by looking for the "Zone.Identifier" ADS
-            if (Test-Path -LiteralPath "$($_.FullName):Zone.Identifier") {
+            #Write-Host $count_untouched $count_unblocked $file.FullName
+            $zoneIdentifierPath = '"'+ $file.FullName + '":Zone.Identifier'
+            $isblocked = $false
+            Try {
+                $isblocked = Test-Path -LiteralPath $zoneIdentifierPath
+            } catch {
+                $isblocked = $true
+            }
+            if ($isblocked) {
                 try {
                     # Unblock the file
-                    Unblock-File -Path $_.FullName
-                    # Write-Host "Unblocked: $($_.FullName)" -ForegroundColor Green
+                    Unblock-File -Path $file.FullName
+                    # Write-Host "Unblocked: $($file.FullName)" -ForegroundColor Green
                     $count_unblocked += 1
                 } catch {
-                    Write-Host "Failed to unblock: $($_.FullName) - $_" -ForegroundColor Red
+                    Write-Host "Failed to unblock: $($file.FullName) - $file" -ForegroundColor Red
                 }
             } else {
-                # Write-Host "File is not blocked: $($_.FullName)" -ForegroundColor Yellow
+                # Write-Host "File is not blocked: $($file.FullName)" -ForegroundColor Yellow
                 $count_untouched += 1
             }
         }

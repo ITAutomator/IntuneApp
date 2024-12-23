@@ -69,6 +69,8 @@ if ($package_objs.count -eq 0)
     Exit 0
 }
 #region target
+# $target_folder = PromptForString -Prompt "Enter a target folder (X to cancel)" -defaultValue $Globals.target_folder
+# if ("X" -eq $target_folder) {write-host "Aborted by user.";return $null}
 $target_folder = $Globals.target_folder
 $msg = "Enter a target folder."
 Write-Host $msg

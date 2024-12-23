@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Teams for Business-v120")
+    $IntuneAppValues.Add("AppName","Teams for Business-v121")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Microsoft.Teams")
     $IntuneAppValues.Add("AppInstallArgs","")

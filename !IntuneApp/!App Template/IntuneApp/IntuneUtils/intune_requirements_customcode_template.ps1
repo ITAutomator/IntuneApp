@@ -1,22 +1,25 @@
 <# -------- Custom Requirements code
 Put your custom code here
-delete this file from your package if it is not needed. It normally isn't needed.
+Delete this file from your package if it is not needed. Normally, it is not needed.
 
 Return value
-$true if requirements met, $false if not met
+$true indicates requirements are met, $false indicates requirements are not met.
+If requiremeents are met, the app will be considered installable and the setup script will run.
+If requiremeents are not met, the machine will be considered inapplicable for the app to be installed.
 
 Intune
 Intune will show 'Not applicable' for those device where requirements aren't met
 
 Notes
 $requirements_met is assumed true coming in to this script
-Writehost commands, once injected, will be converted to WriteLog commands, and will log text to the Intune log (c:\IntuneApps)
-This is because requirements checking gets tripped up by writehost so nothing should get displayed at all.
-This must be a stand-alone script - no local files are available, it will be copied to a temp folder and run under system context.
+WriteHost commands, once injected, will be converted to WriteLog commands, and will log text to the Intune log (c:\IntuneApps)
+This is because requirements checking gets tripped up by write-host (and write-output) so only use write-host for informational display.
+Do not allow Write-Output or unintentional ouput, other than the return value.
+This must be a stand-alone script with no local files available. It will be copied to a temp folder and run under system context.
 However this script is a child process of intune_requirements.ps1, and has those functions and variables available to it.
-For instance, $intuneapp.appvar1-5 which is injected from the intune_settings.csv, is usable.
-To debug this script, put a break in the script and run the parent ps1 file mentioned above.
-Do not allow Write-Output or other unintentional ouput, other than the return value.
+For instance, $IntuneApp.AppVar1 ... $IntuneApp.AppVar5 are injected from the intune_settings.csv, and are usable.
+To debug this script, put a break in the script and run the parent ps1 file (Requirements).
+Detection and Requirements scripts are run every few hours (for all required apps), so they should be conservative with resources.
  
 #>
 # $requirements_met is assumed true coming in to this script

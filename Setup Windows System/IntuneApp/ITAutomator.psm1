@@ -2,21 +2,19 @@
 # ITAutomator.psm1 copyright(c) ITAutomator
 # https://www.itautomator.com
 # 
-# Library of useful functions for PowerShell Programmers.
-#
+# Library of useful functions for PowerShell Programmers
 ########################################################################
 
 ########################################################################
-<# 
+<###### Sample ps1 Code
 ####
 # Usage: 
 # To use these functions in your .ps1 file put this .psm1 in the same folder as your .ps1.
 # Then put this sample code at the top of your .ps1 and adjust as needed.
 ####
-
-##################################
+######################
 ### Parameters
-##################################
+######################
 Param 
 	( 
 	 [string] $mode = "manual" #auto       ## -mode auto (Proceed without user input for automation. use 'if ($mode -eq 'auto') {}' in code)
@@ -24,9 +22,9 @@ Param
     ,[switch] $sampleswparam  = $false     ## -sampleswparam (use 'if ($sampleswparam) {}' in code)
 	)
 
-##################################
+######################
 ### Functions
-##################################
+######################
 
 ######################
 ## Main Procedure
@@ -64,9 +62,18 @@ If (-not(IsAdmin))
     ErrorMsg -Fatal -ErrCode 101 -ErrMsg "This script requires Administrator priviledges, re-run with elevation (right-click and Run as Admin)"
 }
 #>
-########################################################################
-<# 
-# Version History
+<###### Version History
+2024-12-19
+GetArchitecture
+PNPUtiltoObject ($pnpcmd = "pnputil.exe /enum-drivers") 
+2024-12-18
+GetWhoisData now recognizes the need for eula in double-byte format
+2024-12-13
+PromptForString
+PressEnterToContinue prompt option
+AskForChoice ReturnString option
+2024-12-12
+AskForChoice ShowMenu option
 2024-12-08
 EncryptString Added KeyAsString to allow for string-based keys
 DecryptString Added KeyAsString
@@ -235,11 +242,7 @@ CopyFilesIfNeeded ($source, $target,$CompareMethod = "hash")
 2016-05-22
 - Changed RegSet to create key if doesn't exist
 #>
-
-########################################################################
-
-<# 
-#### Alphabetical list of functions
+<###### Alphabetical list of functions
 Add-IntToIPv4Address
 AddToCommaSeparatedString
 AppNameVerb ($AppName, $VerbStartsWith)
@@ -285,6 +288,7 @@ FolderCreate -Logfolder "C:\LogFolder"
 FolderDelete
 FolderSize $source
 FromUnixTime 
+GetArchitecture
 Get-CredentialInFile
 Get-FileMetaData
 Get-FileMetaData2
@@ -312,8 +316,10 @@ ParseToken - Given a string with open and close delimeters (can be multi-char), 
 PathtoExe ($Exe)
 Pause ($Message="Press any key to continue.")
 PauseTimed
-Function PressEnterToContinue
+PNPUtiltoObject ($pnpcmd = "pnputil.exe /enum-drivers") 
+PressEnterToContinue
 PowershellVerStop ($minver)
+PromptForString
 RegDel ($keymain, $keypath, $keyname)
 RegGet ($keymain, $keypath, $keyname)
 RegGetX ($keymain, $keypath, $keyname)
@@ -516,9 +522,9 @@ Function PauseTimed ()
             }
         }
     }
-Function PressEnterToContinue
+Function PressEnterToContinue ($Prompt = "Press <Enter> to continue")
 {
-    Read-Host "Press <Enter> to continue" | Out-Null
+    Read-Host $Prompt | Out-Null
 }
 Function GlobalsSave ($Globals, $scriptXML)
     {
@@ -1874,6 +1880,24 @@ Function VarExists
 	    $false
     }
 }
+function PromptForString ($Prompt = "Enter your choice", $defaultValue = "")
+{
+    if ([string]::IsNullOrWhiteSpace($defaultValue)) {
+    }
+    else {
+        $defaultPrompt = "Press Enter for default: "
+        $defaultPrompt = $defaultPrompt.PadLeft($Prompt.Length +2, ' ')  # Line up the 2 prompts
+        Write-Host $defaultPrompt -NoNewline
+        Write-Host $defaultValue -ForegroundColor Yellow
+        $Prompt = $Prompt.PadLeft($defaultPrompt.Length - 2, ' ') # Line up the 2 prompts
+    }
+    $userInput = Read-Host -Prompt $Prompt
+    # Use the default value if the user presses Enter without typing anything
+    if ([string]::IsNullOrWhiteSpace($userInput)) {
+        $userInput = $defaultValue
+    }
+    Return $userInput
+}
 Function AskForChoice
 {
     ### Presents a list of choices to user
@@ -1883,27 +1907,49 @@ Function AskForChoice
     # Choosedefault doesn't stop to ask anything - just displays choice made
     ###
     <# Sample code
-    # Show a menu of choices
-    $msg= "Select an Action"
-    $actionchoices = @("&Select cert","&Delete cert","Back to &Cert Menu")
-    $action=AskForChoice -message $msg -choices $actionchoices -defaultChoice 0
-    Write-Host "Action : $($actionchoices[$action].Replace('&',''))"
-    if ($action -eq 1)
-    { Write-host "Delete" }
-    # Show Continue? and Exit
-    if ((AskForChoice) -eq 0) {Write-Host "Aborting";Start-Sleep -Seconds 3; exit}
-    # Kind of like Pause but with a custom key and msg
-    $x=AskForChoice -message "All Done" -choices @("&Done") -defaultChoice 0
+    $choices = "E&xit","&List","&Export","&Open"
+    $choicen = AskForChoice "Choice:" -Choices ($choices) -DefaultChoice 0 -ShowMenu -ReturnString
+    if ($choice -eq "Exit")
+    { # Exit
+        Exit
+    }
+    # Kind of like Pause or PressEnterToContinue but with a custom key and msg
+    $x = AskForChoice -message "All Done" -choices @("&Done") -defaultChoice 0
     #>
-    Param($Message="Continue?", $Choices=$null, $DefaultChoice=0, [Switch]$ChooseDefault=$false)
+    Param( $Message="Continue?"
+        , $Choices=$null                  # an array of strings (choices)
+        , $DefaultChoice = 0              # default to 1st entry
+        , [Switch] $ChooseDefault=$false  # Don't prompt user, just pick the default
+        , [Switch] $ShowMenu=$false       # Show a multi-line menu
+        , [Switch] $ReturnString=$false)  # Return the string (instead of 0-n)
     $yesno=$false
     if (-not $Choices)
     {
         $Choices=@("&Yes","&No")
         $yesno=$true # We really want No to be 0, but 0 is always the first element (Yes)
     }
-    ## If ISE, show prompt, since it's hidden from host, or if it wasn't shown by choosedefault
-    If (($Host.Name -ne "ConsoleHost") -or ($ChooseDefault))
+    If ($ShowMenu)
+    { # ShowMenu
+        Write-Host "$($message)" 
+        Write-Host "".PadLeft($Message.Length, '-') # -----------
+        For ($i = 0; $i -lt $Choices.Count; $i++)
+        {
+            if ($Choices[$i].Contains("&")) {
+                $bracketchar = $Choices[$i].Split("&")[1][0] # My&Choice becomes C
+            }
+            else {
+                $bracketchar = ""
+            }
+            $line = "[$($bracketchar)] "
+            $line += $Choices[$i].Replace('&','')
+            If ($i -eq $DefaultChoice) {
+                $line += " (Default)"
+            }
+            Write-Host $line
+        }
+    } # ShowMenu
+    ## show prompt text: if ISE since it's hidden from text output, or if choosedefault was selected
+    If (($Host.Name -eq "Windows PowerShell ISE Host") -or ($ChooseDefault))
     {
         Write-Host "$($message) (" -NoNewline
         For ($i = 0; $i -lt $Choices.Count; $i++)
@@ -1934,7 +1980,12 @@ Function AskForChoice
     {
         If ($choice -eq 0) {$choice=1} else {$choice=0}
     }
-    Return $choice
+    if ($ReturnString) {
+        Return $choices[$choice].Replace("&","")
+    }
+    else {
+        Return $choice
+    }
     ###
 }
 Function ArrayRemoveDupes {
@@ -3566,7 +3617,9 @@ Function GetWhoisData ($domain, $cache_hrs = 5, $exename = "whois.exe", $whoisex
 				# Write-Host "DEBUG: $($domain) Error $($error[0].ToString())"
 			}
 			$ErrorActionPreference = $EAC #restore existing
-			if ($whoisexe_output -match "You must accept EULA")
+            $eula = "You must accept EULA"
+            $whoisexe_output_ascii = -join ($whoisexe_output.ToCharArray() | Where-Object { $_ -ne "`0" }) # utf8? eliminate blank bytes
+			if (($whoisexe_output -match $eula) -or ($whoisexe_output_ascii -match $eula))
 			{
 				Write-Host "Must accept EULA. Pausing 5s..." -ForegroundColor Green
 				Start-Sleep 5
@@ -4183,5 +4236,51 @@ function DownloadFileFromWebOrGoogleDrive {
     }
     $retVal
 }
+
+Function GetArchitecture
+{
+    $architecture = $ENV:PROCESSOR_ARCHITECTURE
+    switch ($architecture) {
+        "AMD64" { "x64" }
+        "ARM64" { "ARM64" }
+        "x86"   { "x86" }
+        default { "Unknown architecture: $architecture" }
+    }
+}
+Function PNPUtiltoObject($pnpcmd = "pnputil.exe /enum-drivers") 
+{ # PNPUtiltoObject
+    ### Converts the output of pnputil command into a powershell object
+    #$pnpcmd = "pnputil.exe /enum-drivers"
+    #$pnpcmd = "pnputil.exe -e"
+    $pnpout= Invoke-Expression $pnpcmd
+    $pnp_objs=@()
+    $cols=@()
+    foreach ($line in $pnpout)
+        { ## foreach line
+        if ($line -ne "Microsoft PnP Utility")
+            { #not file header
+            if (-not $line.Contains(":"))
+                {   #### line feed - save row
+                if ($cols)
+                    {$pnp_obj=@([pscustomobject][ordered]@{})
+                    foreach ($col in $cols) {
+                        $pnp_obj | Add-Member -MemberType NoteProperty -Name $col.Name -Value $col.Data
+                    }
+                    $pnp_objs += $pnp_obj
+                    }
+                $cols=@()
+                }   #### line feed - save row
+            else
+                {   #### collect this row's columns
+                $col_obj=@([pscustomobject][ordered]@{
+                    Name=$line.Substring(0,$line.Indexof(":")).Trim()
+                    Data=$line.Substring($line.Indexof(":")+1).Trim()
+                })
+                $cols+=$col_obj
+                }   #### collect this row's columns
+            } #not file header
+        } ## foreach line
+    $pnp_objs
+} # PNPUtiltoObject
 
 # END OF FILE

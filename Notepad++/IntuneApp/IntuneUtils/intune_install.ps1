@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Notepad++-v192")
+    $IntuneAppValues.Add("AppName","Notepad++-v193")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Notepad++.Notepad++")
     $IntuneAppValues.Add("AppInstallArgs","")

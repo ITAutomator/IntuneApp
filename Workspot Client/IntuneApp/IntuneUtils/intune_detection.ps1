@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Workspot Client-v110")
+    $IntuneAppValues.Add("AppName","Workspot Client-v111")
     $IntuneAppValues.Add("AppInstaller","msi")
     $IntuneAppValues.Add("AppInstallName","WorkspotClientSetup64.msi")
     $IntuneAppValues.Add("AppInstallArgs","/quiet AllUsers=1 RdpInitialMultiMon=true CacheLastUser=true")

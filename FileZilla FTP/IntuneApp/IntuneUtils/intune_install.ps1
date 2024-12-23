@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","FileZilla FTP-v104")
+    $IntuneAppValues.Add("AppName","FileZilla FTP-v105")
     $IntuneAppValues.Add("AppInstaller","choco")
     $IntuneAppValues.Add("AppInstallName","filezilla")
     $IntuneAppValues.Add("AppInstallArgs","")

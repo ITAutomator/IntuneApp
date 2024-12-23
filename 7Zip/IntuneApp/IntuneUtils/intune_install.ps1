@@ -32,12 +32,12 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","7Zip-v170")
+    $IntuneAppValues.Add("AppName","7Zip-v172")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","7zip.7zip")
     $IntuneAppValues.Add("AppInstallArgs","")
     $IntuneAppValues.Add("AppUninstallName","")
-    $IntuneAppValues.Add("AppUninstallVersion","22")
+    $IntuneAppValues.Add("AppUninstallVersion","24.9")
     $IntuneAppValues.Add("AppUninstallProcess","*7z*")
     $IntuneAppValues.Add("SystemOrUser","system")
     $IntuneAppValues.Add("Function","intune_install.ps1")

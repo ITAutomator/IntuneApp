@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Lenovo System Update-v120")
+    $IntuneAppValues.Add("AppName","Lenovo System Update-v121")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Lenovo.SystemUpdate")
     $IntuneAppValues.Add("AppInstallArgs","")

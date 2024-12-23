@@ -17,10 +17,10 @@ Extract Zip into `C:\Apps` or a shared folder `Z:\Apps` (or anywhere)
 
 ### Unblock Downloaded Files  
 
-Windows native security will [block](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/unblock-file?view=powershell-7.4) downloaded .cmd and .ps1 files.  
-You can unblock each .cmd manually via File > Properties > Unblock  
-Or use these steps to unblock all the code files at once  
-Open `Z:\Apps` and run `AppsMenu_Launcher.cmd`  (Click run anyway on the block message)
+Windows native security will [block](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/unblock-file?view=powershell-7.4) downloaded `.cmd` and `.ps1` files.  
+You can unblock each `.cmd` manually via *File > Properties > Unblock*  
+Or use these steps to unblock all the code files at once:  
+Open `Z:\Apps` and double-click `AppsMenu_Launcher.cmd`  (Click *More info > Run anyway* on the block message)  
 Choose `[L] - List / Create apps`  
 Choose `[U] - Unblock any downloaded apps`  
   

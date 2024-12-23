@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Google Chrome-v183")
+    $IntuneAppValues.Add("AppName","Google Chrome-v184")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Google.Chrome")
     $IntuneAppValues.Add("AppInstallArgs","")

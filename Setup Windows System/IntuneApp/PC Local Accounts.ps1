@@ -1,4 +1,4 @@
-Param ## provide a comma separated list of switches
+Param ## provide a comma separated list of switches 
 	(
 	[string] $mode = "manual" #auto
 	)

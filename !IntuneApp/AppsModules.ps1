@@ -46,16 +46,26 @@ Function ModuleAction ($module="<none>",$action="update")
             Write-Host "$($gmneedsupd.count) version needs updating. (Use Uninstall / Reinstall if needed)" -ForegroundColor Yellow
             $sReturn = "ERR: $($gmneedsupd.count) version needs updating."
         }
+        # any module at all?
+        if ($gms.count -eq 0) {
+            $sReturn = "OK: Module not installed"
+        }
     } # check
     else
     { # action ne check
         ForEach ($gm in $gms)
         { # each module that needs an update
-            if ($gm.NeedsAdmin -ne (IsAdmin))
+            $IsAdmin = IsAdmin
+            #if ($gm.NeedsAdmin -ne ($IsAdmin))
+            if ($gm.NeedsAdmin -and (-not $IsAdmin))
             { # admin / user conflict
                 $bOk=$false
-                Write-Host "Can't update a system level module as user. [$($gm.modulebase)]"
-
+                if ($gm.NeedsAdmin) {
+                    Write-Host "Can't update a system level module as user. [$($gm.modulebase)]"
+                }
+                else {
+                    Write-Host "Can't update a user level module as admin. [$($gm.modulebase)]"
+                }
             }
             else
             { # admin / user ok
@@ -84,7 +94,10 @@ Function ModuleAction ($module="<none>",$action="update")
                                 # is the module folder now empty? (remove it)
                                 $DirectoryPath = Split-Path $gm.ModuleBase -parent
                                 if ((Get-ChildItem -Path $DirectoryPath -Recurse | Measure-Object).Count -eq 0) {
-                                    Remove-Item $DirectoryPath
+                                    Remove-Item $DirectoryPath -ErrorAction SilentlyContinue
+                                    if (Test-Path $DirectoryPath) {
+                                        Write-Host "Removal of empty parent folder failed: $($DirectoryPath)"
+                                    }
                                 } # remove parent
                             } # removed ok
                         } # force remove?
@@ -146,12 +159,15 @@ Write-Host ""
 Write-Host "Microsoft.Graph modules should be updated to the same version (at the same time)"
 Write-Host "-----------------------------------------------------------------------------"
 Write-Host ""
-$modules = @()
-$modules+="IntuneWin32App"
-$modules+="Microsoft.Graph.Authentication"
-$modules+="Microsoft.Graph.Users"
-$modules+="Microsoft.Graph.Groups"
-$modules+="Microsoft.Graph.Devices.CorporateManagement"
+$csvfile = "$($scriptDir)\$($scriptBase).csv"
+if (-not (Test-path $csvfile)) {
+    Write-Host "Couldn't find csv file: $($csvfile)"
+}
+$rows = Import-Csv $csvfile
+$modules = $rows.modules
+if (-not $modules){
+    Write-Host "Couldn't find 'modules' column in file: $($csvfile)"
+}
 Do { # choose a module
     $i = 0
     Write-Host "Modules:" -ForegroundColor Yellow
@@ -176,28 +192,58 @@ Do { # choose a module
     $bMenuFirstDisplay=$true
     if ($module)
     { # has a module
+        $NeedsUpdate = $true
+        $NeedsUpdateMsg = ""
+        $HasModule = $true
         Do { # action
             if ($bMenuFirstDisplay){
                 $sReturn = ModuleAction -module $module -action "check"
+                if ($sReturn.StartsWith("OK")) {
+                    $NeedsUpdate = $false
+                }
+                else {
+                    $NeedsUpdateMsg = $sReturn.Replace("ERR:","")
+                }
+                if ($sReturn -match "Module not installed") {
+                    $HasModule = $false
+                }
                 $bMenuFirstDisplay = $false
             }
             Write-Host "------------------"
             Write-Host "Module: " -NoNewline
             Write-Host $module -ForegroundColor Green
-            Write-Host "IsAdmin: $(IsAdmin)" -ForegroundColor Yellow
-            if (isAdmin) {
-                Write-Host "A - Relaunch as admin" -ForegroundColor DarkGray
+            $IsAdmin = IsAdmin
+            #Write-Host "IsAdmin: $($IsAdmin)" -ForegroundColor Yellow
+            #$choices = @("E&xit this module","Relaunch as &Admin","&Check","Up&date","&Uninstall","&Install","&Reinstall")
+            $choices = @("E&xit this module","&Check")
+            Write-Host "C - Check Version"
+            if ($isAdmin) {
+                Write-Host "A - Relaunch as admin (is admin already)" -ForegroundColor DarkGray
             }
             else {
-                Write-Host "A - Relaunch as admin"
+                Write-Host "A - Relaunch as admin (is not admin)"
+                $choices += "Relaunch as &Admin"
             }
-            Write-Host "C - Check Version"
-            Write-Host "D - Update"
-            Write-Host "U - Uninstall"
+            if ($NeedsUpdate) {
+                Write-Host "D - Update ($($NeedsUpdateMsg))"
+                $choices += "Up&date"
+            }
+            else {
+                Write-Host "D - Update (at latest version now)" -ForegroundColor DarkGray
+            }
             Write-Host "I - Install"
-            Write-Host "R - Reinstall (Uninstall / Install)"
+            $choices += "&Install"
+            if ($HasModule) {
+                Write-Host "U - Uninstall"
+                Write-Host "R - Reinstall (Uninstall / Install)"
+                $choices += "&Uninstall"
+                $choices += "&Reinstall"
+            }
+            else {
+                Write-Host "U - Uninstall" -ForegroundColor DarkGray
+                Write-Host "R - Reinstall (Uninstall / Install)" -ForegroundColor DarkGray
+            }
             Write-Host "------------------"
-            $choices = @("E&xit this module","Relaunch as &Admin","&Check","Up&date","&Uninstall","&Install","&Reinstall")
             $choicenum = AskforChoice -Message "What do you want to do." -choices $choices -DefaultChoice 0
             $choice = $choices[$choicenum].replace("&","")
             if ($choice -eq "Exit this module") {
@@ -205,7 +251,7 @@ Do { # choose a module
             }
             elseif ($choice -eq "Relaunch as Admin")
             { # elevate
-                if (IsAdmin) {
+                if ($IsAdmin) {
                     "This process is already elevated as admin."
                     PressEnterToContinue
                 }
@@ -214,13 +260,17 @@ Do { # choose a module
                 }
             }
             else
-            { # install
-                if ((-not (IsAdmin)) -and ($choice -eq "install"))
+            { # Check Update Uninstall Install Reinstall
+                if ((-not ($IsAdmin)) -and ($choice -eq "install"))
                 {
                     If (0 -eq (AskForChoice "Are you sure you want to install as non-admin (in the user context)?"))
                     {Continue}
                 }
                 $sReturn = ModuleAction -module $module -action $choice
+                if ($choice -ne "check") {
+                    # Write-host "Result: $($sReturn)"
+                    $bMenuFirstDisplay = $true
+                }
             }
             #
             Start-Sleep 2

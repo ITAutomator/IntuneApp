@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","OpenConnect-Gui VPN client-v119")
+    $IntuneAppValues.Add("AppName","OpenConnect-Gui VPN client-v120")
     $IntuneAppValues.Add("AppInstaller","choco")
     $IntuneAppValues.Add("AppInstallName","openconnect-gui")
     $IntuneAppValues.Add("AppInstallArgs","")
