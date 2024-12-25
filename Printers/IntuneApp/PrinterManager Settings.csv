@@ -1,7 +1,11 @@
 Description,Settings
 Default,
 LetterColor,"Papersize=Letter,Collate=False,Color=True"
-LetterGreyscale,"Papersize=Letter,Collate=False,Color=False"
+LetterBlackandwhite,"Papersize=Letter,Collate=False,Color=False"
 LetterColorDuplex,"Papersize=Letter,Collate=False,Color=True,DuplexingMode=TwoSidedLongEdge"
-LetterGreyscaleDuplex,"Papersize=Letter,Collate=False,Color=False,DuplexingMode=TwoSidedLongEdge"
+LetterBlackandwhiteDuplex,"Papersize=Letter,Collate=False,Color=False,DuplexingMode=TwoSidedLongEdge"
 A4Color,"Papersize=A4,Collate=False,Color=True"
+A4Color,"Papersize=A4,Collate=False,Color=True"
+A4Blackandwhite,"Papersize=A4,Collate=False,Color=False"
+A4ColorDuplex,"Papersize=A4,Collate=False,Color=True,DuplexingMode=TwoSidedLongEdge"
+A4BlackandwhiteDuplex,"Papersize=A4,Collate=False,Color=False,DuplexingMode=TwoSidedLongEdge"
