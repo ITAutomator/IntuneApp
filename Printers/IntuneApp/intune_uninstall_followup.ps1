@@ -7,5 +7,5 @@ $scriptBase     = $scriptName.Substring(0, $scriptName.LastIndexOf('.'))
 ## -------- Custom Uninstaller
 ################## Run ps1
 $ps1 = "$($scriptDir)\PrinterManager.ps1"
-& $ps1 -mode N
+& $ps1 -mode U
 ################## Run ps1

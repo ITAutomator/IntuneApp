@@ -32,9 +32,9 @@ Main Menu
 --------------- Printer Manager Menu ------------------  
 [S] Setup all the CSV printers (to this PC)  PC <-- CSV  
 [O] Setup one CSV printer (to this PC)       PC <-- CSV  
-[U] Update a driver to the \Drivers folder   PC --> CSV  
+[V] Update a driver to the \Drivers folder   PC --> CSV  
 [A] Add a local printer to CSV list          PC --> CSV  
-[N] Uninstall the CSV listed printers        PC (X) CSV  
+[U] Uninstall the CSV listed printers        PC (X) CSV  
 [R] Local printer deletion                   PC (X)  
 [D] Local driver deletion                    PC (X)  
 [P] Local port deletion                      PC (X)  
@@ -110,7 +110,7 @@ Use menu choice S or menu choice O to install the printers.
 [O] Setup one CSV printer (to this PC)  
   
 Use menu choice N to Uninstall the printers.  
-[N] Uninstall the CSV listed printers          
+[U] Uninstall the CSV listed printers          
 Scripted installation of the printers  
 We recommend using the IntuneApp app package system as the easiest way of distributing the printer package.  
 Alternatively, use the -mode S command line to automate installations.  
@@ -118,7 +118,7 @@ Alternatively, use the -mode S command line to automate installations.
 PrinterManager.ps1 -mode S  
 This will automatically make the menu choice S and install the printers.  
   
-PrinterManager.ps1 -mode N  
+PrinterManager.ps1 -mode U  
 This will automatically make the menu choice N and uninstall the printers.  
   
 PrinterManager.ps1 -mode T  

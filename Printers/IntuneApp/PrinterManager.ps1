@@ -25,7 +25,7 @@ function RemovePrinter {
         Remove-Printer -Name $printername -ErrorAction Stop
         # Verify removal
         if (Get-Printer |Where-Object Name -eq $printername) {
-            $strWarnings += "ERR: Printer not removed: $($printername)"
+            $strWarnings += "ERR: Printer remains after: Remove-Printer -Name `"$($printername)`""
             $printerremoved = $false
         }
         else {
@@ -71,9 +71,7 @@ function RemovePrinter {
         } # there were warnings
     } # printer was removed
     else {
-        if ($strWarnings.count -eq 0) {
-            $strReturn = "ERR: Printer not removed: $($printername). Warnings: $($strWarnings -join ", ")"
-        }
+        $strReturn = "ERR: Printer not removed: $($printername). Warnings: $($strWarnings -join ", ")"
     } # printer wasn't removed
     return $strReturn
 }
@@ -169,7 +167,7 @@ Write-Host ""
 Write-Host "This script uses two CSV files and a Drivers folder to create a package for setting up a list of printers."
 Write-Host ""
 Write-Host "Use [A] dd to ingest a new printer and driver to your list from the current device."
-Write-Host "Use [U] pdate to update drivers (or add ARM drivers to an existing driver folder) using the current device's drivers."
+Write-Host "Use [V] to update driVers (or add ARM drivers to an existing driver folder) using the current device's drivers."
 Write-Host "Use [S] etup to apply this list to the current device. (Use -mode auto to automate)"
 Write-Host ""
 Write-Host "Note: You will need to be an admin to remove drivers, but you can still remove printers as non-admin"
@@ -231,9 +229,9 @@ Do { # action
     Write-Host "--------------- Printer Manager Menu ------------------"
     Write-Host "[S] Setup all the CSV printers (to this PC)  PC <-- CSV"
     Write-Host "[O] Setup one CSV printer (to this PC)       PC <-- CSV"
-    Write-Host "[U] Update a driver to the \Drivers folder   PC --> CSV"
+    Write-Host "[V] Update a driver to the \Drivers folder   PC --> CSV"
     Write-Host "[A] Add a local printer to CSV list          PC --> CSV"
-    Write-Host "[N] Uninstall the CSV listed printers        PC (X) CSV"
+    Write-Host "[U] Uninstall the CSV listed printers        PC (X) CSV"
     Write-Host "[R] Local printer deletion                   PC (X)"
     Write-Host "[D] Local driver deletion                    PC (X)"
     Write-Host "[P] Local port deletion                      PC (X)"
@@ -339,7 +337,7 @@ Do { # action
             PressEnterToContinue
         } # found intune_settings.csv
     } # intune_settings
-    if ($choice -in ("U","A","S","O")) {
+    if ($choice -in ("V","A","S","O")) {
         # Update, Add: need a list of drivers from pnputil extraction tool
         $pnpdrivers = PNPUtiltoObject "pnputil.exe /enum-drivers"
     }
@@ -391,7 +389,7 @@ Do { # action
             PressEnterToContinue
         } # chose port
     } # port removal
-    if ($choice -in "U","D")
+    if ($choice -in "V","D")
     { # update/delete driver
         if (-not ($PrinterDriversNum)) {
             Write-Host "There are no Drivers (Excluding $($DrvrMfrsToExclude -join ', '))"
@@ -565,8 +563,8 @@ Do { # action
     } # add to csv
     if ($choice -in ("T")) {
         # Has printers from CSV. Note if a printer is in both CSVs it will be ignored from removal considerations (won't be reinstalled)
-        $PrnCSVRowsAdd | Where-object "Driver-$($Arch)" -ne "" | Where-object Printer -NotIn $Printers.Name | ForEach-Object {$strWarnings += "PC is missing printer in PrintersToAdd.CSV: $($_.Printer)"}
-        $PrnCSVRowsRmv | Where-object PrintersToRemove -NotIn $PrnCSVRowsAdd.Printer | Where-object PrintersToRemove -In $Printers.Name | ForEach-Object {$strWarnings += "PC has a printer in PrintersToRemove.CSV: $($_.PrintersToRemove)"}
+        $PrnCSVRowsAdd | Where-object "Driver-$($Arch)" -ne "" | Where-object Printer -NotIn $Printers.Name | ForEach-Object {$strWarnings += "PC is missing printer from PrintersToAdd.CSV: $($_.Printer)"}
+        $PrnCSVRowsRmv | Where-object PrintersToRemove -NotIn $PrnCSVRowsAdd.Printer | Where-object PrintersToRemove -In $Printers.Name | ForEach-Object {$strWarnings += "PC has a printer from PrintersToRemove.CSV: $($_.PrintersToRemove)"}
         if ($mode -eq "") {
             if ($strWarnings.count -eq 0) {
                 Write-Host "OK: PC is up-to-date with the CSV files" -ForegroundColor Green
@@ -581,7 +579,7 @@ Do { # action
             Break
         }
     } # # Has printers from CSV
-    if ($choice -in "S","O","N")
+    if ($choice -in "S","O","U")
     { # setup all, one or uninstall 
         Write-Host "----- Printers Before Setup -----------------" -ForegroundColor Yellow
         (($PrintersNum       | Select-Object Num,Name,DriverName,PortName | Format-Table -AutoSize | Out-String) -split "`r?`n")| Where-Object { $_.Trim() -ne "" } | Write-Host
@@ -628,6 +626,7 @@ Do { # action
                     $entries = $PrnCSVRowsAdd[$choice-1]
                 }
             } # Setup one
+            if ($choice -eq "U") { $action = "Uninstalling"} else {$action = "Adding"}
             $i = 0
             ForEach ($item in $entries)
             { ## each entry
@@ -639,8 +638,8 @@ Do { # action
                 $comments     = $item.("Comments")
                 $location     = $item.("Location")
                 $settings     = $item.("Settings")
-                write-host "----- Adding $($i) of $($entries.count): $($printername)"
-                if ($choice -eq "N") { # Uninstall
+                write-host "----- $($action) $($i) of $($entries.count): $($printername)"
+                if ($choice -eq "U") { # Uninstall
                     $strReturn = RemovePrinter $printername
                     Write-Host $strReturn
                     if ($strReturn.StartsWith("ERR")) {
@@ -648,7 +647,7 @@ Do { # action
                     } # removeprinter error
                     Continue # move to next entry
                 } # Uninstall
-                if ($choice -ne "N") { # Setup or One
+                if ($choice -ne "U") { # Setup or One
                     if ($Printers.Name -contains $printername) {
                         Write-Host "OK: skipping (already has this printer)"
                         Continue # move to next entry

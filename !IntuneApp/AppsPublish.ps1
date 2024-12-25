@@ -823,8 +823,8 @@ Do
                 Write-Host "NOT FOUND" -ForegroundColor Red
                 Write-Host "If you have never published to this Org, this is OK, it will be created during publishing process."
                 Write-host "If you have published and the group has been renamed, rename them back to these values, then press [N] to check again."
-                Write-Host $OrgValues.PublishToGroupIncluded -NoNewline -ForegroundColor Yellow
-                Write-Host $OrgValues.PublishToGroupExcluded -NoNewline -ForegroundColor Yellow
+                Write-Host $OrgValues.PublishToGroupIncluded -ForegroundColor Yellow
+                Write-Host $OrgValues.PublishToGroupExcluded -ForegroundColor Yellow
                 if (-not (AskForChoice))
                 {Continue} # skip process
             }
