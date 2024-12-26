@@ -1,5 +1,6 @@
 
 # Printer Manager Readme
+See Github to download and for details: https://github.com/ITAutomator/IntuneApp/tree/main/Printers  
 
 ## Overview
 
