@@ -7,12 +7,6 @@ Use Printer Manager to automatically set up a standard list of printers on your 
 It works by ingesting printer drivers from a working PC and then packaging it for distribution. It handles both Intel and ARM drivers.  
 
 Printer Manager is Intune and script friendly and designed to work within the IntuneApp system.
-![image](https://github.com/user-attachments/assets/f4f85559-853d-4814-82cb-85be2ac488b7)
-
-
----
-
-## Printer Manager Main Menu
 
 The program uses three key components, all added via the Printer Manager main menu:
 
@@ -24,7 +18,10 @@ The program uses three key components, all added via the Printer Manager main me
 
 3. **IntuneApp/Drivers**  
    A folder of drivers used to install the added printers.  
-   Both x64 and ARM64 drivers can be included.
+   Both x64 and ARM64 drivers can be included.  
+   
+Printer Manager Main Menu  
+![image](https://github.com/user-attachments/assets/f4f85559-853d-4814-82cb-85be2ac488b7)
 
 ---
 
