@@ -155,3 +155,11 @@ We recommend using the IntuneApp system for distribution. Alternatively, use com
 
 - `PrinterManager.ps1 -mode T`  
   Detects if printers are already installed.
+
+
+---
+
+## More information
+
+See also: https://www.itautomator.com/intuneapp
+See also: https://github.com/ITAutomator/IntuneApp 
