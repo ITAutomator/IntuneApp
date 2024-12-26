@@ -173,7 +173,7 @@ This will automatically make the menu choice S and install the printers.
 
 This will automatically make the menu choice U and uninstall the printers.
 
-PrinterManager.ps1 -mode T
+`PrinterManager.ps1 -mode T`
 
 This will automatically make the menu choice T to detect if the printers are installed.
 
