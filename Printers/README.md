@@ -44,25 +44,25 @@ Right-click and run `PrinterManager (as Admin).cmd` to start the main menu.
 
 ```
 --------------- Printer Manager Menu ------------------  
-\[S\] Setup all the CSV printers (to this PC) PC \<-- CSV  
-\[O\] Setup one CSV printer (to this PC) PC \<-- CSV  
-\[V\] Update a driver to the \Drivers folder PC --\> CSV  
-\[A\] Add a local printer to CSV list PC --\> CSV  
-\[U\] Uninstall the CSV listed printers PC (X) CSV  
-\[R\] Local printer deletion PC (X)  
-\[D\] Local driver deletion PC (X)  
-\[P\] Local port deletion PC (X)  
-\[E\] Edit CSV Files manually CSV  
-\[T\] Detect if PC has CSV printers already CSV  
-\[I\] Prep intune_settings.csv with these printers (for IntuneApp)  
-\[X\] Exit
+(S) Setup all the CSV printers (to this PC) PC \<-- CSV  
+(O) Setup one CSV printer (to this PC) PC \<-- CSV  
+(V) Update a driver to the \Drivers folder PC --\> CSV  
+(A) Add a local printer to CSV list PC --\> CSV  
+(U) Uninstall the CSV listed printers PC (X) CSV  
+(R) Local printer deletion PC (X)  
+(D) Local driver deletion PC (X)  
+(P) Local port deletion PC (X)  
+(E) Edit CSV Files manually CSV  
+(T) Detect if PC has CSV printers already CSV  
+(I) Prep intune_settings.csv with these printers (for IntuneApp)  
+(X) Exit
 ```
 
 ## Add a Printer
 
 On a PC with the printer already installed use menu choice A.
 
-`\[A\] Add a local printer to CSV list`
+`(A) Add a local printer to CSV list`
 
 This will add the printer to the CSV and copy the drivers to the Drivers folder.
 
@@ -74,7 +74,7 @@ Repeat adding as many printers as needed.
 
 To fine tune your list use menu choice E
 
-`\[E\] Edit CSV Files manually`
+`(E) Edit CSV Files manually`
 
 This will allow you to edit the list of printers.
 
@@ -85,12 +85,12 @@ Here you can also adjust the IP numbers if they change.
 | Column Name | Example Contents | Explanation |
 |------------------|-------------------------|------------------------------|
 | Printer | Contoso Room 101 Copier | Printer display name |
-| Driver-x64 | HP Universal\prnbrcl1.inf | \<Menu option \[A\] handles this\> |
-| Driver-ARM64 | HP Universal\armbrc1.inf | \<Menu option \[A\] handles this\> |
-| Port | 192.168.53.60 | \<Menu option \[A\] handles this\> |
+| Driver-x64 | HP Universal\prnbrcl1.inf | \<Menu option (A) handles this\> |
+| Driver-ARM64 | HP Universal\armbrc1.inf | \<Menu option (A) handles this\> |
+| Port | 192.168.53.60 | \<Menu option (A) handles this\> |
 | Model |  | \<optional helpful model info\> |
 | URL |  | \<optional helpful url\> |
-| Settings |  | \<Menu option \[A\] handles this\> |
+| Settings |  | \<Menu option (A) handles this\> |
 | Location | Room 101 | \<optional helpful info displayed by Windows\> |
 
 #### Settings column
@@ -131,7 +131,7 @@ See here for a full list of these values: [Link](https://learn.microsoft.com/en-
 
 If you are planning on distributing this package using the [**IntuneApp**](https://www.itautomator.com/intuneapp/) app package system, use menu choice I
 
-`\[I\] Prep intune_settings.csv with these printers (for IntuneApp)`
+`(I) Prep intune_settings.csv with these printers (for IntuneApp)`
 
 This will make the necessary changes to the `intune_settings.csv` file so that Intune detection and installation will work properly in the IntuneApp system.
 
@@ -151,13 +151,13 @@ Right-click and run PrinterManager (as Admin).cmd to get to the main menu.
 
 Use menu choice S or menu choice O to install the printers.
 
-`\[S\] Setup all the CSV printers (to this PC)`
+`(S) Setup all the CSV printers (to this PC)`
 
-`\[O\] Setup one CSV printer (to this PC)`
+`(O) Setup one CSV printer (to this PC)`
 
 Use menu choice N to Uninstall the printers.
 
-`\[U\] Uninstall the CSV listed printers`
+`(U) Uninstall the CSV listed printers`
 
 ## Scripted installation of the printers
 
