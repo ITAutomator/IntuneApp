@@ -3,7 +3,8 @@
 
 ## Overview
 
-Use Printer Manager to automatically set up a standard list of printers on your PCs.
+Use Printer Manager to automatically set up a standard list of printers on your PCs.  
+It works by ingesting printer drivers from a working PC and then packaging it for distribution. It handles both Intel and ARM drivers.  
 
 Printer Manager is Intune and script friendly and designed to work within the IntuneApp system.
 ![image](https://github.com/user-attachments/assets/f4f85559-853d-4814-82cb-85be2ac488b7)
@@ -161,6 +162,7 @@ We recommend using the IntuneApp system for distribution. Alternatively, use com
 
 ## More information
 
+See also: https://www.itautomator.com  
 See also: https://www.itautomator.com/intuneapp  
 See also: https://github.com/ITAutomator/IntuneApp  
 
