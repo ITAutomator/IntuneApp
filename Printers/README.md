@@ -26,141 +26,159 @@ Printer Manager Main Menu
 
 ---
 
-## Setup Steps
+# Setup Steps
 
-1. Download the package and copy it to a central area.
-2. Right-click and run `PrinterManager (as Admin).cmd` to start the main menu.
+Download the package and copy it to a central area.
 
-**Notes:**
-- The two main CSV files will be created if they don’t exist.
-- To facilitate different printer lists for different groups, use multiple copies of the package in different folders and update the lists independently:
-  - Printers (Accounting Group)
-  - Printers (Executive Group)
+Right-click and run `PrinterManager (as Admin).cmd` to start the main menu.
 
----
+*Note: The 2 main CSV files will be created if they don’t exist.*
 
-## Main Menu Options
+*Note: To facilitate different printer lists for different groups, use multiple copies of the package in different folders and update the lists independently:*
+
+`Printers (Accounting Group)`
+
+`Printers (Executive Group)`
+
+### Main Menu
 
 ```
---------------- Printer Manager Menu ------------------
-[S] Setup all the CSV printers (to this PC)   PC <-- CSV
-[O] Setup one CSV printer (to this PC)        PC <-- CSV
-[V] Update a driver to the /Drivers folder    PC --> CSV
-[A] Add a local printer to CSV list           PC --> CSV
-[U] Uninstall the CSV listed printers         PC (X) CSV
-[R] Local printer deletion                    PC (X)
-[D] Local driver deletion                     PC (X)
-[P] Local port deletion                       PC (X)
-[E] Edit CSV Files manually                   CSV
-[T] Detect if PC has CSV printers already     CSV
-[I] Prep intune_settings.csv with these printers (for IntuneApp)
-[X] Exit
+--------------- Printer Manager Menu ------------------  
+\[S\] Setup all the CSV printers (to this PC) PC \<-- CSV  
+\[O\] Setup one CSV printer (to this PC) PC \<-- CSV  
+\[V\] Update a driver to the \Drivers folder PC --\> CSV  
+\[A\] Add a local printer to CSV list PC --\> CSV  
+\[U\] Uninstall the CSV listed printers PC (X) CSV  
+\[R\] Local printer deletion PC (X)  
+\[D\] Local driver deletion PC (X)  
+\[P\] Local port deletion PC (X)  
+\[E\] Edit CSV Files manually CSV  
+\[T\] Detect if PC has CSV printers already CSV  
+\[I\] Prep intune_settings.csv with these printers (for IntuneApp)  
+\[X\] Exit
 ```
 
----
+## Add a Printer
 
-## Adding a Printer
+On a PC with the printer already installed use menu choice A.
 
-1. On a PC with the printer already installed, use menu choice **A**.
-2. This will add the printer to the CSV and copy the drivers to the `/Drivers` folder.
-3. The printer is now included in the package and will be distributed to other PCs.
-4. Repeat the process for as many printers as needed.
+`\[A\] Add a local printer to CSV list`
 
----
+This will add the printer to the CSV and copy the drivers to the Drivers folder.
 
-## Editing the CSV Files
+The printer is now included in the package and will be distributed to other PCs
 
-To fine-tune your list, use menu choice **E**.
+Repeat adding as many printers as needed.
 
-- Adjust the list of printers.
-- Modify IP numbers if they change.
+## Edit the CSV files
 
-### Example: PrinterManager PrintersToAdd.csv
+To fine tune your list use menu choice E
 
-| Field            | Example Value                     |
-|-------------------|-----------------------------------|
-| **Printer**       | Contoso Room 101 Copier          |
-| **Driver-x64**    | HP Universal\prnbrcl1.inf        |
-| **Driver-ARM64**  | HP Universal\armbrc1.inf         |
-| **Port**          | 192.168.53.60                    |
-| **Model**         | (optional helpful model info)    |
-| **URL**           | (optional helpful URL)           |
-| **Settings**      |                                  |
-| **Location**      | Room 101                         |
+`\[E\] Edit CSV Files manually`
 
----
+This will allow you to edit the list of printers.
 
-## PrinterManager Settings.csv
+Here you can also adjust the IP numbers if they change.
 
-### Example:
+`PrinterManager PrintersToAdd.csv`
 
-| Description               | Settings                                   |
-|---------------------------|-------------------------------------------|
-| **LetterColor**           | Papersize=Letter,Collate=False,Color=True |
-| **LetterGreyscale**       | Papersize=Letter,Collate=False,Color=False|
-| **LetterColorDuplex**     | Papersize=Letter,Color=True,DuplexingMode=TwoSidedLongEdge |
+| Column Name | Example Contents | Explanation |
+|------------------|-------------------------|------------------------------|
+| Printer | Contoso Room 101 Copier | Printer display name |
+| Driver-x64 | HP Universal\prnbrcl1.inf | \<Menu option \[A\] handles this\> |
+| Driver-ARM64 | HP Universal\armbrc1.inf | \<Menu option \[A\] handles this\> |
+| Port | 192.168.53.60 | \<Menu option \[A\] handles this\> |
+| Model |  | \<optional helpful model info\> |
+| URL |  | \<optional helpful url\> |
+| Settings |  | \<Menu option \[A\] handles this\> |
+| Location | Room 101 | \<optional helpful info displayed by Windows\> |
+
+#### Settings column
+
+Settings are for keywords that control the default settings (color, duplexing, etc) for the installed printer.
+
+If the settings value is empty, the driver defaults will be used.
+
+During the `Add a Printer` process you will be asked to choose from a list of default combinations of settings.
+
+This list can be adjusted.
+
+`PrinterManager Settings.csv`
+
+| Description | Settings |
+|------------------|------------------------------------------------------|
+| Default | \<blank\> |
+| LetterColor | Papersize=Letter,Collate=False,Color=True |
+| LetterGreyscale | Papersize=Letter,Collate=False,Color=False |
+| LetterColorDuplex | Papersize=Letter,Collate=False,Color=True,DuplexingMode=TwoSidedLongEdge |
+| LetterGreyscaleDuplex | Papersize=Letter,Collate=False,Color=False,DuplexingMode=TwoSidedLongEdge |
+| A4Color | Papersize=A4,Collate=False,Color=True |
 
 ### Summary of Settings
 
-- Settings are in the form: `key=value,key=value,…`
-- Full list of values can be found [here](#).
+Settings are in the form: key=value,key=value,…
 
-| Key            | Example Values       |
-|-----------------|----------------------|
-| **Papersize**   | Letter or A4         |
-| **Color**       | True or False        |
-| **Collate**     | True or False        |
+See here for a full list of these values: [Link](https://learn.microsoft.com/en-us/powershell/module/printmanagement/set-printconfiguration?view=windowsserver2025-ps)
 
----
+| Key           | Value            |
+|---------------|------------------|
+| Papersize     | Letter or A4     |
+| DuplexingMode | TwoSidedLongEdge |
+| Collate       | True or False    |
+| Color         | True or False    |
 
-## Prepping for Intune
+## Prep for Intune
 
-Use menu choice **I** to prepare `intune_settings.csv` with these printers for IntuneApp.
+If you are planning on distributing this package using the [**IntuneApp**](https://www.itautomator.com/intuneapp/) app package system, use menu choice I
 
-This will make the necessary changes to `intune_settings.csv` for Intune detection and installation.
+`\[I\] Prep intune_settings.csv with these printers (for IntuneApp)`
 
----
+This will make the necessary changes to the `intune_settings.csv` file so that Intune detection and installation will work properly in the IntuneApp system.
 
-## ARM Driver Notes
+Essentially it puts the lists of printers in the app variables section of that csv file.
 
-- The package is CPU-aware. If you add a printer from an ARM machine, the driver will be added to the ARM driver folder.
-- For compatibility with both CPU types, use **A** to add printers from both PC types. Then merge the two rows in the CSV.
+## A note about ARM drivers
 
----
+The package is CPU aware. If you add a printer from an ARM machine, the driver will be added to the ARM driver folder and its own ARM column in the CSV.
 
-## Manual Installation
+If you want the printer to work in both types of CPUs, use A to add the printer from both PC types to get both driver packages. But you will have two CSV rows. Use the values from both driver columns to merge the two CSV rows into a single row.
 
-1. Copy the package folder to a target PC.
-2. Right-click and run `PrinterManager (as Admin).cmd`.
-3. Use menu choices **S** or **O**:
-   - **S**: Setup all CSV printers on this PC.
-   - **O**: Setup one CSV printer on this PC.
+## Manual installation of the printers
 
-### Uninstall Printers
+Copy the package folder to a target PC.
 
-Use menu choice **U** to uninstall the CSV-listed printers.
+Right-click and run PrinterManager (as Admin).cmd to get to the main menu.
 
----
+Use menu choice S or menu choice O to install the printers.
 
-## Scripted Installation
+`\[S\] Setup all the CSV printers (to this PC)`
 
-We recommend using the IntuneApp system for distribution. Alternatively, use command-line options:
+`\[O\] Setup one CSV printer (to this PC)`
 
-- `PrinterManager.ps1 -mode S`  
-  Installs all CSV printers.
+Use menu choice N to Uninstall the printers.
 
-- `PrinterManager.ps1 -mode U`  
-  Uninstalls all CSV printers.
+`\[U\] Uninstall the CSV listed printers`
 
-- `PrinterManager.ps1 -mode T`  
-  Detects if printers are already installed.
+## Scripted installation of the printers
 
+We recommend using the [**IntuneApp**](https://www.itautomator.com/intuneapp/) app package system as the easiest way of distributing the printer package.
 
----
+Alternatively, use the -mode S command line to automate installations.
+
+`PrinterManager.ps1 -mode S`
+
+This will automatically make the menu choice S and install the printers.
+
+`PrinterManager.ps1 -mode U`
+
+This will automatically make the menu choice U and uninstall the printers.
+
+PrinterManager.ps1 -mode T
+
+This will automatically make the menu choice T to detect if the printers are installed.
 
 ## More information
 
-See also: https://www.itautomator.com  
-See also: https://www.itautomator.com/intuneapp  
-See also: https://github.com/ITAutomator/IntuneApp  
+See also: <https://www.itautomator.com/intuneapp>
 
+See also: <https://github.com/ITAutomator/IntuneApp>
