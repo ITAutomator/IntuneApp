@@ -1,7 +1,2 @@
 Printer,Driver-x64,Driver-ARM64,Port,Model,URL,Settings,Location,Comments
 Contoso Room 101 Copier,Xerox WorkCentre 7855 PCL6\x2dspyx.inf,Xerox WorkCentre 7855 PCL6\x2dspyx.inf,192.168.53.60,<optional model info>,<optional helpful url>,,Room 101,
-"131 Fifth Ave",,"HP Smart Universal Printing\hponedriver_v4_arm64.inf","192.168.131.90",,,"","",
-"Rethinkit Color","Brother Color Type3 Class Driver\prnbrcl1.inf",,"192.168.80.81",,,"","",
-"Rethinkit Grayscale","Brother Laser Leg Type1 Class Driver\prnbrcl1.inf",,"192.168.80.41",,,"","",
-"NSH01RO02 Comm RICOH IM C2510 [58387997FD3]","RICOH PCL6 V4 UniversalDriver V4.30\r4600.inf",,"10.0.50.11",,,"","",
-"NSH01RO01 Copy RICOH IM C2510 [583879A97F9F]","RICOH PCL6 V4 UniversalDriver V4.30\r4600.inf",,"10.0.50.10",,,"","",
