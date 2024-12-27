@@ -17,18 +17,13 @@ if ((Test-Path("$scriptDir\ITAutomator.psm1"))) {Import-Module "$scriptDir\ITAut
 #######################
 ## Main Procedure Start
 #######################
-##$Globals=@{}
-##$Globals.Add("Var1","Default")
-##$Globals.Add("Var2","Default")
-##$Globals=GlobalsLoad $Globals $scriptXML $false
-
 $OS= Get-OSVersion
 
 Write-Host "-----------------------------------------------------------------------------"
 Write-Host ("$scriptName        Computer:$env:computername User:$env:username OS:"+ $OS[1]+" PSver:"+($PSVersionTable.PSVersion.Major)) 
 Write-host "Mode: $($mode)"
 Write-Host ""
-Write-Host "Does the following for Windows 7/10 basic prep. Run once per machine."
+Write-Host "Does the following for Windows basic prep. Run once per machine."
 Write-Host ""
 Write-Host "- Removes Apps that are junk"
 Write-Host "- Allows run as admin to see mapped drives. In other words, you can run .cmd files from network drives."

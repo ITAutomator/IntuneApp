@@ -64,9 +64,9 @@ If (-not (Isadmin))
 }
 
 ######### call ps1 files
-$ps1 = "$($scriptDir)\PC Local Accounts.ps1"       ; $cmd_out = & $ps1 -mode $mode
-$ps1 = "$($scriptDir)\PC MachinePrep.ps1"          ; $cmd_out = & $ps1 -mode $mode
-$ps1 = "$($scriptDir)\PC SleepTimers.ps1"          ; $cmd_out = & $ps1 -mode $mode
+$ps1 = "$($scriptDir)\PC MachinePrep\PC MachinePrep.ps1"          ; $cmd_out = & $ps1 -mode $mode
+$ps1 = "$($scriptDir)\PC Local Accounts\PC Local Accounts.ps1"    ; $cmd_out = & $ps1 -mode $mode
+$ps1 = "$($scriptDir)\PC SleepTimers\PC SleepTimers.ps1"          ; $cmd_out = & $ps1 -mode $mode
 if ($cmd_out) {$cmd_out = $null}
 Start-Sleep 3
 Write-Host "Done." -ForegroundColor Yellow

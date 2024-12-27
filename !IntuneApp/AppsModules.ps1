@@ -108,8 +108,14 @@ Function ModuleAction ($module="<none>",$action="update")
         if ($action -in "install","reinstall")
         { # install reinstall
             Write-Host "Installing $($fm.version)"
-            Write-Host "Install-Module -Name $module" -ForegroundColor Yellow
-            Install-Module -Name $module -Force
+            if ($IsAdmin) {
+                Write-Host "Install-Module -Name $module -Scope AllUsers" -ForegroundColor Yellow
+                Install-Module -Name $module -Scope AllUsers -Force
+            } # install as admin
+            Else {
+                Write-Host "Install-Module -Name $module" -ForegroundColor Yellow
+                Install-Module -Name $module -Force
+            } # install as user
             Write-host "Finished installing." -ForegroundColor Green
             PressEnterToContinue
         } # install reinstall
@@ -159,19 +165,22 @@ Write-Host ""
 Write-Host "Microsoft.Graph modules should be updated to the same version (at the same time)"
 Write-Host "-----------------------------------------------------------------------------"
 Write-Host ""
+$IsAdmin = IsAdmin
+Write-Host "Is Admin (elevated): " -NoNewline
+Write-Host $IsAdmin -ForegroundColor Yellow
 $csvfile = "$($scriptDir)\$($scriptBase).csv"
 if (-not (Test-path $csvfile)) {
     Write-Host "Couldn't find csv file: $($csvfile)"
 }
 $rows = Import-Csv $csvfile
-$modules = $rows.modules
+$modules = $rows.modules | Sort-Object
 if (-not $modules){
     Write-Host "Couldn't find 'modules' column in file: $($csvfile)"
 }
 Do { # choose a module
     $i = 0
-    Write-Host "Modules:" -ForegroundColor Yellow
-    $modules | ForEach-Object {$i+=1;Write-Host " $($i)] $($_)"}
+    Write-Host "Modules:" 
+    $modules | ForEach-Object {$i+=1;Write-Host " $($i)] " -NoNewline;Write-Host $_ -ForegroundColor Yellow}
     Write-Host "------------------------------"
     $module = $null
     $module_numstr = Read-Host "Which module? (blank to exit)"
@@ -212,7 +221,6 @@ Do { # choose a module
             Write-Host "------------------"
             Write-Host "Module: " -NoNewline
             Write-Host $module -ForegroundColor Green
-            $IsAdmin = IsAdmin
             #Write-Host "IsAdmin: $($IsAdmin)" -ForegroundColor Yellow
             #$choices = @("E&xit this module","Relaunch as &Admin","&Check","Up&date","&Uninstall","&Install","&Reinstall")
             $choices = @("E&xit this module","&Check")
