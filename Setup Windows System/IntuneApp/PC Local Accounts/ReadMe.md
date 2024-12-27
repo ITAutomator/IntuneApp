@@ -9,12 +9,6 @@ In the CSV, use the EncryptionKey column to obfuscate the password as follows:
 |           `my_encryption_key` | to use this key against an obfuscated password|
 |                     `<blank>` | to use the password as-is without obfuscation (not recommended)|
 
-| Month    | Savings |
-| -------- | ------- |
-| January  | $250    |
-| February | $80     |
-| March    | $420    |
-
 Passwords in CSV are obfuscated but not encrypted (unless `<Random>` is used).  
 DELETE AND PURGE THE CSV AFTER RUNNING.  
 
