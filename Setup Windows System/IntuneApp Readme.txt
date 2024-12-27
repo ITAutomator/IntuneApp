@@ -2,15 +2,23 @@ Description of this App
 -------------------------------
 Basic Windows system setup.
 - PC Local Accounts.ps1
-  - Creates local accounts according to CSV file
-  - Disables local accounts according to CSV file
+  - Creates local admin accounts according to CSV file: PC Local Accounts.csv
+  - Username,DisplayName,Description,Groups,EncryptionKey,Password,Comment
+  - Disables local accounts according to CSV file: PC Local Accounts (To Disable).csv
 
 - PC Visitor Account.ps1 (disabled)
   - Creates a guest account with easy password.
   - This can also serve as a honeypot so that wifi can be used. However, with wifi now available at the logon screen - the honeypot is somewhat less needed.
 
 - PC SleepTimers.ps1
-  - Sets some sleep defaults
+  - Sets some sleep defaults (users can adjust them after they are set)
+  - Adjust the timers using: PC SleepTimers Settings.csv (In minutes, 0 means never)
+  -  Name, Value
+  -  display_battery, 10
+  -  sleep_battery, 20
+  -  display_plugggedin, 30
+  -  sleep_plugggedin, 0
+  - Check timers using (Win+R) then paste: control /name Microsoft.PowerOptions /page pagePlanSettings
 
 - PC WindowsMachinePrep.ps1
   - Removes Apps that are junk
