@@ -57,6 +57,15 @@ ForEach ($entry in $csvFile) {
     Write-Host "$($icount): " -NoNewline
     Write-Host $entry.Username -ForegroundColor Green -NoNewline
     Write-Host " $($entry.Description) [Groups: $($entry.Groups)]"
+    $Description = $entry.Description
+    $MaxLen = 48
+    if ($Description.Length -gt $MaxLen) {
+        Write-Host "Warning: Max Description length ($($MaxLen) exceeded) and will be cropped" -ForegroundColor Yellow
+        Write-Host "Before: $($Description)"
+        $Description = CropString -StringtoCrop $Description -MaxLen $MaxLen
+        Write-Host " After: $($Description)"
+        Start-Sleep 5
+    }
     # Remove the existing user
     if (Get-LocalUser -Name $entry.Username -ErrorAction SilentlyContinue) {
         Remove-LocalUser -Name $entry.Username
@@ -98,7 +107,7 @@ ForEach ($entry in $csvFile) {
     } # haskey
     $passwordsecstring = ConvertTo-SecureString $password -AsPlainText -Force
     # Create the local user
-    New-LocalUser -Name $entry.Username -Password $passwordsecstring -FullName $entry.DisplayName -Description $entry.Description -AccountNeverExpires | Out-Null
+    New-LocalUser -Name $entry.Username -Password $passwordsecstring -FullName $entry.DisplayName -Description $Description -AccountNeverExpires | Out-Null
     # Optional: Add the user to a group (e.g., Administrators)
     $groups = @($entry.Groups -split ",")
     ForEach ($group in $groups){
