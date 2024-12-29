@@ -59,8 +59,7 @@ Wallpaper hides background color: QHD using Fill
 Wallpaper showing background color: FHD using Center and BackgroundColor matching image  
   
 ### Wallpaper Methods  
-|Method|RegVal|Background Color may appear around edges|Image Crop may happen|Image Scale|  
-|may happen|Image Aspect Ratio maintained|  
+|Method|RegVal|Background Color may appear around edges|Image Crop may happen|Image Scale may happen|Image Aspect Ratio maintained|  
 |---|---|---|---|---|---|  
 |Fill|10|N|Y|Y|Y|  
 |Fit|6|Y|(if AR of screen and image don’t match)|N|Y|Y|  
