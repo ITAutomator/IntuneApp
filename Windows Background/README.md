@@ -18,14 +18,19 @@ See also: <https://github.com/ITAutomator/IntuneApp>
 ## Setup Steps  
 
 - Create a `wallpaper1.png` and determine a background color (#Hex code from )  
-- Put the `.png` file(s) in `\IntuneApp\Wallpaper` (these will end up in the common documents folder: `C:\users\public\documents\Walllpaper`)  
+- Put the `.png` file(s) in  
+`\IntuneApp\Wallpaper`  
+These will end up in the common documents folder: `C:\users\public\documents\Walllpaper`  
 - Adjust the settings in the 2 `.csv` files:  
-`SetDesktop.csv` and `intune_settings.csv`  
+`SetDesktop.csv` to adjust wallpaper settings  
+`intune_settings.csv`  if you are using the IntuneApp app distribution system
+- If you are scriping the installation use  
+`SetDesktop.ps1 -mode auto`  
+to automatically install the wallpaper  
   
 ## Settings in `SetDesktop.csv`  
 
 Open `SetDesktop.csv` and adjust these values  
-  
   
 ### Wallpaper  
 
@@ -79,7 +84,7 @@ If you are replacing a previously pushed background you must change `AppUninstal
 Wallpaper that fills the screen: large `.png` file with QHD resolution using `Fill` WallpaperStyle  
 Wallpaper showing background color: small `.png` using `Center` WallpaperStyle  and `BackgroundColor` matching image  
   
-### WallpaperStyle  
+### WallpaperStyle Details  
 
 |Method|RegVal|Background Color may appear around edges|Image Crop may happen|Image Scale may happen|Image Aspect Ratio maintained|  
 |---|---|---|---|---|---|  
