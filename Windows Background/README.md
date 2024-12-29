@@ -61,6 +61,7 @@ Wallpaper showing background color: FHD using Center and BackgroundColor matchin
 ### Wallpaper Methods  
 |Method|RegVal|Background Color may appear around edges|Image Crop may happen|Image Scale|  
 |may happen|Image Aspect Ratio maintained|  
+|---|---|---|---|---|---|  
 |Fill|10|N|Y|Y|Y|  
 |Fit|6|Y|(if AR of screen and image don’t match)|N|Y|Y|  
 |Center|0|Y|Y|N|Y|  
@@ -69,6 +70,7 @@ Wallpaper showing background color: FHD using Center and BackgroundColor matchin
   
 ### Common Display Resolutions  
 |Name|Resolution (H x V)|Aspect Ratio|  
+|---|---|---|  
 |4K|3840 x 2160|16:9|  
 |QHD|2560 x 1440|16:9|  
 |FHD|1920 x 1060|16:9|  
