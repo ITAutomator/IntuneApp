@@ -17,7 +17,8 @@ See also: <https://github.com/ITAutomator/IntuneApp>
   
 ## Setup Steps  
 
-- Create a `wallpaper1.png` and determine a background color (#Hex code from )  
+- Create a `wallpaper1.png` (See *Common Display Resolutions* below for size suggestions but QHD 2560 x 1440 is a good start)
+- Determine a background color e.g. `#040E4C` (Hex color code from [www.color-hex.com](https://www.color-hex.com/))  
 - Put the `.png` file(s) in  
 `\IntuneApp\Wallpaper`  
 These will end up in the common documents folder: `C:\users\public\documents\Walllpaper`  
