@@ -1,9 +1,9 @@
   
-# Windows Background Readme  
+# Setup Windows System  
 
 See Github to download and for details: https://github.com/ITAutomator/IntuneApp/tree/main/Windows%20Background  
 
-<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/WindowsBackground/MainScreen.png alt="screenshot" width="500"/>
+<img src=https://github.com/user-attachments/assets/589ede97-71d5-4fd7-a121-7d06aeb1bda9 alt="screenshot" width="500"/>
   
 ## Overview  
 

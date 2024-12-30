@@ -3,9 +3,9 @@
 Create and publish Windows apps to your Intune endpoints  
 See here for the blog post: <https://www.itautomator.com/intuneapp>  
 See here for the admin guide: [pdf](https://github.com/ITAutomator/IntuneApp/blob/main/Readme%20IntuneApp.pdf)  
-  
-- Main Screen2  
-![image](https://github.com/user-attachments/assets/a5307e75-4a19-424a-8bfe-4f68f78d4d72)  
+
+Main Screen  
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/MainScreen.png alt="screenshot" width="600">
   
 ## Quick Start  
   
