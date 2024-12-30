@@ -22,7 +22,7 @@ The program uses three key components, all added via the Printer Manager main me
    Both x64 and ARM64 drivers can be included.  
    
 Printer Manager Main Menu  
-![image](https://github.com/user-attachments/assets/f4f85559-853d-4814-82cb-85be2ac488b7)
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/Printers/MainMenu.png alt="screenshot" width="500"/>
 
 ---
 
