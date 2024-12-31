@@ -35,8 +35,13 @@ $psm1="$($scriptDir)\ITAutomator.psm1";if ((Test-Path $psm1)) {Import-Module $ps
 #######################
 $folderpubdesktop_source="$($scriptDir)\Public Desktop"
 $folderpubdesktop_target=[System.Environment]::GetFolderPath("CommonDesktopDirectory")
+$CmdLineInfo = "(none)"
+if ($mode -ne ''){$CmdLineInfo = "-mode $($mode)"}
 Write-Host "-----------------------------------------------------------------------------"
-Write-Host "$($scriptName) $($scriptVer)       Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
+Write-Host "$($scriptName) $($scriptVer)     Computer: $($env:computername) User: $($env:username) PSVer:$($PSVersionTable.PSVersion.Major)"
+Write-Host ""
+Write-Host "Parms: " -NoNewline
+Write-host $($CmdLineInfo) -NoNewline -ForegroundColor Green
 Write-Host ""
 Write-Host " Update public desktop folder with company files."
 Write-Host ""
@@ -45,7 +50,6 @@ Write-Host $folderpubdesktop_source -ForegroundColor Yellow
 Write-Host "Target :" -NoNewline
 Write-Host $folderpubdesktop_target -ForegroundColor Yellow
 Write-Host ""
-Write-Host "    mode: $($mode)"
 Write-Host "-----------------------------------------------------------------------------"
 if (-not(Test-Path $folderpubdesktop_source)){
   Write-Host "Couldn't find folder: $($folderpubdesktop_source)"
@@ -57,13 +61,52 @@ if (-not(Test-Path $folderpubdesktop_target)){
   Start-Sleep 3
   Exit 99
 }
+# get paths to remove
+$PrnCSVPathRmv = "$($scriptDir)\$($scriptBase) ToRemove.csv"
+if (-not (Test-Path $PrnCSVPathRmv)) {
+    Write-Host "Couldn't find csv file, creating template: $($PrnCSVPathRmv)"
+    Add-Content -Path $PrnCSVPathRmv -Value "FullPathsToRemove"
+}
+$PrnCSVRowsRmv      = @(Import-Csv $PrnCSVPathRmv)
 If (-not(IsAdmin))
 {
     ErrorMsg -Fatal -ErrCode 101 -ErrMsg "This script requires Administrator priviledges, re-run with elevation (right-click and Run as Admin)"
 }
-if ($mode -ne 'auto') {PressEnterToContinue}
-$retcode, $retmsg= CopyFilesIfNeeded $folderpubdesktop_source $folderpubdesktop_target "date"
-$retmsg | Write-Host
-Write-Host "Return code: $($retcode)"
 
+Write-Host "$($scriptBase) ToRemove.csv [rows]: " -NoNewline
+Write-Host $PrnCSVRowsRmv.count -ForegroundColor Yellow
+$PrnCSVRowsRmv.FullPathsToRemove | ForEach-Object {Write-Host "- $($_)"}
+Write-Host ""
+Write-Host "-----------------------------------------------------------------------------"
+if ($mode -ne 'auto') {PressEnterToContinue}
+# Remove Files
+$entries = $PrnCSVRowsRmv.FullPathsToRemove
+if ($entries.count -gt 0) {
+    Write-Host "--- Removing files"
+}
+$i = 0
+foreach ($FullPath in $entries)
+{ #each path to remove
+    $i+=1
+    if (Test-Path $FullPath) {
+        Remove-Item -Path $FullPath -Recurse -Force
+        # double check
+        if (Test-Path $FullPath) {
+            Write-Host "ERR: Del ($FullPath) [Deleted but still there]" -ForegroundColor Yellow
+        } # has path
+        else {
+            Write-Host "OK: Del ($FullPath) [Deleted]"
+        } # missing
+    } # has path
+    else {
+        Write-Host "OK: Del ($FullPath) [Already missing]"
+    } # missing
+} # each path to remove
+# Add Files
+Write-Host "--- Adding files"
+$retcode, $retmsg= CopyFilesIfNeeded $folderpubdesktop_source $folderpubdesktop_target "date" -delete_extra $false
+$retmsg | Write-Host
+Write-Host "CopyFilesIfNeeded code: $($retcode)"
+# Done
+Write-Host "--- Done"
 if ($mode -ne 'auto') {PressEnterToContinue}
