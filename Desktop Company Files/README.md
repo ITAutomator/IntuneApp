@@ -6,7 +6,7 @@ See Github to download and for details: https://github.com/ITAutomator/IntuneApp
 Main Screen  
 <img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/DesktopCompanyFiles/MainScreen.png alt="screenshot" width="600">
 
-## Overviewv
+## Overview
 
 Puts a Company Files folder on company computers.
 
