@@ -233,18 +233,37 @@ This will show details about who has received the app
 ### Publishing an update to an App (Re-publishing)
 
 *IntuneApp* handles versions differently than native *Intune* versioning and dependency, which would be too complicated to maintain.
+*IntuneApp* maintains versions within the `intune_settings.csv` file as follows.
 
-#### AppVersion vs AppUninstallVersion
+#### **AppVersion vs AppUninstallVersion**
 
 During the publishing process, if any changes are detected since the last publish (using the content hash file), the `AppVersion` is automatically incremented. In Intune, the old app is erased and replaced with the new version of the App, and 0 devices will have it installed.
 
 When Intune next checks in (every few hours), the detection process will determine if the new app is detected or not.  
-*If not,* it will be installed.
-*If it’s detected,* the device count will be incremented in the App Overview section.
+
+- *If not,* it will be installed.
+- *If it’s detected,* the device count will be incremented in the App Overview section.
 
 The default behavior of an *IntuneApp* is to detect based on the `AppUninstallVersion` in the `intune_settings.csv` file. If `AppUninstallVersion` is blank (the default), the app is considered detected if any prior version of the app has been installed.
 
 If you are replacing a previously pushed version and you want to trigger a re-install for existing devices, you must change `AppUninstallVersion` to match the `AppVersion`. If you don’t adjust this, only new devices will get the new version of the app.
+
+### Debugging at the endpoint
+
+All logging and endpoint information is kept in the `C:\IntuneApp` folder, in `csv` and `txt` files.  
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/EndpointLogs.png alt="screenshot" width="300">  
+
+#### **Logs**
+The `Log *.txt` files in the `C:\IntuneApp` folder show logging output from the scripts' `Write-host` commands.  
+These files self-purge once they hit a certain size, so as not to impact disk space.  
+Inspect the log files for debugging purposes.  
+You should expect *Intune*'s regular detection routine to update these files every few hours (when Intune makes sure the required apps are still installed).  
+
+#### **Install Tracking via `IntuneApp.csv`**
+
+The `IntuneApp.csv` in the `C:\IntuneApp` folder keeps track of installs and detections and versions.  If this file is deleted, all `.ps1` installs will be considered undetected and will be installed again unless custom detections dictate otherwise.  
+For debugging purposes you can remove rows to trigger re-detect and re-install events for an app.  
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/EndpointIntuneApp.png alt="screenshot" width="300">  
 
 ## Setting up your App package (Misc Info)  
 
@@ -283,28 +302,28 @@ Record the Share URL for pasting into the `intune_settings.csv`
 `AppInstallerDownload1URL`: (Share URL)  
 `AppInstallerDownload1Hash`: (Hash value)  
 
-### intune_settings.csv info
+### `intune_settings.csv` information
 
-- AppInstaller - one of these installer types  
-- winget   Microsoft newish packaging system  
-- choco    Chocolate is a popular pre-Microsoft packaging system (Open source)  
-- ps1      Powershell script  
-- cmd      Windows batch command  
-- msi      MSI installer  
-- exe      EXE installer  
-- AppInstallName  
-- for winget and choco, provide the app package ID  
-- for everything else, provide the installer filename (eg myps1.ps1 or setup.msi) (it must exist in the \IntuneApp folder)  
-- IntuneApp folder  
-- contains the intune_settings.csv and intune_icon.png files  
-- provide the installer file and any files / folders needed by the installer  
+- `AppInstaller` - the type of the installer  
+  winget   Microsoft's command line packaging system  
+  choco    Chocolate is a popular pre-Microsoft packaging system (Open source)  
+  ps1      Powershell script  
+  cmd      Windows batch command  
+  msi      MSI installer  
+  exe      EXE installer  
+- `AppInstallName`  the name of the installer  
+  for winget and choco, provide the app package ID  
+  for everything else, provide the installer filename (eg myps1.ps1 or setup.msi) (it must exist in the \IntuneApp folder)  
+- `IntuneApp` folder  
+  contains the `intune_settings.csv` and `intune_icon.png` files  
+  provide the installer file and any files / folders needed by the installer  
   
 ### AppInstallName For Winget and Chocolatey packages  
 
 - These are the most common package types.  
-- You will need the package id for the AppInstallName settings  
-- For Winget apps search here: <https://winstall.app/>  
-- For Chocolatey apps search here: <https://community.chocolatey.org/packages>  
+- You will need the *Winget* or *Chocolately* id for the `AppInstallName` settings  
+- For *Winget* apps (e.g. `Google.Chrome`) search here: <https://winstall.app/>  
+- For *Chocolatey* apps (e.g. `googlechrome`) search here: <https://community.chocolatey.org/packages>  
   
 ### AppInstallArgs For Ps1 packages  
   
