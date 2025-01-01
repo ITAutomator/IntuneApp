@@ -1,5 +1,6 @@
 
 # Printer Manager Readme
+
 See Github to download and for details: https://github.com/ITAutomator/IntuneApp/tree/main/Printers  
 
 ## Overview
@@ -179,6 +180,5 @@ This will automatically make the menu choice T to detect if the printers are ins
 
 ## More information
 
-See also: <https://www.itautomator.com/intuneapp>
-
-See also: <https://github.com/ITAutomator/IntuneApp>
+See also: <https://www.itautomator.com/intuneapp>  
+See also: <https://github.com/ITAutomator/IntuneApp>  
