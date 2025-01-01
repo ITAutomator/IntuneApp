@@ -61,6 +61,11 @@ To package regular printer drivers, see the *Printer Manager* based app instead:
 
 > Note: To facilitate different printer lists for different groups, use multiple copies of the package in different folders and update the lists independently.
 
+## Automation outside of the IntuneApp Publishing system
+
+Use `PrinterSetup.ps1 -mode install` to install automatically.  
+Use `PrinterSetup.ps1 -mode uninstall` to uninstall automatically.  
+
 ## IntuneApp Publishing System
 
 This app was packaged for compatibility with the *IntuneApp* Publishing System.  
