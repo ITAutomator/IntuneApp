@@ -220,7 +220,7 @@ Do { # action
     # Check for invalid printers
     $PrnCSVRowsBad = @()
     $PrnCSVRowsBad += $PrnCSVRowsAdd.Printer          | Where-Object {$_ -match ","}
-    $PrnCSVRowsBad += $PrnCSVRowsRem.PrintersToRemove | Where-Object {$_ -match ","}
+    $PrnCSVRowsBad += $PrnCSVRowsRmv.PrintersToRemove | Where-Object {$_ -match ","}
     if ($PrnCSVRowsBad.count -gt 0) {
         Write-Host "Invalid printer names: $($PrnCSVRowsBad -join " ") [No commas allowed]" -ForegroundColor Red
         PromptForString "Script wil end now (Press Enter)"
@@ -274,7 +274,7 @@ Do { # action
             if ($pArm.count -gt 0) {
                 $AppDescription += ". For ARM64 CPUs there are $($pArm.count) printer(s)."
             }
-            $AppPrintersToRem = $PrnCSVRowsRem.PrintersToRemove -join ","
+            $AppPrintersToRmv = $PrnCSVRowsRmv.PrintersToRemove -join ","
             $AppPrintersToAddx64   = $p64.Printer -join ","
             $AppPrintersToAddARM64 = $pArm.Printer -join ","
             # create array of objects
@@ -301,7 +301,7 @@ Do { # action
             } ; $intunesettings += $newRow
             $newRow = [PSCustomObject]@{
                 Name  = "AppVar1"
-                Value = "Printers to Remove: $($AppPrintersToRem)"
+                Value = "Printers to Remove: $($AppPrintersToRmv)"
             } ; $intunesettings += $newRow
             $newRow = [PSCustomObject]@{
                 Name  = "AppVar2"
