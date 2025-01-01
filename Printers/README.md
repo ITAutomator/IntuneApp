@@ -178,7 +178,13 @@ This will automatically make the menu choice U and uninstall the printers.
 
 This will automatically make the menu choice T to detect if the printers are installed.
 
-## More information
+## IntuneApp Publishing System
 
-See also: <https://www.itautomator.com/intuneapp>  
-See also: <https://github.com/ITAutomator/IntuneApp>  
+This app was packaged for compatibility with the *IntuneApp* Publishing System.  
+It can also be installed by other package delivdery systems.
+It can also be installed manually or by other package delivdery systems. (use intune_command.cmd to manually install / uninstall this app).  
+See below for more information about using this sytem to publish Windows apps to your Intune endpoints.  
+
+- See here for the up to date readme: (readme.md) <https://github.com/ITAutomator/IntuneApp>  
+- See here for the blog post (blog): <https://www.itautomator.com/intuneapp>  
+- See here for the admin guide: (pdf) <https://github.com/ITAutomator/IntuneApp/blob/main/Readme%20IntuneApp.pdf>  
