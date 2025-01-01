@@ -1,0 +1,7 @@
+Erase this file. (See Readme.md for more information)
+
+Put your Ricoh exe drivers in this folder.
+
+Make sure there's a row for each exe in 
+PrinterSetup PrintersToAdd.csv
+
