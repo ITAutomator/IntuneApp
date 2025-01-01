@@ -138,6 +138,10 @@ For up-to-date information (and to download the IntuneApp system) see here: <htt
     - `IntuneApp Windows Users Excluded` - Are excluded from above  
     - `IntuneApp Google Chrome` - Users that will get this app (and future versions) even if it isn't mandatory  
   
+## Installation methods
+
+Use any of these methods to install your app(s)
+
 ### Manually Installing Apps  
 
 - Copy the App folder to the target machine Downloads folder  
@@ -155,8 +159,60 @@ For up-to-date information (and to download the IntuneApp system) see here: <htt
 - This is useful to set up a machine without waiting for Intune  
 - Choose [C] - Copy apps (to a USB key)  
 - Copies your Apps to a thumbdrive folder (D:\Apps) using robocopy to make it fast.  
+
+### Install / Uninstall via a generic package installer
+
+- Create the package for delivery  
+Zip the entire `\IntuneApp` folder for delivery to your endpoint  
+Use the these commands to initiate the various actions  
+You can double-click `intune_command.cmd` to see a menu to run them interactively  
+- Install command  
+`Powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File IntuneUtils\intune_install.ps1 -quiet`  
+- Uninstall command  
+`Powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File IntuneUtils\intune_uninstall.ps1 -quiet`  
+- Detection command  
+`Powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File IntuneUtils\intune_detection.ps1 -quiet`  
+- Requirements command  
+`Powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File IntuneUtils\intune_requirements.ps1 -quiet`  
   
-### Setting up your App package (Misc Info)  
+## Setting up your App package (Misc Info)  
+
+### Downloading package files from the web
+
+If there's a file (folder) in `\IntuneApp` that should be downloaded prior to install or uninstall, use the `AppInstallerDownload1URL` setting.
+This is useful for large installers that exceed the maximum package size.
+Note: Donwnloads are not available for detection or requirements
+
+#### Download an existing file from the web  
+
+Include the URL in `AppInstallerDownload1URL`  
+If you want to ensure a hash is matched (file contents haven't changed), see *Read the hash value* below
+
+#### Publishing your own zip file  
+
+For instance, to zip a subfolder called `\Installer` , publish it, and include as a downloaded portion of your app:
+
+- Create the Zip  
+Enter the `\Installer` folder and ZIP the contents to your downloads folder calling it `InstallerFolder.zip` or similar.  
+
+- Read the hash value (optional)  
+This ensures the hash from the download matches (file contents haven't changed) from when the package was originally set up.  
+Note: In the future, if the download is updated the hash will no longer match and will need to be re-calculated and updated in the .csv (or removed)  
+Run this powershell command to see the hash value from the zip file in the Downloads folder  
+`gci $env:USERPROFILE\Downloads -filter *.zip -Recurse | Get-FileHash -Algorithm SHA256 | Select-Object Hash, @{n="File";e={Split-Path $_.Path -Leaf}}`  
+Note the Hash value for the `intune_settings.csv`  
+
+- Upload the zip file to your Google Drive area and share publicly  
+*Note: This assumes Google Drive is being used to share files, but use any public URL as needed.  However, the installers know how to deal with either simple download URLs or Google URLs (can be an indirect download).*   
+In the Google Drive interface, Right-click the ZIP > Share the .zip > Anyone with the link > Viewer  
+Note the Share URL for the `intune_settings.csv`  
+
+- Update `intune_settings.csv` with the two values
+*Note: `AppInstallerDownload1Hash` is optional. If omitted, the downloaded file's hash will not be checked.*  
+`AppInstallerDownload1URL`: (Share URL)  
+`AppInstallerDownload1Hash`: (Hash value)  
+
+### intune_settings.csv info
 
 - AppInstaller - one of these installer types  
 - winget   Microsoft newish packaging system  
