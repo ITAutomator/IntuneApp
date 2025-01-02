@@ -1,4 +1,6 @@
 # IntuneApp  
+
+To see pricing click here: https://github.com/sponsors/ITAutomator
   
 Create and publish Windows apps to your Intune endpoints  
 
