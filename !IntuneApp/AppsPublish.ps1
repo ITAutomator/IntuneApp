@@ -1190,10 +1190,10 @@ Do
                         $AppDescription+="$($pkg.AppNameVer)"
                         # AppInstaller:ps1 (Setup.ps1 -ARGS:test)
                         $AppDescription+="`r`n* AppInstaller: $($pkg.AppInstaller) ($($pkg.AppInstallName)"
-                        if ($pkg.AppInstallArgs -ne "") {$AppDescription+=$pkg.AppInstallArgs}
+                        if ($pkg.AppInstallArgs -ne "") {$AppDescription+=" $($pkg.AppInstallArgs)"}
                         $AppDescription+=")"
                         # ps1 AppUninstallVersion (upgrade if below): 129
-                        if ($pkg.AppInstaller -eq "ps1") {
+                        if (($pkg.AppInstaller -eq "ps1") -and ($pkg.AppUninstallVersion -ne "")) {
                             $AppDescription+="`r`n* ps1 AppUninstallVersion (upgrade if below): $($pkg.AppUninstallVersion)"
                         }
                         # AvailableInCompanyPortal: True
