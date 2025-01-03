@@ -50,16 +50,15 @@ Write-Host $folderpubdesktop_source -ForegroundColor Yellow
 Write-Host "Target :" -NoNewline
 Write-Host $folderpubdesktop_target -ForegroundColor Yellow
 Write-Host ""
-Write-Host "-----------------------------------------------------------------------------"
 if (-not(Test-Path $folderpubdesktop_source)){
-  Write-Host "Couldn't find folder: $($folderpubdesktop_source)"
+    Write-Host "Couldn't find folder: $($folderpubdesktop_source)"
   Start-Sleep 3
   Exit 98
 }
 if (-not(Test-Path $folderpubdesktop_target)){
-  Write-Host "Couldn't find folder: $($folderpubdesktop_target)"
-  Start-Sleep 3
-  Exit 99
+    Write-Host "Couldn't find folder: $($folderpubdesktop_target)"
+    Start-Sleep 3
+    Exit 99
 }
 # get paths to remove
 $PrnCSVPathRmv = "$($scriptDir)\$($scriptBase) ToRemove.csv"
@@ -68,16 +67,16 @@ if (-not (Test-Path $PrnCSVPathRmv)) {
     Add-Content -Path $PrnCSVPathRmv -Value "FullPathsToRemove"
 }
 $PrnCSVRowsRmv      = @(Import-Csv $PrnCSVPathRmv)
-If (-not(IsAdmin))
-{
+if ($PrnCSVRowsRmv.count -gt 0) {
+    Write-Host "-----------------------------------------------------------------------------"
+    Write-Host "$($scriptBase) ToRemove.csv [rows]: " -NoNewline
+    Write-Host $PrnCSVRowsRmv.count -ForegroundColor Yellow
+    $PrnCSVRowsRmv.FullPathsToRemove | ForEach-Object {Write-Host "- $($_)"}
+}
+Write-Host "-----------------------------------------------------------------------------"
+If (-not(IsAdmin)) {
     ErrorMsg -Fatal -ErrCode 101 -ErrMsg "This script requires Administrator priviledges, re-run with elevation (right-click and Run as Admin)"
 }
-
-Write-Host "$($scriptBase) ToRemove.csv [rows]: " -NoNewline
-Write-Host $PrnCSVRowsRmv.count -ForegroundColor Yellow
-$PrnCSVRowsRmv.FullPathsToRemove | ForEach-Object {Write-Host "- $($_)"}
-Write-Host ""
-Write-Host "-----------------------------------------------------------------------------"
 if ($mode -ne 'auto') {PressEnterToContinue}
 # Remove Files
 $entries = $PrnCSVRowsRmv.FullPathsToRemove
@@ -88,6 +87,13 @@ $i = 0
 foreach ($FullPath in $entries)
 { #each path to remove
     $i+=1
+    if (-not ($FullPath -like "$folderpubdesktop_target\*")) {
+        Write-Host "ERR: Del ($FullPath) [The path must be within $($folderpubdesktop_target)]" -ForegroundColor Yellow
+    } # path outside of C:\Public\Desktop
+    else
+    { # path starts with C:\Public\Desktop
+
+    } # path starts with C:\Public\Desktop
     if (Test-Path $FullPath) {
         Remove-Item -Path $FullPath -Recurse -Force
         # double check

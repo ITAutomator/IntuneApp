@@ -32,19 +32,19 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Printers (Centinel NSH)-v103")
+    $IntuneAppValues.Add("AppName","Printers With Exe Drivers-v102")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","PrinterSetup.ps1")
-    $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode auto")
+    $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode install")
     $IntuneAppValues.Add("AppUninstallName","")
     $IntuneAppValues.Add("AppUninstallVersion","")
     $IntuneAppValues.Add("AppUninstallProcess","")
     $IntuneAppValues.Add("SystemOrUser","system")
     $IntuneAppValues.Add("Function","intune_install.ps1")
     $IntuneAppValues.Add("LogFolder","C:\IntuneApp")
-    $IntuneAppValues.Add("AppVar1","")
-    $IntuneAppValues.Add("AppVar2","")
-    $IntuneAppValues.Add("AppVar3","")
+    $IntuneAppValues.Add("AppVar1","Printers to Remove: Replace with Printer1 to remove,Replace with Printer2 to remove")
+    $IntuneAppValues.Add("AppVar2","Printers to Add x64: Printer1 Name,Printer2 Name")
+    $IntuneAppValues.Add("AppVar3","Printers to Add ARM64: ")
     $IntuneAppValues.Add("AppVar4","")
     $IntuneAppValues.Add("AppVar5","")
     Return $IntuneAppValues

@@ -124,7 +124,7 @@ $PrnCSVRowsAdd      = @(Import-Csv $PrnCSVPathAdd)
 $PrnCSVRowsAddThisCPU = $PrnCSVRowsAdd | Where-Object CPU -eq $Arch
 # display
 Write-Host "PrintersToAdd.csv ($($PrnCSVRowsAdd.Count) rows, $($PrnCSVRowsAddThisCPU.count) for this CPU [$($Arch)])"
-$PrnCSVRowsAdd | ForEach-Object {Write-Host "- [$($_.CPU)] $($_.Printer) ($($_.Installer)) $(if ($_CPU -ne $Arch) {' SKIP: not for this CPU'})"}
+$PrnCSVRowsAdd | ForEach-Object {Write-Host "- [$($_.CPU)] $($_.Printer) ($($_.Installer)) $(if ($_.CPU -ne $Arch) {' SKIP: not for this CPU'})"}
 Write-Host "PrintersToRemove.csv ($($PrnCSVRowsRmv.Count) rows)"
 if ($PrnCSVRowsRmv.Count -gt 0) {
     $PrnCSVRowsRmv | ForEach-Object {Write-Host "- $($_.PrintersToRemove)"}

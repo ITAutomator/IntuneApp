@@ -32,19 +32,19 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Printers (Centinel NSH)-v103")
+    $IntuneAppValues.Add("AppName","Printers With Exe Drivers-v102")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","PrinterSetup.ps1")
-    $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode auto")
+    $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode install")
     $IntuneAppValues.Add("AppUninstallName","")
     $IntuneAppValues.Add("AppUninstallVersion","")
     $IntuneAppValues.Add("AppUninstallProcess","")
     $IntuneAppValues.Add("SystemOrUser","system")
     $IntuneAppValues.Add("Function","intune_detection.ps1")
     $IntuneAppValues.Add("LogFolder","C:\IntuneApp")
-    $IntuneAppValues.Add("AppVar1","")
-    $IntuneAppValues.Add("AppVar2","")
-    $IntuneAppValues.Add("AppVar3","")
+    $IntuneAppValues.Add("AppVar1","Printers to Remove: Replace with Printer1 to remove,Replace with Printer2 to remove")
+    $IntuneAppValues.Add("AppVar2","Printers to Add x64: Printer1 Name,Printer2 Name")
+    $IntuneAppValues.Add("AppVar3","Printers to Add ARM64: ")
     $IntuneAppValues.Add("AppVar4","")
     $IntuneAppValues.Add("AppVar5","")
     Return $IntuneAppValues
@@ -1519,7 +1519,94 @@ If ($IntuneApp.Function -in ("intune_Detection.ps1"))
         # see if $customps1_lines injection happend
         $customps1_injection_lines = @()
         # injection may happen below here
-        ### <<intune_detection_customcode.ps1 injection site>> ###
+#region INJECTION SITE for intune_detection_customcode.ps1
+##########################################################
+$customps1_injection_lines +='<# -------- Custom Detection code'
+$customps1_injection_lines +='Put your custom code here'
+$customps1_injection_lines +='Delete this file from your package if it is not needed. Normally, it is not needed.'
+$customps1_injection_lines +='Winget and Choco packages detect themselves without needing this script.'
+$customps1_injection_lines +='Packages can also use AppUninstallName CSV entries for additional Winget detection (without needing this script)'
+$customps1_injection_lines +=''
+$customps1_injection_lines +='Return value'
+$customps1_injection_lines +='$true if detected, $false if not detected'
+$customps1_injection_lines +='If the app is detected, the app will be considered installed and the setup script will not run.'
+$customps1_injection_lines +=''
+$customps1_injection_lines +='Intune'
+$customps1_injection_lines +='Intune will show ''Installed'' for those devices where app is detected'
+$customps1_injection_lines +=''
+$customps1_injection_lines +='Notes'
+$customps1_injection_lines +='$app_detected may already be true if regular detection found via IntuneApps.csv or winget or choco'
+$customps1_injection_lines +='Your code can choose to accept or ignore this detection.'
+$customps1_injection_lines +='WriteHost commands, once injected, will be converted to WriteLog commands, and will log text to the Intune log (c:\IntuneApps)'
+$customps1_injection_lines +='This is because detection checking gets tripped up by writehost so nothing should get displayed at all.'
+$customps1_injection_lines +='Do not allow Write-Output or other unintentional ouput, other than the return value.'
+$customps1_injection_lines +='This must be a stand-alone script - no local files are available, it will be copied to a temp folder and run under system context.'
+$customps1_injection_lines +='However this script is a child process of intune_detection.ps1, and has those functions and variables available to it.'
+$customps1_injection_lines +='For instance, $intuneapp.appvar1-5 which is injected from the intune_settings.csv, is usable.'
+$customps1_injection_lines +='To debug this script, put a break in the script and run the parent ps1 file (Detection).'
+$customps1_injection_lines +='Detection and Requirements scripts are run every few hours (for all required apps), so they should be conservative with resources.'
+$customps1_injection_lines +=' '
+$customps1_injection_lines +='#>'
+$customps1_injection_lines +='Function GetArchitecture'
+$customps1_injection_lines +='{'
+$customps1_injection_lines +='    $architecture = $ENV:PROCESSOR_ARCHITECTURE'
+$customps1_injection_lines +='    switch ($architecture) {'
+$customps1_injection_lines +='        "AMD64" { "x64" }'
+$customps1_injection_lines +='        "ARM64" { "ARM64" }'
+$customps1_injection_lines +='        "x86"   { "x86" }'
+$customps1_injection_lines +='        default { "Unknown architecture: $architecture" }'
+$customps1_injection_lines +='    }'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='WriteLog "app_detected (before): $($app_detected)"'
+$customps1_injection_lines +='$Arch = GetArchitecture # Get OS Arch type (x64 or ARM64)'
+$customps1_injection_lines +='WriteLog "------ intune_settings.csv"'
+$customps1_injection_lines +='WriteLog "   Arch is $($Arch)"'
+$customps1_injection_lines +='WriteLog "AppVar1 is $($IntuneApp.AppVar1)" # Printers to Remove: Old Printer1 Name, Old Printer2 Name'
+$customps1_injection_lines +='WriteLog "AppVar2 is $($IntuneApp.AppVar2)" # Printers to Add x64: Printer1 Name, Printer2 Name'
+$customps1_injection_lines +='WriteLog "AppVar3 is $($IntuneApp.AppVar3)" # Printers to Add ARM64: Printer1 Name, Printer2 Name'
+$customps1_injection_lines +='# get the installed printers'
+$customps1_injection_lines +='$Printers = Get-Printer'
+$customps1_injection_lines +='# create some empty arrays'
+$customps1_injection_lines +='$PrnCSVRowsAdd = @()'
+$customps1_injection_lines +='$PrnCSVRowsRmv = @()'
+$customps1_injection_lines +='# '
+$customps1_injection_lines +='if ($IntuneApp.AppVar1 -match ":") {'
+$customps1_injection_lines +='    $Contents = ($IntuneApp.AppVar1 -split ":")[1].trim(" ") # grab the stuff after the :'
+$customps1_injection_lines +='    if ($Contents -ne '''') {'
+$customps1_injection_lines +='        $PrnCSVRowsRmv += ($Contents -split ",").trim(" ") # array-ify the contents'
+$customps1_injection_lines +='    } # has contents'
+$customps1_injection_lines +='} # there''s a : char'
+$customps1_injection_lines +='# Choose the correct AppVanN: AppVar2 for x64, Appvar3 for ARM64'
+$customps1_injection_lines +='if ($Arch -eq "ARM64") {'
+$customps1_injection_lines +='    $AppVarN = "AppVar3"'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='Else {'
+$customps1_injection_lines +='    $AppVarN = "AppVar2"'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='if ($IntuneApp.$AppVarN -match ":") {'
+$customps1_injection_lines +='    $Contents = ($IntuneApp.$AppVarN -split ":")[1].trim(" ") # grab the stuff after the :'
+$customps1_injection_lines +='    if ($Contents -ne '''') {'
+$customps1_injection_lines +='        $PrnCSVRowsAdd += ($Contents -split ",").trim(" ") # array-ify the contents'
+$customps1_injection_lines +='    } # has contents'
+$customps1_injection_lines +='} # there''s a : char'
+$customps1_injection_lines +='# see if there are any warnings'
+$customps1_injection_lines +='$strWarnings = @() '
+$customps1_injection_lines +='$PrnCSVRowsAdd | Where-object {$_ -NotIn $Printers.Name} |                                        ForEach-Object {$strWarnings += "PC is missing a printer from PrintersToAdd.CSV: $($_)"}'
+$customps1_injection_lines +='$PrnCSVRowsRmv | Where-object {$_ -NotIn $PrnCSVRowsAdd} | Where-object {$_ -In $Printers.Name} | ForEach-Object {$strWarnings += "PC has a printer in PrintersToRemove.CSV: $($_)"}'
+$customps1_injection_lines +='# results'
+$customps1_injection_lines +='if ($strWarnings.Count -eq 0){ # detected OK'
+$customps1_injection_lines +='    $app_detected = $true'
+$customps1_injection_lines +='} # no warnings - OK'
+$customps1_injection_lines +='Else {'
+$customps1_injection_lines +='    $app_detected = $false'
+$customps1_injection_lines +='    ForEach ($strWarning in $strWarnings) {'
+$customps1_injection_lines +='        WriteLog $strWarning'
+$customps1_injection_lines +='    }'
+$customps1_injection_lines +='} # warnings - not detected'
+$customps1_injection_lines +='WriteLog "app_detected (after): $($app_detected)"'
+$customps1_injection_lines +='Return $app_detected'
+##########################################################
+#endregion INJECTION SITE for intune_detection_customcode.ps1
         # injection may happen above here
         if ($customps1_injection_lines.count -gt 0)
         { # code was injected above
