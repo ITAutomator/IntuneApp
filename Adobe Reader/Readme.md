@@ -2,8 +2,15 @@
 
 ## Adobe Reader
 
-*Adobe Reader* is the free PDF reader from Adobe.  
-*Adobe Standard* and *Adobe Pro* are the paid versions of this product (same codebase).  
+### About this package
+
+- *Adobe Reader* is the free PDF reader from Adobe.  
+- This app installs the winget package with ID `Adobe.Acrobat.Reader.64-bit`  
+- This app only installs if machine has no other version of Adobe Acrobat installed, since that would be a preferred paid version.  
+
+### *Adobe Standard* vs *Adobe Pro*  
+
+*Adobe Standard* and *Adobe Pro* are the paid versions of this product (same codebase though).  
 
 *Adobe Reader* can
 
