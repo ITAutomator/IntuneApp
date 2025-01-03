@@ -1,26 +1,37 @@
 # IntuneApp  
 
-## Adobe Reader
+## Adobe Acrobat Reader
 
 ### About this package
 
-- *Adobe Reader* is the free PDF reader from Adobe.  
-- This app installs the winget package with ID `Adobe.Acrobat.Reader.64-bit`  
-- This app only installs if machine has no other version of Adobe Acrobat installed, since that would be a preferred paid version.  
+- *Acrobat Reader* is the free PDF reader from Adobe.  
+- This installs the winget package with ID `Adobe.Acrobat.Reader.64-bit`  
+- This only installs if no other version of *Acrobat* installed, since that would be a preferred paid version.  
 
-### *Adobe Standard* vs *Adobe Pro*  
+### *Acrobat Reader* vs *Acrobat Standard* vs *Acrobat Pro*  
 
-*Adobe Standard* and *Adobe Pro* are the paid versions of this product (same codebase though).  
+- *Acrobat Reader* is free from Adobe.  
+- *Acrobat Standard* and *Acrobat Pro* are the paid versions of this product.  
+  The paid products are subscriptions that allow license activation on up to 2 simultaneous computers.  
+  Adobe has discontinued one-time purchase of its software.  
 
-*Adobe Reader* can
+*Acrobat Reader* can
 
 - Open, read, and print PDF files, including passworded files.
 - Sign and E-Sign documents
 
-*Adobe Reader* can't
+*Acrobat Standard* does all the above plus these features
 
 - Adjust page order (although this can be done be printing pages to PDF)
 - Edit the content of a page
+- Recogize text
+
+*Acrobat Pro* does all the above plus these features
+
+- Mac compatibility
+- Redact to remove sensitive information
+
+Detailed comparison can be found [on Adobe's website](https://www.adobe.com/acrobat/pricing/compare-versions.html).
 
 ## IntuneApp Publishing System
 
