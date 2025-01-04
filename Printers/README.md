@@ -27,19 +27,15 @@ Printer Manager Main Menu
 
 ---
 
-# Setup Steps
+## Setup Steps
 
-Download the package and copy it to a central area.
+- Download the package and copy it to a central area and unzip it.
 
-Right-click and run `PrinterManager (as Admin).cmd` to start the main menu.
-
-*Note: The 2 main CSV files will be created if they don’t exist.*
-
-*Note: To facilitate different printer lists for different groups, use multiple copies of the package in different folders and update the lists independently:*
-
-`Printers (Accounting Group)`
-
-`Printers (Executive Group)`
+- Right-click and run `PrinterManager (as Admin).cmd` to start the main menu.  
+   *Note: The 2 main CSV files will be created if they don’t exist.*  
+   *Note: To facilitate different printer lists for different groups, use multiple copies of the package in different folders and update the lists independently:*  
+   `Printers (Accounting Group)`  
+   `Printers (Executive Group)`  
 
 ### Main Menu
 
@@ -130,53 +126,41 @@ See here for a full list of these values: [Link](https://learn.microsoft.com/en-
 
 ## Prep for Intune
 
-If you are planning on distributing this package using the [**IntuneApp**](https://www.itautomator.com/intuneapp/) app package system, use menu choice I
+If you are planning on distributing this package using the [**IntuneApp**](https://www.itautomator.com/intuneapp/) app package system, use menu choice I  
+`(I) Prep intune_settings.csv with these printers (for IntuneApp)`  
 
-`(I) Prep intune_settings.csv with these printers (for IntuneApp)`
+This will make the necessary changes to the `intune_settings.csv` file so that Intune detection and installation will work properly in the IntuneApp system.  
+Essentially it puts the lists of printers in the app variables section of that csv file.  
 
-This will make the necessary changes to the `intune_settings.csv` file so that Intune detection and installation will work properly in the IntuneApp system.
-
-Essentially it puts the lists of printers in the app variables section of that csv file.
+### Zipping your drivers
+If you have a large driver folder, you can zip, upload, and replace it with a download link in your package using the `AppInstallerDownload1URL` and `AppInstallerDownload1Hash` settings.  
+See the *IntuneApp* readme below.  
 
 ## A note about ARM drivers
 
-The package is CPU aware. If you add a printer from an ARM machine, the driver will be added to the ARM driver folder and its own ARM column in the CSV.
-
-If you want the printer to work in both types of CPUs, use A to add the printer from both PC types to get both driver packages. But you will have two CSV rows. Use the values from both driver columns to merge the two CSV rows into a single row.
+The package is CPU aware. If you add a printer from an ARM machine, the driver will be added to the ARM driver folder and its own ARM column in the CSV.  
+If you want the printer to work in both types of CPUs, use A to add the printer from both PC types to get both driver packages. But you will have two CSV rows. Use the values from both driver columns to merge the two CSV rows into a single row.  
 
 ## Manual installation of the printers
 
-Copy the package folder to a target PC.
-
-Right-click and run PrinterManager (as Admin).cmd to get to the main menu.
-
-Use menu choice S or menu choice O to install the printers.
-
-`(S) Setup all the CSV printers (to this PC)`
-
-`(O) Setup one CSV printer (to this PC)`
-
-Use menu choice N to Uninstall the printers.
-
-`(U) Uninstall the CSV listed printers`
+Copy the package folder to a target PC.  
+Right-click and run `PrinterManager (as Admin).cmd` to get to the main menu.  
+Use menu choice S or menu choice O to install the printers.  
+`(S) Setup all the CSV printers (to this PC)`  
+`(O) Setup one CSV printer (to this PC)`  
+Use menu choice N to Uninstall the printers.  
+`(U) Uninstall the CSV listed printers`  
 
 ## Scripted installation of the printers
 
-We recommend using the [**IntuneApp**](https://www.itautomator.com/intuneapp/) app package system as the easiest way of distributing the printer package.
-
-Alternatively, use the -mode S command line to automate installations.
-
-`PrinterManager.ps1 -mode S`
-
-This will automatically make the menu choice S and install the printers.
-
-`PrinterManager.ps1 -mode U`
-
-This will automatically make the menu choice U and uninstall the printers.
-
-`PrinterManager.ps1 -mode T`
-
-This will automatically make the menu choice T to detect if the printers are installed.
+We recommend using the [**IntuneApp**](https://www.itautomator.com/intuneapp/) app package system as the easiest way of distributing the printer package.  
+Alternatively, use the -mode S command line to automate installations.  
+`PrinterManager.ps1 -mode S`  
+This will automatically make the menu choice S and install the printers.  
+`PrinterManager.ps1 -mode U`  
+This will automatically make the menu choice U and uninstall the printers.  
+`PrinterManager.ps1 -mode T`  
+This will automatically make the menu choice T to detect if the printers are installed.  
 
 ## IntuneApp Publishing System
 

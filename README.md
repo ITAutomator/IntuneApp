@@ -1,12 +1,11 @@
 # IntuneApp  
-
-To see pricing click here: https://github.com/sponsors/ITAutomator
   
 Create and publish Windows apps to your Intune endpoints  
 
-- See here for the up to date readme: (readme.md) <https://github.com/ITAutomator/IntuneApp>  
+- See here for the up-to-date readme: (readme.md) <https://github.com/ITAutomator/IntuneApp>  
 - See here for the blog post (blog): <https://www.itautomator.com/intuneapp>  
 - See here for the admin guide: (pdf) <https://github.com/ITAutomator/IntuneApp/blob/main/Readme%20IntuneApp.pdf>  
+- Is this product used for [a business](https://github.com/ITAutomator/IntuneApp/blob/main/LICENSE)? Become a sponsor: https://github.com/sponsors/ITAutomator  
 
 Main Screen  
 <img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/MainScreen.png alt="screenshot" width="600">
@@ -244,7 +243,7 @@ During the publishing process, if any changes are detected since the last publis
 When Intune next checks in (every few hours), the detection process will determine if the new app is detected or not.  
 
 - *If not,* it will be installed.
-- *If it’s detected,* the device count will be incremented in the App Overview section.
+- *If its detected,* the device count will be incremented in the App Overview section.
 
 The default behavior of an *IntuneApp* is to detect based on the `AppUninstallVersion` in the `intune_settings.csv` file. If `AppUninstallVersion` is blank (the default), the app is considered detected if any prior version of the app has been installed.
 
@@ -257,9 +256,10 @@ All logging and endpoint information is kept in the `C:\IntuneApp` folder, in `c
 
 #### **Logs**
 The `Log *.txt` files in the `C:\IntuneApp` folder show logging output from the scripts' `Write-host` commands.  
-These files self-purge once they hit a certain size, so as not to impact disk space.  
-Inspect the log files for debugging purposes.  
-You should expect *Intune*'s regular detection routine to update these files every few hours (when Intune makes sure the required apps are still installed).  
+
+- These files self-purge once they hit a certain size, so as not to impact disk space.  
+- Inspect the log files for debugging purposes.  
+- You should expect *Intune*'s regular detection routine to update these files every few hours (when Intune makes sure the required apps are still installed).  
 
 #### **Install Tracking via `IntuneApp.csv`**
 
@@ -285,7 +285,8 @@ If you want to ensure a hash is matched (file contents haven't changed), see *Re
 For instance, to zip a subfolder called `\Installer` , publish it, and include as a downloaded portion of your app:
 
 - Create the Zip  
-Enter the `\Installer` folder and ZIP the contents to your downloads folder calling it `InstallerFolder.zip` or similar.  
+Right-click the `\Installer` folder and ZIP it to your downloads folder calling it `InstallerFolder.zip` or similar.  
+Use 7-zip or any zipping tool, but the contents of the zip will be merged into the `\IntuneApp` folder.  
 
 - Read the hash value (optional)  
 This ensures the hash from the download matches (file contents haven't changed) from when the package was originally set up.  
