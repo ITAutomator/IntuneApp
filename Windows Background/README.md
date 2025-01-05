@@ -3,13 +3,14 @@
 
 See Github to download and for details: https://github.com/ITAutomator/IntuneApp/tree/main/Windows%20Background  
 
-<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/WindowsBackground/MainScreen.png alt="screenshot" width="500"/>
-  
 ## Overview  
 
 Sets a Windows desktop background image and color .  
 This is a per-user setting (the package is a user-based package)  
   
+Background  
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/WindowsBackground/Background.png alt="screenshot" width="500"/>
+
 ## More information  
 
 See also: <https://www.itautomator.com/intuneapp>  
@@ -17,6 +18,9 @@ See also: <https://github.com/ITAutomator/IntuneApp>
   
 ## Setup Steps  
 
+Main menu  
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/WindowsBackground/MainScreen.png alt="screenshot" width="500"/>
+  
 - Create a `wallpaper1.png` (See *Common Display Resolutions* below for size suggestions but QHD 2560 x 1440 is a good start)
 - Determine a background color e.g. `#040E4C` (Hex color code from [www.color-hex.com](https://www.color-hex.com/))  
 - Put the `.png` file(s) in  
