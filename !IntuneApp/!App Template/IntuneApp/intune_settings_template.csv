@@ -23,6 +23,7 @@ PrivacyURL,,Info for company portal
 CompanyPortalFeaturedApp,FALSE,(Required) Company Portal Featured (Default is FALSE)
 AvailableInCompanyPortal,TRUE,(Required) Company Portal Availability (Default is TRUE)
 PublishToOrgGroup,TRUE,"(Required) App will be pushed immediately to the PublishToGroup group from AppsPublish_OrgList.csv (as a required app). False means do not push app to that group. Independent of this, apps are always published to its own IntuneApp [appname] group (Default is FALSE)"
+CreateExcludeGroup,FALSE,"(Optional) When app is published, create both Include and Exclude groups specific to the app. (Default is FALSE)"
 AppVar1,,Custom var useable by ps1 files
 AppVar2,,Custom var useable by ps1 files
 AppVar3,,Custom var useable by ps1 files

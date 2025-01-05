@@ -513,9 +513,10 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
         $pkgobj.Add("PublicationStatus"   , "Unpublished") #Unpublished, Published, Needs Update, Package Missing
         $pkgobj.Add("Warnings"            , "")
         # convert to booleans
-        $pkgobj.PublishToOrgGroup= [System.Convert]::ToBoolean($pkgobj.PublishToOrgGroup)
+        $pkgobj.PublishToOrgGroup       = [System.Convert]::ToBoolean($pkgobj.PublishToOrgGroup)
         $pkgobj.CompanyPortalFeaturedApp= [System.Convert]::ToBoolean($pkgobj.CompanyPortalFeaturedApp)
         $pkgobj.AvailableInCompanyPortal= [System.Convert]::ToBoolean($pkgobj.AvailableInCompanyPortal)
+        $pkgobj.CreateExcludeGroup      = [System.Convert]::ToBoolean($pkgobj.CreateExcludeGroup)
         # other info part ii
         if ($pkgobj.PublishToOrgGroup) {$Required_Pkg = "Yes"} else {$Required_Pkg = ""}
         $pkgobj.Add("Required_Pkg"            , $Required_Pkg)
@@ -1062,7 +1063,7 @@ Do
                         {
                             Write-Host "AvailableInCompanyPortal : $($pkg.AvailableInCompanyPortal)"
                         }
-                        # Determin Publishing group option
+                        # Determine Publishing group option
                         $publish_option_msg = ""
                         if ($action -eq 2) {$publish_option_msg = "[R]equired"}
                         if ($action -eq 3) {$publish_option_msg = "[N]ot Required"}
@@ -1137,18 +1138,33 @@ Do
                         { # keep trying to build
                             #Location of IntuneWinAppUtil.exe
                             $IntuneWinAppUtilPath = "$($scriptDir)\Utils\IntuneWinAppUtil.exe"
+                            # try from \Utils\IntuneWinAppUtil.exe otherwise TEMP
                             If (Test-Path $IntuneWinAppUtilPath -PathType Leaf){
                                 $ver = . $IntuneWinAppUtilPath -v
-                                Write-Host ".intunewin creation tool (IntuneWinAppUtil.exe v$($ver)): \Utils\IntuneWinAppUtil.exe"
+                                $daysold = ((Get-Date)-(Get-Item $IntuneWinAppUtilPath).LastWriteTime).Days
+                                Write-Host "Use IntuneWinAppUtil.exe v$($ver) [Days old: $($daysold)] (from \Utils\IntuneWinAppUtil.exe instead of automatic download)"
                             }
                             else {
+                                $daysoldmax = 90
                                 $IntuneWinAppUtilPath =Join-Path -Path $env:TEMP -ChildPath "IntuneWinAppUtil.exe" 
                                 If (Test-Path $IntuneWinAppUtilPath -PathType Leaf){
                                     $ver = . $IntuneWinAppUtilPath -v
+                                    $daysold = ((Get-Date)-(Get-Item $IntuneWinAppUtilPath).LastWriteTime).Days
+                                    if ($daysold -gt $daysoldmax) {
+                                        $ver="not downloaded yet"
+                                        Write-Host "Use IntuneWinAppUtil.exe (will be downloaded automatically by New-IntuneWin32AppPackage)"
+                                        Write-Host "Found IntuneWinAppUtil.exe v$($ver) [Days old: $($daysold)] (from $($env:TEMP)\IntuneWinAppUtil.exe will be deleted and re-downloaded since it is older than $($daysoldmax) days)"
+                                        Remove-Item $IntuneWinAppUtilPath -Force | Out-Null
+                                    }
+                                    else {
+                                        Write-Host "Use IntuneWinAppUtil.exe v$($ver) [Days old: $($daysold)] (from $($env:TEMP)\IntuneWinAppUtil.exe instead of automatic download)"
+                                    }
                                 }
-                                else {$ver="Tbd"}
-                                $IntuneWinAppUtilPath = $null
-                                Write-Host ".intunewin creation tool (IntuneWinAppUtil.exe v$($ver)): will be downloaded to temp if needed"
+                                else {
+                                    $ver="not downloaded yet"
+                                    Write-Host "Use IntuneWinAppUtil.exe (will be downloaded automatically by New-IntuneWin32AppPackage)"
+                                }
+                                $IntuneWinAppUtilPath = $null # when this is null New-IntuneWin32AppPackage checks Temp, if not found it downloads to Temp
                             }
                             # Splat the Required arguments
                             $SplatArgs = @{
@@ -1200,12 +1216,16 @@ Do
                         if ($pkg.AvailableInCompanyPortal) {
                             $AppDescription+="`r`n* AvailableInCompanyPortal: $($pkg.AvailableInCompanyPortal)"
                         }
-                        # Pushed to group: IntuneApp Windows Background
+                        # Pushed to group: IntuneApp Appname
                         if (($pkg.PublishToOrgGroup) -and ($OrgValues.PublishToGroupIncluded)) {
                             $AppDescription+="`r`n* Pushed to group: IntuneApp $($pkg.AppName), $($OrgValues.PublishToGroupIncluded)"
                         }
                         else {
                             $AppDescription+="`r`n* Pushed to group: IntuneApp $($pkg.AppName)"
+                        }
+                        # Exclude group: IntuneApp Appname Exclude
+                        if ($pkg.CreateExcludeGroup -eq "true") {
+                            $AppDescription+="`r`n* Excluded from group: IntuneApp $($pkg.AppName) Exclude"
                         }
                         # Updated by and Hash value (used to check for package content changes in later publish requests)
                         $AppDescription+="`r`n* Updated: $(Get-Date -format "yyyy-MM-dd") by $($env:USERNAME) on $($env:COMPUTERNAME)"
@@ -1236,7 +1256,7 @@ Do
                         if($pkg.Developer)      {$SplatArgs.Developer      = $pkg.Developer}
                         if($pkg.AppVersion)     {$SplatArgs.AppVersion     = $pkg.AppVersion}
                         if($pkg.Publisher)      {$SplatArgs.Publisher      = $pkg.Publisher} else {$SplatArgs.Publisher = "<none>"} # Publisher is required
-                        Write-Host "Adding IntuneApp to '$($OrgValues.TenantName)'..."
+                        Write-Host "Adding $($pkg.AppName) to $($OrgValues.TenantName) ... "
                         $AutoRetries=2
                         Do
                         { #### FINALLY, ADD THE APP TO INTUNE
@@ -1307,7 +1327,6 @@ Do
                         }
                         #endregion AvailableInCompanyPortal
                         #region include_exclude groups
-                        Write-Host "Connected OK to: " -NoNewline; Write-Host $MgOrg.displayname -ForegroundColor Yellow  # for: $(($conn_result.ExpiresOn-(Get-Date)).TotalHours.toString("0.#")) hrs"
                         if (-not $publish_option_boolean)
                         {
                             Write-Host "PublishToOrgGroup: " -NoNewline; Write-Host "FALSE " -NoNewline -ForegroundColor Yellow
@@ -1317,7 +1336,7 @@ Do
                         {  #has include group
                             #region group PublishToGroupIncluded
                             $groupname = $OrgValues.PublishToGroupIncluded
-                            Write-Host "Including via Group: $($groupname)... " -NoNewline
+                            Write-Host "Including via Group: $($groupname) ... " -NoNewline
                             $strReturn,$MgGroup=MgGroupCreate $groupname
                             Write-Host $strReturn
                             if (-not $MgGroup)
@@ -1332,7 +1351,7 @@ Do
                             { #has exclude group    
                                 #region group PublishToGroupExcluded
                                 $groupname = $OrgValues.PublishToGroupExcluded
-                                Write-Host "Excluding via Group: $($groupname)... " -NoNewline
+                                Write-Host "Excluding via Group: $($groupname) ... " -NoNewline
                                 $strReturn,$MgGroup=MgGroupCreate $groupname
                                 Write-Host $strReturn
                                 if (-not $MgGroup)
@@ -1346,9 +1365,9 @@ Do
                             #endregion group PublishToGroupExcluded
                         } #has include group
                         #endregion include_exclude groups
-                        #region add app group
+                        #region add app group include
                         $groupname = "IntuneApp $($pkg.AppName)"
-                        Write-Host "Including via this-app-only Group: $($groupname)... " -NoNewline
+                        Write-Host "Including via this-app-only Group: $($groupname) ... " -NoNewline
                         $strReturn,$MgGroup=MgGroupCreate $groupname
                         Write-Host $strReturn
                         if (-not $MgGroup)
@@ -1358,7 +1377,21 @@ Do
                             Add-IntuneWin32AppAssignmentGroup -ID $added_app.id -GroupID $MgGroup.Id -Include -Intent "required" -Notification "showAll" -Verbose:$verbosepackager| Out-Null
                             Write-Host "OK: App references Group: $($groupname)" -ForegroundColor Yellow
                         }
-                        #endregion add app group
+                        #endregion add app group include
+                        if ($pkg.CreateExcludeGroup)
+                        { # add app group exclude
+                            $groupname = "IntuneApp $($pkg.AppName) Exclude"
+                            Write-Host "Excluding via this-app-only Group: $($groupname) ... " -NoNewline
+                            $strReturn,$MgGroup=MgGroupCreate $groupname
+                            Write-Host $strReturn
+                            if (-not $MgGroup)
+                            {Write-Host "Couldn't find group with that name. App will be available, but will not reference the group." -ForegroundColor Red}
+                            else
+                            { 
+                                Add-IntuneWin32AppAssignmentGroup -ID $added_app.id -GroupID $MgGroup.Id -Exclude -Intent "required" -Verbose:$verbosepackager| Out-Null
+                                Write-Host "OK: App references Group: $($groupname)" -ForegroundColor Yellow
+                            }
+                        } # add app group exclude
                         # Delete temp folder
                         Remove-Item $IntuneTempFolder -Recurse
                         Write-Host "Done adding app: " -NoNewline
