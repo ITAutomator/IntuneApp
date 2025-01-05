@@ -318,13 +318,13 @@ The root package folder contains:
 |Name                      |Value                 |Comment|
 |---------                 |---------             |-------|
 |AppName                   |7Zip                  |(Required) Base package name (e.g 7zip) (Remove ! Character which hides sample apps)|
-|AppVersion                |111                   |(Optional) Package version. Whole numbers beginning with 100. Nothing to do with product version. (e.g. 100 for 7zip-v100) (Recommended)|
+|AppVersion                |111                   |(Optional) Package version. Whole numbers beginning with 100. Can be manually incremented but also autoincrements every time IntuneApp publish process detects a hash change. Not the same but similar to Intune product version. (e.g. 100 for 7zip-v100) (Recommended)|
 |AppInstaller              |winget                |(Required) winget,choco,exe,msi,ps1. If winget choco is used leave AppUninstallName blank unless you want to uninstall an additional app|
 |AppInstallName            |7zip.7zip             |(Required) winget appid (case sensitive) or choco appid or filename of .exe or .msi or .ps1 or .cmd (wildcard OK). See https://winstall.app or https://community.chocolatey.org/packages for package ids.|
 |AppInstallArgs            |                      |(Optional) Prefix with ARGS: Installer arguments for msi,ps1,exe (for msi usually /quiet or /q /norestart) (for ps1 with multi param try -var1 xyz -var2 pdq named format or else entire value is first param)|
 |AppDescription            |zip file management   |(Required) Info for company portal|
 |AppUninstallName          |                      |(Optional) winget name or winget id (Use 'winget list' to show them) to detect/uninstall (also done prior to install). This is in addition to the normal choco,winget uninstall. This field is required for non-winget packages, unless customcode.ps1 is used, as it is the only way to detect an app|
-|AppUninstallVersion       |22                    |(Optional) Winget product version (e.g. 4.5.0) below which to the app is considered not detected. Below this version will be uninstalled / reinstalled. Blank=All versions are OK and will not be reinstalled. Use current version to repackage an app to upgrade everyone to latest version.|
+|AppUninstallVersion       |22                    |(Optional) AddRemove Product version below which product is uninstalled. If AppUninstallName is blank use AppVersion numbers else use Winget numbers (e.g. 4.5.0). Detection: versions below this will not be considered Detected. Blank=Any version is considered a detection and later versions will not be installed. Set this to the same as AppVersion to trigger a re-install on all endpoints.|
 |AppUninstallProcess       |\*7zip\*                |(Optional) Processes to end prior to uninstall. (e.g. Acrobat\*) Show running names via powershell: get-process -Name Acrob*. Wildcards can be used|
 |SystemOrUser              |system                |(Required) System to install as system User to install as user|
 |Publisher                 |Igor Pavlov of 7Zip   |(Required) Info for company portal|
