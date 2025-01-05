@@ -8,7 +8,7 @@ Create and publish Windows apps to your Intune endpoints
 - Is this product used for [a business](https://github.com/ITAutomator/IntuneApp/blob/main/LICENSE)? Become a sponsor: https://github.com/sponsors/ITAutomator  
 
 Main Screen  
-<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/MainScreen.png alt="screenshot" width="600">
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/MainScreen.png alt="screenshot" width="700">
   
 ## Quick Start  
   
@@ -213,7 +213,7 @@ If an App is to be an Intune Required App for *all* users, two items need to be 
 
 Normally, the `IntuneApp Windows Users` group should include everyone in the organization. However, manually maintaining a *static* group as users join the organization will be cumbersome.  
 Here's how to convert the `IntuneApp Windows Users` group from a *static* group (where users are manually added), to a *dynamic* group (that automatically includes everyone).  
-<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/GroupPropertiesDynamic.png alt="screenshot" width="300">  
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/GroupPropertiesDynamic.png alt="screenshot" width="450">  
 
 - Open the `IntuneApp Windows Users` group in Entra and click on *Properties*
 - Change the type from *Assigned* to *Dynamic User*
@@ -230,7 +230,7 @@ Here's how to convert the `IntuneApp Windows Users` group from a *static* group 
 
 Open *Intune Admin > Apps > Windows > (App) > Overview*  
 This will show details about who has received the app  
-<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/AppPropertiesOverview.png alt="screenshot" width="300">  
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/AppPropertiesOverview.png alt="screenshot" width="600">  
 
 ### Publishing an update to an App (Re-publishing)
 
@@ -253,7 +253,7 @@ If you are replacing a previously pushed version and you want to trigger a re-in
 ### Debugging at the endpoint
 
 All logging and endpoint information is kept in the `C:\IntuneApp` folder, in `csv` and `txt` files.  
-<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/EndpointLogs.png alt="screenshot" width="300">  
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/EndpointLogs.png alt="screenshot" width="200">  
 
 #### **Logs**
 
@@ -267,7 +267,7 @@ The `Log *.txt` files in the `C:\IntuneApp` folder show logging output from the 
 
 The `IntuneApp.csv` in the `C:\IntuneApp` folder keeps track of installs and detections and versions.  If this file is deleted, all `.ps1` installs will be considered undetected and will be installed again unless custom detections dictate otherwise.  
 For debugging purposes you can remove rows to trigger re-detect and re-install events for an app.  
-<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/EndpointIntuneApp.png alt="screenshot" width="300">  
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/EndpointIntuneApp.png alt="screenshot" width="500">  
 
 ## Setting up your App package (Misc Info)  
 
@@ -276,7 +276,7 @@ For debugging purposes you can remove rows to trigger re-detect and re-install e
 The root package folder name (e.g. `7Zip`) will be your App Name.  
 It must match the `App name` value in `intune_settings.csv`.  
 
-<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/AppFolders.png alt="screenshot" width="300">  
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/AppFolders.png alt="screenshot" width="200">  
 
 The root package folder contains:
 
@@ -388,9 +388,14 @@ for everything else (e.g. `msi`)
 
 ### Downloading package files from the web
 
-If there's a file (folder) in `\IntuneApp` that should be downloaded prior to install or uninstall, use the `AppInstallerDownload1URL` setting.
-This is useful for large installers that exceed the maximum package size.  
-Note: Downloads are not available for *detection* or *requirements* actions, only *install* and *uninstall*.  This is because *detection* and *requirements* actions run every few hours on all endpoints, so a large download size would be problematic.  
+If there's a file (folder) in `\IntuneApp` that should be downloaded prior to install or uninstall, use the `AppInstallerDownload1URL` setting.  
+
+- This is useful for large installers that exceed the maximum package size.  
+- The downloaded files will be merged (and overwrite if there's a conflict) the `IntuneApp` folder files.  
+- Zip file will be automatically unzipped.  
+- The download will happen just prior to *install* and *uninstall* actions.  
+- Downloaded files will be available to installers and `ps1` scripts.  
+- Note: Downloads are not available for *detection* or *requirements* actions, only *install* and *uninstall*.  This is because *detection* and *requirements* actions run every few hours on all endpoints, so a large download size would be problematic.  
 
 #### Download an existing file from the web  
 
@@ -421,3 +426,21 @@ Record the Share URL for pasting into the `intune_settings.csv`
 *Note: `AppInstallerDownload1Hash` is optional. If omitted, the downloaded file's hash will not be checked.*  
 `AppInstallerDownload1URL`: (Share URL)  
 `AppInstallerDownload1Hash`: (Hash value)  
+
+### Publishing Techniques
+
+#### Mandatory for new users only
+
+To make this mandatory for new users only, but not for existing users, use this *IntuneApp* technique:  
+
+- Publish once with `PublishToOrgGroup` = `FALSE` and `CreateExcludeGroup` = `TRUE`
+- This creates an app-only exclude group (ending in `Exclude`).  
+- Add all current users in the app-only exclude group.  
+- Publish again with set `PublishToOrgGroup` to `TRUE` to pubish to any future users.
+
+#### Re-installing a previous package  
+
+If you are replacing a previously pushed package, use this *IntuneApp* technique to overwrite previous installs:  
+
+- Change `AppUninstallVersion` to match the last `AppVersion`  
+- If you don’t adjust this, endpoints with prior versions will not get the *new* package  

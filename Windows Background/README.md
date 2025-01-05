@@ -74,9 +74,19 @@ Open `\IntuneApp\intune_settings.csv` and adjust these values
   
 `PublishToOrgGroup`  
 To make this a mandatory app (push to all users), set `PublishToOrgGroup` to `TRUE`  
+
+To make this mandatory for new users only, but not for existing users, use this *IntuneApp* technique:  
+
+- Publish once with `PublishToOrgGroup` = `FALSE` and `CreateExcludeGroup` = `TRUE`
+- This creates an app-only exclude group (ending in `Exclude`).  
+- Add all current users in the app-only exclude group.  
+- Publish again with set `PublishToOrgGroup` to `TRUE` to pubish to any future users.
   
 `AppUninstallVersion`  
-If you are replacing a previously pushed background you must change `AppUninstallVersion` to match the last `AppVersion`. If you don’t adjust this, only new people will get the new wallpaper.  
+If you are replacing a previously pushed background, use this *IntuneApp* technique to overwrite previous installs:  
+
+- Change `AppUninstallVersion` to match the last `AppVersion`
+- If you don’t adjust this, endpoints with prior versions will not get the *new* wallpaper
   
 ## Technical Information  
 
