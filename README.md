@@ -147,10 +147,11 @@ For up-to-date information (and to download the IntuneApp system) see here: <htt
 - Publishing your app does the following  
   - Puts the app in the company portal so users can self-install manually  
   - Creates your app in the Intune apps list <https://intune.microsoft.com/>  
-  - Creates 3 groups (as needed) and attaches them to your app  
-    - `IntuneApp Windows Users` - Will receive mandatory apps (apps having PublishToOrgGroup in settings.csv)  If you want this to be everyone, convert it to a dynamic group with the dynamic rules needed.  
+  - Attaches up to 4 required groups (as per options set in `intunesettings.csv`). The groups are created if not found, but existing groups are left as-is.
+    - `IntuneApp Windows Users` - Will receive mandatory apps (apps having `PublishToOrgGroup`=TRUE)  If you want this to be everyone, convert it to a dynamic group with the dynamic rules needed.  
     - `IntuneApp Windows Users Excluded` - Are excluded from above  
     - `IntuneApp Google Chrome` - Users that will get this app (and future versions) even if it isn't mandatory  
+    - `IntuneApp Google Chrome Excluded` - Users that will be excluded from this app (optional based on `intunesettings.csv`)
   
 ## Installation methods
 
@@ -255,6 +256,7 @@ All logging and endpoint information is kept in the `C:\IntuneApp` folder, in `c
 <img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/EndpointLogs.png alt="screenshot" width="300">  
 
 #### **Logs**
+
 The `Log *.txt` files in the `C:\IntuneApp` folder show logging output from the scripts' `Write-host` commands.  
 
 - These files self-purge once they hit a certain size, so as not to impact disk space.  
@@ -269,11 +271,126 @@ For debugging purposes you can remove rows to trigger re-detect and re-install e
 
 ## Setting up your App package (Misc Info)  
 
+### Package folder
+
+The root package folder name (e.g. `7Zip`) will be your App Name.  
+It must match the `App name` value in `intune_settings.csv`.  
+
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/AppFolders.png alt="screenshot" width="300">  
+
+The root package folder contains:
+
+- the `IntuneApp` folder with the `intune_settings.csv` for core settings, the `intune_icon.png` icon file, and other package files to install the app
+- the `intune_command.cmd` which is an optional file to manually kick off the install, uninstall, detect, and requiment actions (for testing)
+
+### Folder structure  
+
+```text
+\ App Name                                             Package Root (Folder name must match App Name in intune_settings.csv)  
+| intune_command.cmd                                   Double click to manually launch Intune commands (Optional but convenient)  
+| Misc un-packaged files                               Reference files (not copied to Intune)  
+\-- Misc un-packaged folder1                           Reference files (not copied to Intune)  
+\-- Misc un-packaged folder2                           Reference files (not copied to Intune)  
+\-- IntuneApp                                          Package folder - copied to Intune  
+    | intune_icon.png                                  Package icon - Replace with app icon  
+    | intune_settings.csv                              Package settings - Edit app settings  
+    | (optional) intune_detection_customcode.ps1       Optional code file if needed - for advanced apps  
+    | (optional) intune_requirements_customcode.ps1    Optional code file if needed - for advanced apps  
+    | (optional) intune_install_followup.ps1           Optional code file if needed - for advanced apps  
+    | (optional) intune_uninstall_followup.ps1         Optional code file if needed - for advanced apps  
+    \-- IntuneUtils                                    Managed code - do not touch. Added by AppPublish.ps1  
+        | intune_command.cmd                           Menu of Intune commands: Install, Uninstall, Detect, Requirements  
+        | intune_command.ps1                           Menu code  
+        | intune_detection.ps1                         App Detection. True: app is installed  
+        | intune_detection_customcode_template.ps1     Template code for optional file   
+        | intune_icon_template.png                     Template code for optional file  
+        | intune_install.ps1                           App Install  
+        | intune_install_followup_template.ps1         Template  
+        | intune_requirements.ps1                      App Requirements - True: this machine meet requirements for app install  
+        | intune_requirements_customcode_template.ps1  Template code for optional file  
+        | intune_uninstall.ps1                         App Uninstall  
+        | intune_uninstall_followup_template.ps1       Template code for optional file  
+        | README.txt                                   Readme  
+```
+
+### `intune_settings.csv` Detailed settings information
+
+|Name                      |Value                 |Comment|
+|---------                 |---------             |-------|
+|AppName                   |7Zip                  |(Required) Base package name (e.g 7zip) (Remove ! Character which hides sample apps)|
+|AppVersion                |111                   |(Optional) Package version. Whole numbers beginning with 100. Nothing to do with product version. (e.g. 100 for 7zip-v100) (Recommended)|
+|AppInstaller              |winget                |(Required) winget,choco,exe,msi,ps1. If winget choco is used leave AppUninstallName blank unless you want to uninstall an additional app|
+|AppInstallName            |7zip.7zip             |(Required) winget appid (case sensitive) or choco appid or filename of .exe or .msi or .ps1 or .cmd (wildcard OK). See https://winstall.app or https://community.chocolatey.org/packages for package ids.|
+|AppInstallArgs            |                      |(Optional) Prefix with ARGS: Installer arguments for msi,ps1,exe (for msi usually /quiet or /q /norestart) (for ps1 with multi param try -var1 xyz -var2 pdq named format or else entire value is first param)|
+|AppDescription            |zip file management   |(Required) Info for company portal|
+|AppUninstallName          |                      |(Optional) winget name or winget id (Use 'winget list' to show them) to detect/uninstall (also done prior to install). This is in addition to the normal choco,winget uninstall. This field is required for non-winget packages, unless customcode.ps1 is used, as it is the only way to detect an app|
+|AppUninstallVersion       |22                    |(Optional) Winget product version (e.g. 4.5.0) below which to the app is considered not detected. Below this version will be uninstalled / reinstalled. Blank=All versions are OK and will not be reinstalled. Use current version to repackage an app to upgrade everyone to latest version.|
+|AppUninstallProcess       |\*7zip\*                |(Optional) Processes to end prior to uninstall. (e.g. Acrobat\*) Show running names via powershell: get-process -Name Acrob*. Wildcards can be used|
+|SystemOrUser              |system                |(Required) System to install as system User to install as user|
+|Publisher                 |Igor Pavlov of 7Zip   |(Required) Info for company portal|
+|AppInstallerDownload1URL  |                      |Enter a URL to download into install folder before installer starts. Can be a public share from Google Drive (drive.google.com). Zip files will be extracted automatically.|
+|AppInstallerDownload1Hash |                      |Enter the file hash (optional) Get-FileHash -Algorithm SHA256|
+|AppInstallerDownload2URL  |                      ||
+|AppInstallerDownload2Hash |                      ||
+|RestartBehavior           |allow                 |Allow Installer to Restart (Default is allow)|
+|Developer                 |                      |Info for company portal|
+|Owner                     |                      |Info for company portal|
+|Notes                     |                      |Info for company portal|
+|InformationURL            |https://www.7-zip.org |Info for company portal|
+|PrivacyURL                |                      |Info for company portal|
+|CompanyPortalFeaturedApp  |FALSE                 |(Required) Company Portal Featured (Default is FALSE)|
+|AvailableInCompanyPortal  |TRUE                  |(Required) Company Portal Availability (Default is TRUE)|
+|PublishToOrgGroup         |TRUE                  |(Required) App will be pushed immediately to the PublishToGroup group from AppsPublish_OrgList.csv (as a required app). False means do not push app to that group. Independent of this, apps are always published to its own `IntuneApp [appname]` group (Default is FALSE)|
+|CreateExcludeGroup        |FALSE                 |(Optional) When app is published, create both Include and Exclude groups specific to the app. (Default is FALSE)|
+|AppVar1                   |                      |Custom var useable by ps1 files|
+|AppVar2                   |                      |Custom var useable by ps1 files|
+|AppVar3                   |                      |Custom var useable by ps1 files|
+|AppVar4                   |                      |Custom var useable by ps1 files|
+|AppVar5                   |                      |Custom var useable by ps1 files|
+
+### `AppInstaller` the type of the installer  
+
+  `winget`   Microsoft's command line packaging system  
+  `choco`    Chocolate is a popular pre-Microsoft packaging system (Open source)  
+  `ps1`      Powershell script  
+  `msi`      MSI installer  
+  `exe`      EXE installer  
+
+### `AppInstallName` the name of the installer  
+
+for `winget` and `choco`  
+
+- `winget` and `choco` are the most common Windows package installers  
+- if `AppInstaller` is `winget` or `choco`, set the `AppInstallName` to the app package ID as defined within those syetems  
+- For *Winget* apps (e.g. `Google.Chrome`) search here: <https://winstall.app/>  
+- For *Chocolatey* apps (e.g. `googlechrome`) search here: <https://community.chocolatey.org/packages>  
+
+for everything else (e.g. `msi`)  
+
+- set the `AppInstallName` to the installer filename (eg `myps1.ps1` or `setup.msi`) (it must exist as a file or as a download in the `\IntuneApp` folder)  
+
+### `AppInstallArgs` Installer arguments
+
+#### `AppInstallArgs` For `Ps1` packages  
+  
+- (Optional) Prefix your arguments with the `ARGS:` keyword  
+- for `ps1` with multiple parameters, it's best to use named parameters  
+`ARGS:-var1 xyz -var2 pdq`  
+- for `ps1` with single parameter, you can just pass the contents  
+`ARGS:use settings file.xml`  
+  
+#### `AppInstallArgs` For `msi` and `exe` packages  
+  
+- (Optional) Prefix your arguments with the 'ARGS:' keyword  
+- for msi usually  
+`ARGS:/quiet`  
+`ARGS:/q /norestart`  
+
 ### Downloading package files from the web
 
 If there's a file (folder) in `\IntuneApp` that should be downloaded prior to install or uninstall, use the `AppInstallerDownload1URL` setting.
 This is useful for large installers that exceed the maximum package size.  
-Note: Downloads are not available for *detection* or *requirements* actions, only *install* and *uninstall*.
+Note: Downloads are not available for *detection* or *requirements* actions, only *install* and *uninstall*.  This is because *detection* and *requirements* actions run every few hours on all endpoints, so a large download size would be problematic.  
 
 #### Download an existing file from the web  
 
@@ -304,69 +421,3 @@ Record the Share URL for pasting into the `intune_settings.csv`
 *Note: `AppInstallerDownload1Hash` is optional. If omitted, the downloaded file's hash will not be checked.*  
 `AppInstallerDownload1URL`: (Share URL)  
 `AppInstallerDownload1Hash`: (Hash value)  
-
-### `intune_settings.csv` information
-
-- `AppInstaller` - the type of the installer  
-  winget   Microsoft's command line packaging system  
-  choco    Chocolate is a popular pre-Microsoft packaging system (Open source)  
-  ps1      Powershell script  
-  cmd      Windows batch command  
-  msi      MSI installer  
-  exe      EXE installer  
-- `AppInstallName`  the name of the installer  
-  for winget and choco, provide the app package ID  
-  for everything else, provide the installer filename (eg myps1.ps1 or setup.msi) (it must exist in the \IntuneApp folder)  
-- `IntuneApp` folder  
-  contains the `intune_settings.csv` and `intune_icon.png` files  
-  provide the installer file and any files / folders needed by the installer  
-  
-### AppInstallName For Winget and Chocolatey packages  
-
-- These are the most common package types.  
-- You will need the *Winget* or *Chocolately* id for the `AppInstallName` settings  
-- For *Winget* apps (e.g. `Google.Chrome`) search here: <https://winstall.app/>  
-- For *Chocolatey* apps (e.g. `googlechrome`) search here: <https://community.chocolatey.org/packages>  
-  
-### AppInstallArgs For Ps1 packages  
-  
-- (Optional) Prefix your arguments with the `ARGS:` keyword  
-- for `ps1` with multiple parameters, it's best to use named parameters  
-`ARGS:-var1 xyz -var2 pdq`  
-- for `ps1` with single parameter, you can just pass the contents  
-`ARGS:use settings file.xml`  
-  
-### AppInstallArgs For msi exe packages  
-  
-- (Optional) Prefix your arguments with the 'ARGS:' keyword  
-- for msi usually  
-`ARGS:/quiet`  
-`ARGS:/q /norestart`  
-  
-### Folder structure  
-
-```text
-App Name  
-| intune_command.cmd                                   (Double click to manually launch Intune commands. Optional but convenient)  
-| Misc un-packaged files                               (These files are not copied to Intune)  
-+-- Misc un-packaged folder1  
-+-- Misc un-packaged folder2  
-+-- IntuneApp                                          (Package folder - copied to Intune)  
-    | intune_icon.png                                  (Package icon - Replace with app icon)  
-    | intune_settings.csv                              (Package settings - Edit app settings)  
- | Misc templated files go here                     (Optional template files if needed by App - for advanced apps)  
-    +-- IntuneUtils                                    (Managed code - do not touch. Added by AppPublish.ps1)  
-        | intune_command.cmd                           {Menu of Intune commands: Install, Uninstall, Detect, Requirements}  
-        | intune_command.ps1                           {Menu code}  
-        | intune_detection.ps1                         {App Detection. True: app is installed}  
-        | intune_detection_customcode_template.ps1     {Template}  
-        | intune_icon_template.png                     {Template}  
-        | intune_install.ps1                           {App Install}  
-        | intune_install_followup_template.ps1         {Template}  
-        | intune_requirements.ps1                      {App Requirements - True: this machine meet requirements for app install}  
-        | intune_requirements_customcode_template.ps1  {Template}  
-        | intune_settings_template.csv                 {Template}  
-        | intune_uninstall.ps1                         {App Uninstall}  
-        | intune_uninstall_followup_template.ps1       {Template}  
-        | README.txt                                   (Readme}  
-```
