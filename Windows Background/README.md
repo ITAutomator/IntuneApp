@@ -26,12 +26,12 @@ Main menu
 
 2. Set the *Background Color* and *WallpaperStyle* in `SetDesktop.csv`  
    `Background Color`=`#040E4C` for *Dark Blue* (Hex color code from [www.color-hex.com](https://www.color-hex.com/))  
-   `WallpaperStyle` = `Fill`  to fill the entire screen with the image, preserving the aspect ration (AR) and cropping image as needed  
+   `WallpaperStyle` = `Fill`. The Fill setting instructs Windows to fill the entire screen with the image, preserving the aspect ratio (AR) and cropping image as needed  
    Note: *Fill* obviates the need for *Background Color*; for smaller images, use *Center*  
 
 3. Test it  
    Double-click `SetDesktop.cmd` to test it  
-   If you are scriping the installation use `SetDesktop.ps1 -mode auto` to automatically install the wallpaper  
+   If you are scripting the installation use `SetDesktop.ps1 -mode auto` to automatically install the wallpaper  
 
 4. (Optional) For users of the *IntuneApp* app publishing system  
    Change `intune_settings.csv` to adjust publication audience  
