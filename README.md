@@ -14,8 +14,8 @@ Main Screen
   
 ### Download IntuneApps  
 
-Download as [ZIP](https://github.com/ITAutomator/IntuneApp/archive/refs/heads/main.zip)  
-Or Go [here](https://github.com/ITAutomator/IntuneApp) and click `Code` (the green button) `> Download Zip`  
+Download from GitHub as [ZIP](https://github.com/ITAutomator/IntuneApp/archive/refs/heads/main.zip)  
+Or Go to GitHub [here](https://github.com/ITAutomator/IntuneApp) and click `Code` (the green button) `> Download Zip`  
 Extract Zip into `C:\Apps` or a shared folder `Z:\Apps` (or anywhere)  
 
 ### Unblock Downloaded Files  
@@ -435,7 +435,7 @@ To make this mandatory for new users only, but not for existing users, use this 
 
 - Publish once with `PublishToOrgGroup` = `FALSE` and `CreateExcludeGroup` = `TRUE`
 - This creates an app-only exclude group (ending in `Exclude`).  
-- Add all current users in the app-only exclude group.  
+- Add all current users to the app-only exclude group.  
 - Publish again with set `PublishToOrgGroup` to `TRUE` to pubish to any future users.
 
 #### Re-installing a previous package  
