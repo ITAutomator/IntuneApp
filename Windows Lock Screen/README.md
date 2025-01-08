@@ -1,7 +1,7 @@
   
 # Windows LockScreen Readme  
 
-See Github to download and for details: https://github.com/ITAutomator/IntuneApp/tree/main/Windows%20LockScreen  
+See Github to download and for details: https://github.com/ITAutomator/IntuneApp/tree/main/Windows%20Lock%20Screen  
 
 ## Overview  
 
