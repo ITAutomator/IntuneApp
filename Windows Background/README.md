@@ -6,6 +6,7 @@ See Github to download and for details: https://github.com/ITAutomator/IntuneApp
 ## Overview  
 
 Standardize a Windows desktop background image (and color) across endpoints.  
+Optionally sets a lockscreen image too.  
   
 Background  
 <img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/WindowsBackground/Background.png alt="screenshot" width="500"/>
@@ -29,11 +30,15 @@ Main menu
    `WallpaperStyle` = `Fill`. The Fill setting instructs Windows to fill the entire screen with the image, preserving the aspect ratio (AR) and cropping image as needed  
    Note: *Fill* obviates the need for *Background Color*; for smaller images, use *Center*  
 
-3. Test it  
-   Double-click `SetDesktop.cmd` to test it  
-   If you are scripting the installation use `SetDesktop.ps1 -mode auto` to automatically install the wallpaper  
+3. (Optionally for lock screen) Create a `\IntuneApp\Wallpaper\lockscreen1.png` image of size QHD 2560 x 1440  
+   Note: When user interacts with password box, this image will automatically be blurred in the background.  
+   Set `LockScreen` = `lockscreen1.png`  
 
-4. (Optional) For users of the *IntuneApp* app publishing system  
+4. Test it  
+   Double-click `SetDesktop.cmd` to test it  
+   If you are scripting the installation use `SetDesktop.ps1 -mode install` to automatically install the wallpaper (or -mode uninstall)  
+
+5. (Optional) For users of the *IntuneApp* app publishing system  
    Change `intune_settings.csv` to adjust publication audience  
 
 ## Settings in `SetDesktop.csv`  

@@ -3,7 +3,7 @@
 ######################
 Param 
 	( 
-	 [string] $mode = "" # "" for manual menu, "auto" for auto-install
+	 [string] $mode = "" # "" for manual menu, "auto" or "install" for auto-install, "uninstall" for uninstall
 	)
 ######################
 ### Functions
@@ -36,7 +36,6 @@ public class Win32
     # Apply the color change
     [Win32]::SetSysColors(1, [int[]]($COLOR_DESKTOP), [int[]]($colorValue)) | Out-Null
 }
-
 Function Set-Wallpaper($MyWallpaper){
     Add-Type @' 
 using System.Runtime.InteropServices; 
@@ -53,7 +52,6 @@ namespace MyCode{
 '@
     [MyCode.SetPaper]::SetWallpaper($MyWallpaper) | Out-Null
 }
-
 Function Convert-Color {
     <#
     .Synopsis
@@ -127,7 +125,6 @@ $script_settings.Add("Wallpaper"          , ($script_csv | Where-Object Name -EQ
 $script_settings.Add("WallpaperStyle"     , ($script_csv | Where-Object Name -EQ WallpaperStyle).Value)
 $script_settings.Add("BackgroundColor"    , ($script_csv | Where-Object Name -EQ BackgroundColor).Value)
 $script_settings.Add("UpdateatLogonOrNow" , ($script_csv | Where-Object Name -EQ UpdateatLogonOrNow).Value)
-
 $CmdLineInfo = "(none)"
 if ($mode -ne ''){
     $CmdLineInfo = "-mode $($mode)"
@@ -156,77 +153,86 @@ Write-Host "UpdateatLogonOrNow: $($script_settings.UpdateatLogonOrNow)"
 Write-Host "-----------------------------------------------------------"
 if ($mode -eq '') {
     PressEnterToContinue
-} # ask for choice
-
+}
 $err_out= ""
-# Set background color
-$rgb = convert-color -hex $script_settings.BackgroundColor #convert from hex to rgb
-$rgb_str = "$($rgb[0]) $($rgb[1]) $($rgb[2])"
-$result = RegSetCheckFirst "HKCU" "Control Panel\Colors" "Background" $rgb_str "String"
-Write-Host $result
-if ((-not ($result.Contains("[Already set]"))) -and ($script_settings.UpdateatLogonOrNow -eq "Now")) {
-    Write-Host "Background Color Changed: Issue refresh command"
-    Set-OSCDesktopColor $rgb[0] $rgb[1] $rgb[2]
-}
-
-## set WallpaperStyle
-$refresh_wallpaper=$false
-if     ($script_settings.WallpaperStyle -eq "Center")  {$style_str="0"}
-elseif ($script_settings.WallpaperStyle -eq "Fit")     {$style_str="6"}
-elseif ($script_settings.WallpaperStyle -eq "Fill")    {$style_str="10"}
-elseif ($script_settings.WallpaperStyle -eq "Stretch") {$style_str="2"}
-elseif ($script_settings.WallpaperStyle -eq "Span")    {$style_str="22"}
-else   {$style_str="0"}
-$result = RegSetCheckFirst "HKCU" "Control Panel\Desktop" "WallpaperStyle" $style_str "String"
-Write-Host $result
-if (-not ($result.Contains("[Already set]"))) {
-    $refresh_wallpaper=$true
-}
-## set WallpaperStyle
-
-## make sure wallpaper exists if specified
-$wallpaper_ok = $true
-$wallpaperfile = ""
-if ($script_settings.Wallpaper -ne '')
-{
-    $source = "$($scriptDir)\Wallpaper\$($script_settings.Wallpaper)"
-    if (-not(Test-Path -Path $source))
-        {$wallpaper_ok = $false}
-    else
-    { # source found
-        # copy files to C:\Users\Public\Documents\Wallpaper so that everyone can use it
-        $sourcefolder = "$($scriptDir)\Wallpaper"
-        $targetfolder = "$($env:PUBLIC)\Documents\Wallpaper"
-        $retcode, $retmsg= CopyFilesIfNeeded $sourcefolder $targetfolder -CompareMethod "date"
-        # did anything change?
-        if ($retcode -ne 0) {
-            $refresh_wallpaper=$true
-        }
-        # set file name
-        $wallpaperfile = "$($targetfolder)\$($script_settings.Wallpaper)"
-    } # source found
-}
-if ($wallpaper_ok)
-{# set wallpaper
-    $result = RegSetCheckFirst "HKCU" "Control Panel\Desktop" "WallPaper" $wallpaperfile "String"
+if ($mode -eq 'uninstall') {
+    if ($script_settings.Wallpaper -ne "") {
+        Write-Host "Removing Wallpaper Regkey"
+        RegDel "HKCU" "Control Panel\Desktop" "WallPaper"
+        Write-Host "** Refresh Wallpaper **"
+        Set-Wallpaper ""
+    }
+} # uninstall
+else { # install
+    # Set background color
+    $rgb = convert-color -hex $script_settings.BackgroundColor #convert from hex to rgb
+    $rgb_str = "$($rgb[0]) $($rgb[1]) $($rgb[2])"
+    $result = RegSetCheckFirst "HKCU" "Control Panel\Colors" "Background" $rgb_str "String"
+    Write-Host $result
+    if ((-not ($result.Contains("[Already set]"))) -and ($script_settings.UpdateatLogonOrNow -eq "Now")) {
+        Write-Host "Background Color Changed: Issue refresh command"
+        Set-OSCDesktopColor $rgb[0] $rgb[1] $rgb[2]
+    }
+    #region: set WallpaperStyle
+    $refresh_wallpaper=$false
+    if     ($script_settings.WallpaperStyle -eq "Center")  {$style_str="0"}
+    elseif ($script_settings.WallpaperStyle -eq "Fit")     {$style_str="6"}
+    elseif ($script_settings.WallpaperStyle -eq "Fill")    {$style_str="10"}
+    elseif ($script_settings.WallpaperStyle -eq "Stretch") {$style_str="2"}
+    elseif ($script_settings.WallpaperStyle -eq "Span")    {$style_str="22"}
+    else   {$style_str="0"}
+    $result = RegSetCheckFirst "HKCU" "Control Panel\Desktop" "WallpaperStyle" $style_str "String"
     Write-Host $result
     if (-not ($result.Contains("[Already set]"))) {
         $refresh_wallpaper=$true
     }
-}# set wallpaper
-else {
-    $err_out= "Err: Couldn't find '$($script_settings.Wallpaper)' "
-}
-if (($refresh_wallpaper)-and ($script_settings.UpdateatLogonOrNow -eq "Now")) {
-    Write-Host "** Refresh Wallpaper **"
-    Set-Wallpaper $wallpaperfile
-}
-else {
-    Write-Host "[Nothing changed - no refresh wallpaper needed]"
-}
-Write-Host "-----------------------------------------------------------"
-Write-Host "Done."
-Write-Host $err_out
+    #endregion: set WallpaperStyle
+
+    #region: make sure wallpaper exists if specified
+    $wallpaper_ok = $true
+    $wallpaperfile = ""
+    if ($script_settings.Wallpaper -ne '')
+    {
+        $source = "$($scriptDir)\Wallpaper\$($script_settings.Wallpaper)"
+        if (-not(Test-Path -Path $source))
+            {$wallpaper_ok = $false}
+        else
+        { # source found
+            # copy files to C:\Users\Public\Documents\Wallpaper so that everyone can use it
+            $sourcefolder = "$($scriptDir)\Wallpaper"
+            $targetfolder = "$($env:PUBLIC)\Documents\Wallpaper"
+            $retcode, $retmsg= CopyFilesIfNeeded $sourcefolder $targetfolder -CompareMethod "date"
+            # did anything change?
+            if ($retcode -ne 0) {
+                $refresh_wallpaper=$true
+            }
+            # set file name
+            $wallpaperfile = "$($targetfolder)\$($script_settings.Wallpaper)"
+        } # source found
+    }
+    #endregion: make sure wallpaper exists if specified
+    if ($wallpaper_ok)
+    {# set wallpaper
+        $result = RegSetCheckFirst "HKCU" "Control Panel\Desktop" "WallPaper" $wallpaperfile "String"
+        Write-Host $result
+        if (-not ($result.Contains("[Already set]"))) {
+            $refresh_wallpaper=$true
+        }
+    }# set wallpaper
+    else {
+        $err_out= "Err: Couldn't find '$($script_settings.Wallpaper)' "
+    }
+    if (($refresh_wallpaper)-and ($script_settings.UpdateatLogonOrNow -eq "Now")) {
+        Write-Host "** Refresh Wallpaper **"
+        Set-Wallpaper $wallpaperfile
+    }
+    else {
+        Write-Host "[Nothing changed - no refresh wallpaper needed]"
+    }
+    Write-Host "-----------------------------------------------------------"
+    Write-Host "Done."
+    Write-Host $err_out
+} # install
 if ($mode -eq '') {
     PressEnterToContinue
 } # ask for choice
