@@ -1157,7 +1157,7 @@ Do
                                         Remove-Item $IntuneWinAppUtilPath -Force | Out-Null
                                     }
                                     else {
-                                        Write-Host "Use IntuneWinAppUtil.exe v$($ver) [Days old: $($daysold)] (from $($env:TEMP)\IntuneWinAppUtil.exe instead of automatic download)"
+                                        Write-Host "Use IntuneWinAppUtil.exe v$($ver) [Days old: $($daysold)] (from $($env:TEMP)\IntuneWinAppUtil.exe instead of automatic download at $($daysoldmax) days)"
                                     }
                                 }
                                 else {
@@ -1378,7 +1378,7 @@ Do
                             Write-Host "OK: App references Group: $($groupname)" -ForegroundColor Yellow
                         }
                         #endregion add app group include
-                        if ($pkg.CreateExcludeGroup)
+                        if ($pkg.CreateExcludeGroup -eq "true")
                         { # add app group exclude
                             $groupname = "IntuneApp $($pkg.AppName) Exclude"
                             Write-Host "Excluding via this-app-only Group: $($groupname) ... " -NoNewline

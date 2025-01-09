@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Firefox-v122")
+    $IntuneAppValues.Add("AppName","Firefox-v123")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Mozilla.Firefox")
     $IntuneAppValues.Add("AppInstallArgs","")
@@ -482,7 +482,7 @@ Function ArgStringToArgSplat ($strArgs)
     $ps1args_unnamed, $ps1args_named = ArgStringToArgSplat $ps1args
     $cmd_out = & $ps1 $ps1args_unnamed @ps1args_named 
 
-    -myname jason simotas -yourname caryn -quiet
+    -myname john smith -yourname jones -quiet
     "this is a path to a file.csv"
     -file1 "this is a path.csv" -file2 "another path.csv"
     #>    
