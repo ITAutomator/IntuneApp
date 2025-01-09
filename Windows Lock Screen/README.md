@@ -23,15 +23,15 @@ Main menu
   
 1. Create a `\IntuneApp\LockScreen\LockScreen1.png`  
    Use QHD 2560 x 1440 as a good start for size  
-   These will end up in the common documents folder: `C:\users\public\documents\LockScreen`  
-   Note: When user interacts with password box, this image will automatically be blurred in the background.  
+   The image will end up in the common documents folder: `C:\users\public\documents\LockScreen`  
+   Note: When user interacts with password box, the image will automatically be blurred in the background.  
    Set `LockScreen` = `lockscreen1.png`  
 
-4. Test it  
+2. Test it  
    Double-click `SetLockScreen.cmd` to test it  
    If you are scripting the installation use `SetLockScreen.ps1 -mode install` to automatically install the LockScreen (or -mode uninstall)  
 
-5. (Optional) For users of the *IntuneApp* app publishing system  
+3. (Optional) For users of the *IntuneApp* app publishing system  
    Change `intune_settings.csv` to adjust publication audience  
 
 ## Settings in `SetLockScreen.csv`  
