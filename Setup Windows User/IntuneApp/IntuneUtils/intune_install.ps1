@@ -32,9 +32,9 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Setup Windows User-v226")
+    $IntuneAppValues.Add("AppName","Setup Windows User-v227")
     $IntuneAppValues.Add("AppInstaller","ps1")
-    $IntuneAppValues.Add("AppInstallName","SetupWindowsUser.ps1")
+    $IntuneAppValues.Add("AppInstallName","Setup.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode auto")
     $IntuneAppValues.Add("AppUninstallName","")
     $IntuneAppValues.Add("AppUninstallVersion","195")
