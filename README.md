@@ -219,7 +219,7 @@ Here's how to convert the `IntuneApp Windows Users` group from a *static* group 
 - Change the type from *Assigned* to *Dynamic User*
 - Click *Add Dynamic Query > Edit Query* and paste the query from below.
 
-> This query means: All Licensed users, that are not disabled, and not any of these named users
+> This query means: All Licensed users, that are not disabled.  
 
 ```text
 (user.assignedPlans -any (assignedPlan.servicePlanId -ne "[noplanplaceholder]" -and assignedPlan.capabilityStatus -eq "Enabled"))
@@ -265,8 +265,9 @@ The `Log *.txt` files in the `C:\IntuneApp` folder show logging output from the 
 
 #### **Install Tracking via `IntuneApp.csv`**
 
-The `IntuneApp.csv` in the `C:\IntuneApp` folder keeps track of installs and detections and versions.  If this file is deleted, all `.ps1` installs will be considered undetected and will be installed again unless custom detections dictate otherwise.  
-For debugging purposes you can remove rows to trigger re-detect and re-install events for an app.  
+The `IntuneApp.csv` in the `C:\IntuneApp` folder keeps track of installs and detections and versions.  
+If this file is deleted, *all* `.ps1` installs will be considered undetected and will be installed again unless custom detections dictate otherwise.  
+For debugging purposes you can remove individual rows from the .csv file.  This will trigger a re-detect as uninstalled and re-install the app.  
 <img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/IntuneApp/EndpointIntuneApp.png alt="screenshot" width="500">  
 
 ## Setting up your App package (Misc Info)  
@@ -313,7 +314,10 @@ The root package folder contains:
         | README.txt                                   Readme  
 ```
 
-### `intune_settings.csv` Detailed settings information
+### `intune_settings.csv` Detailed settings information  
+
+ The `intune_settings.csv` file contains all the controls for your package.  
+ Note: The package folder name *must* match the `AppName`.  
 
 |Name                      |Value                 |Comment|
 |---------                 |---------             |-------|
@@ -391,7 +395,8 @@ for everything else (e.g. `msi`)
 If there's a file (folder) in `\IntuneApp` that should be downloaded prior to install or uninstall, use the `AppInstallerDownload1URL` setting.  
 
 - This is useful for large installers that exceed the maximum package size.  
-- The downloaded files will be merged (and overwrite if there's a conflict) the `IntuneApp` folder files.  
+- It's also useful to keep your overall package repository is small as possible, for USB installs etc.  
+- The downloaded files will be merged (and overwrite if there's a conflict) into the `IntuneApp` folder files.  
 - Zip file will be automatically unzipped.  
 - The download will happen just prior to *install* and *uninstall* actions.  
 - Downloaded files will be available to installers and `ps1` scripts.  
@@ -409,6 +414,7 @@ For instance, to zip a subfolder called `\Installer` , publish it, and include a
 - Create the Zip  
 Right-click the `\Installer` folder and ZIP it to your downloads folder calling it `InstallerFolder.zip` or similar.  
 Use 7-zip or any zipping tool, but the contents of the zip will be merged into the `\IntuneApp` folder.  
+In this case, creating `\IntuneApp\Installer`. The folder can be deleted after it's zipped.  
 
 - Read the hash value (optional)  
 This ensures the hash from the download matches (file contents haven't changed) from when the package was originally set up.  
@@ -422,10 +428,14 @@ Record the Hash value for pasting into the `intune_settings.csv`
 In the Google Drive interface: *Right-click the ZIP > Share the .zip > Anyone with the link > Viewer*  
 Record the Share URL for pasting into the `intune_settings.csv`  
 
-- Update `intune_settings.csv` with the two values
+- Update `intune_settings.csv` with the two values  
 *Note: `AppInstallerDownload1Hash` is optional. If omitted, the downloaded file's hash will not be checked.*  
 `AppInstallerDownload1URL`: (Share URL)  
 `AppInstallerDownload1Hash`: (Hash value)  
+
+- Delete the zipped files from your package  
+In this case, delete `\IntuneApp\Installer`.  
+During the install process the entire package is created in a *temp* folder, where the zip is also downloaded.  
 
 ### Publishing Techniques
 

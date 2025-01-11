@@ -107,7 +107,7 @@ if ($azadmins.count -gt 0)
     If (-not(IsAdmin)) {
         $ErrOut=101; Write-Host "Err $ErrOut : This script requires Administrator priviledges, re-run with elevation (right-click and Run as Admin)";Start-Sleep -Seconds 3; Exit($ErrOut)
     }
-    Write-Host "Removing from Administrators:"
+    Write-Host "Removing from Administrators: (Effective for NEXT logon)"
     ForEach ($azadmin in $azadmins) {
         Write-Host  "  $($azadmin) [REMOVED AS ADMIN]"
         Remove-LocalGroupMember -Group "Administrators" -Member $azadmin -Confirm:$False

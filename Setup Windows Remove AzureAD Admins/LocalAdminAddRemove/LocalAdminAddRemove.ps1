@@ -10,9 +10,9 @@ Param ## provide a comma separated list of switches
 	)
 Function LocalAdmins
 {
-    ## Show Local admins
-    $administratorsAccount = Get-WmiObject Win32_Group -filter "LocalAccount=True AND SID='S-1-5-32-544'" 
-    $administratorQuery = "GroupComponent = `"Win32_Group.Domain='" + $administratorsAccount.Domain + "',NAME='" + $administratorsAccount.Name + "'`"" 
+    ## Show Local admins (local users only - does not include cloud)
+    $administratorsAccount = Get-WmiObject Win32_Group -filter "LocalAccount=True AND SID='S-1-5-32-544'"
+    $administratorQuery = "GroupComponent = `"Win32_Group.Domain='" + $administratorsAccount.Domain + "',NAME='" + $administratorsAccount.Name + "'`""
     $locadmins_wmi = Get-WmiObject Win32_GroupUser -filter $administratorQuery | Select-Object PartComponent
     $locadmins = @()
     $azadmins = @()
@@ -29,10 +29,8 @@ Function LocalAdmins
         $domainname = $user1.Split("\")[0]
         $accountname = $user1.Split("\")[1]
         $locadmin_info = Get-LocalUser $accountname -ErrorAction SilentlyContinue
-        if ($locadmin_info)
-        {
-            if (-not ($locadmin_info.Enabled))
-            {
+        if ($locadmin_info) {
+            if (-not ($locadmin_info.Enabled)) {
                 #$Status = " [Disabled]"
             }
         }
@@ -40,8 +38,7 @@ Function LocalAdmins
         $locadmins+="$($user1)$($Status)"
         Write-Output "$($user1)$($Status)"
         #### is this an AzureAD Admin that's enabled?
-        if (($domainname -eq "AzureAD") -and (-not ($locadmin_info.Enabled)))
-        {
+        if (($domainname -eq "AzureAD") -and (-not ($locadmin_info.Enabled))) {
             #$azadmins += $user1
         }
         ####
@@ -82,11 +79,9 @@ $scriptBase     = $scriptName.Substring(0, $scriptName.LastIndexOf('.'))
 $scriptVer      = "v"+(Get-Item $scriptFullname).LastWriteTime.ToString("yyyy-MM-dd")
 if ((Test-Path("$scriptDir\ITAutomator.psm1"))) {Import-Module "$scriptDir\ITAutomator.psm1" -Force} else {write-host "Err: Couldn't find ITAutomator.psm1";return}
 # Get-Command -module ITAutomator  ##Shows a list of available functions
-
 #######################
 ## Main Procedure Start
 #######################
-
 $quiet=$true
 Write-Host "-----------------------------------------------------------------------------------"
 Write-Host "$($scriptName) $($scriptVer)       Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
@@ -124,7 +119,7 @@ Do
         $choice = AskForChoice -Message "Choice?" -Choices $choices -DefaultChoice 2 -ReturnString
         If ($choice -eq "Exit") {
             Start-Sleep 1
-            Exit        
+            Exit
         }
         $DoAction=$choice
     } # User wanted a menu
@@ -146,8 +141,7 @@ Do
             # rebuild the argument list
             $argumentlist ="-ExecutionPolicy Bypass -File `"$($scriptFullname)`" -Action $($DoAction) -Localuser $($localuser)"
             # rebuild the argument list
-            Try
-            {
+            Try {
                 Start-Process -FilePath "PowerShell.exe" -ArgumentList $argumentlist -Wait -verb RunAs
             }
             Catch {
@@ -192,8 +186,7 @@ Do
             # rebuild the argument list
             $argumentlist ="-ExecutionPolicy Bypass -File `"$($scriptFullname)`" -Action $($DoAction) -Localuser $($localuser)"
             # rebuild the argument list
-            Try
-            {
+            Try {
                 Start-Process -FilePath "PowerShell.exe" -ArgumentList $argumentlist -Wait -verb RunAs
             }
             Catch {
@@ -212,9 +205,9 @@ Do
     } #AdminAdd
 } # Choice of Action
 Until (-not ($ShowMenu))
-#######################
+#####################
 ## Main Procedure End
-#######################
+#####################
 Write-Host "-----------------------------------------------------------------------------"
-Write-Host "Done. (Admin changes take effect on next logon.) "
+Write-Host "Done. (Admin changes take effect on NEXT logon.) "
 PauseTimed -secs 3 -quiet
