@@ -32,13 +32,13 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Zoom-v187")
+    $IntuneAppValues.Add("AppName","Zoom-v188")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Zoom.Zoom")
     $IntuneAppValues.Add("AppInstallArgs","")
-    $IntuneAppValues.Add("AppUninstallName","")
-    $IntuneAppValues.Add("AppUninstallVersion","5.6")
-    $IntuneAppValues.Add("AppUninstallProcess","zoom")
+    $IntuneAppValues.Add("AppUninstallName","Zoom.Zoom")
+    $IntuneAppValues.Add("AppUninstallVersion","6.3")
+    $IntuneAppValues.Add("AppUninstallProcess","zoom*")
     $IntuneAppValues.Add("SystemOrUser","system")
     $IntuneAppValues.Add("Function","intune_install.ps1")
     $IntuneAppValues.Add("LogFolder","C:\IntuneApp")

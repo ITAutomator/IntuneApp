@@ -328,7 +328,7 @@ Do { # action
                 } # setting is different
             } # each setting
             if ($haschanges) {
-                $IntuneSettingsCSVRows | Export-Csv $IntuneSettingsCSVPath
+                $IntuneSettingsCSVRows | Export-Csv $IntuneSettingsCSVPath -NoTypeInformation -Force
                 Write-Host "Updated $(Split-Path $IntuneSettingsCSVPath -Leaf)" -ForegroundColor Yellow
             }
             else {
@@ -554,7 +554,7 @@ Do { # action
                 Location   = $Location
             }
             # Append the row to the CSV file
-            $newRow | Export-Csv -Path $PrnCSVPathAdd  -Append -NoTypeInformation -Force
+            $newRow | Export-Csv -Path $PrnCSVPathAdd -Append -NoTypeInformation -Force
             $PrnCSVRowsAdd = Import-Csv $PrnCSVPathAdd
             Write-Host "Added to: $(Split-Path $PrnCSVPathAdd -Leaf)" -ForegroundColor Green
             Write-Host "Use [E]dit to adjust the name, port etc." -ForegroundColor Green

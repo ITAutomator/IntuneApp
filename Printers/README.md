@@ -117,12 +117,12 @@ Settings are in the form: key=value,key=value,…
 
 See here for a full list of these values: [Link](https://learn.microsoft.com/en-us/powershell/module/printmanagement/set-printconfiguration?view=windowsserver2025-ps)
 
-| Key           | Value            |
-|---------------|------------------|
-| Papersize     | Letter or A4     |
-| DuplexingMode | TwoSidedLongEdge |
-| Collate       | True or False    |
-| Color         | True or False    |
+| Key           | Value            |Default if value is blank (but ultimately the driver picks the default)|
+|---------------|------------------|---------------|
+| Papersize     | `Letter` or `A4`     |Depends on intl settings. USA is `Letter`, UK is `A4`|
+| DuplexingMode | `TwoSidedLongEdge` or `OneSided` |Generally `TwoSidedLongEdge` for most drivers|
+| Collate       | `True` or `False`    |`True`, otherwise prints are 111,222,333|
+| Color         | `True` or `False`    |`True` if printer is color|
 
 ## Prep for Intune
 
