@@ -1592,7 +1592,7 @@ Do
     } # Menu Choice: Org Create
     ElseIf ($action -eq 4)
     { # Menu Choice: Modules
-        $ps1file = "$($scriptDir)\AppsModules.ps1"
+        $ps1file = "$($scriptDir)\ModuleManager.ps1"
         if (-not (Test-Path $ps1file -PathType Leaf))
         { # not found
             Write-Host "Aborted, Not found: $($ps1file)" -ForegroundColor Red
