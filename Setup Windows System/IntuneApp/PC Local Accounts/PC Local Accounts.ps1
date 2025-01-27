@@ -107,7 +107,7 @@ ForEach ($entry in $csvFile) {
     } # haskey
     $passwordsecstring = ConvertTo-SecureString $password -AsPlainText -Force
     # Create the local user
-    New-LocalUser -Name $entry.Username -Password $passwordsecstring -FullName $entry.DisplayName -Description $Description -AccountNeverExpires | Out-Null
+    New-LocalUser -Name $entry.Username -Password $passwordsecstring -FullName $entry.DisplayName -Description $Description -AccountNeverExpires -PasswordNeverExpires | Out-Null
     # Optional: Add the user to a group (e.g., Administrators)
     $groups = @($entry.Groups -split ",")
     ForEach ($group in $groups){
