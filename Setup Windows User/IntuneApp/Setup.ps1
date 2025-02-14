@@ -87,6 +87,7 @@ If ($NeedsAdmin) {
 $ps1 = "$($scriptDir)\User StartMenu Cleanup.ps1" ; $cmd_out = & $ps1 -mode $mode
 $ps1 = "$($scriptDir)\User UserPrep.ps1"          ; $cmd_out = & $ps1 -mode $mode
 $ps1 = "$($scriptDir)\RemovePersonalTeams.ps1"    ; $cmd_out = & $ps1 -mode $mode
+$ps1 = "$($scriptDir)\TimeZone.ps1"               ; $cmd_out = & $ps1 -mode $mode
 
 # supress output
 if ($cmd_out) {$cmd_out = $null}

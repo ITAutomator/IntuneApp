@@ -63,6 +63,8 @@ If (-not(IsAdmin))
 }
 #>
 <###### Version History
+2025-02-04
+CSVSettingsSave minor bug saving initial csv with type info
 2024-12-19
 GetArchitecture
 PNPUtiltoObject ($pnpcmd = "pnputil.exe /enum-drivers") 
@@ -4104,7 +4106,7 @@ function CSVSettingsSave ($settings, $csvFile="")
     # Convert to a PSCustomObject and export to a CSV file
     $exportObject = $settings.GetEnumerator() | ForEach-Object {[PSCustomObject] @{Name=$_.Name;Value=$_.Value}}
     try {
-        $exportObject | Sort-Object Name | Export-Csv -Path $csvFile
+        $exportObject | Sort-Object Name | Export-Csv -Path $csvFile -NoTypeInformation
         $retValue = "$($settings.count) settings saved to $(Split-Path $csvFile -Leaf)"
     }
     catch {
