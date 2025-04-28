@@ -2,16 +2,16 @@
 
 `WifiManager.ps1` is a PowerShell menu script designed to package and update Wifi settings on endpoints.
 
-<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/Wifi\WifiManagerMain.png alt="screenshot" width="500"/>
+<img src=https://raw.githubusercontent.com/ITAutomator/Assets/main/Wifi/WifiManagerMain.png alt="screenshot" width="500"/>
 
-User guide: Click [here](https://github.com/ITAutomator/WifiManager)  
-Download from GitHub as [ZIP](https://github.com/ITAutomator/WifiManager/archive/refs/heads/main.zip)  
-Or Go to GitHub [here](https://github.com/ITAutomator/WifiManager) and click `Code` (the green button) `> Download Zip`  
+User guide: Click [here](https://github.com/ITAutomator/IntuneApp/tree/main/Wifi/IntuneApp)  
+Download from GitHub as [ZIP](https://github.com/ITAutomator/IntuneApp/archive/refs/heads/main.zip)  
+Or Go to GitHub [here](https://github.com/ITAutomator/IntuneApp) and click `Code` (the green button) `> Download Zip`  
 
 ## Features
 
 - Uses the  `WifiManager Updates.csv` to add (and remove) wifi *known networks* in Windows.
-- Can be integrated and deployed using the IntuneApps deployment system or other package manager.
+- Can be integrated and deployed using the *IntuneApp* deployment system or other package manager.
 
 ## Installation
 
@@ -27,4 +27,4 @@ Or Go to GitHub [here](https://github.com/ITAutomator/WifiManager) and click `Co
 Notes:  
 The script is careful about making changes, so that it can be run repeatedly, skipping items that are already OK.  
 
-More info here: [www.itautomator.com](https://www.itautomator.com/Wifi-manager/)
+More info here: [www.itautomator.com](https://www.itautomator.com)
