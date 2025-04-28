@@ -154,9 +154,9 @@ function IntuneSettingsUpdate {
         $AppwifisToAdd = $wifiadds.WifiName -join ","
         $AppwifisToRmv = $wifirmvs.WifiName -join ","
         $AppDescription = "Wifi signals will be updated by this app."
-        $AppDescription += "`nWifis to add ($($wifiadds.count)): $($AppwifisToAdd)"
+        $AppDescription += "`r`nWifis to add ($($wifiadds.count)): $($AppwifisToAdd)"
         if ($wifirmvs.count -gt 0) {
-            $AppDescription += "`nWifis to remove ($($wifirmvs.count)): $($AppwifisToRmv)"
+            $AppDescription += "`r`nWifis to remove ($($wifirmvs.count)): $($AppwifisToRmv)"
         }
         # create array of objects
         $intunesettings = @()

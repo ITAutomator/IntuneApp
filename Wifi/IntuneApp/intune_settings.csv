@@ -5,7 +5,8 @@
 "AppInstallName","WifiManager.ps1","(Required) winget appid (case sensitive) or choco appid or filename of .exe or .msi or .ps1 or .cmd (wildcard OK). See https://winstall.app or https://community.chocolatey.org/packages for package ids."
 "AppInstallArgs","ARGS:-mode I","(Optional) Prefix with ARGS: Installer arguments for msi,ps1,exe,cmd (for msi usually /quiet or /q /norestart) (for ps1 with multi param try -var1 xyz -var2 pdq named format, else entire value is first param )"
 "AppDescription","Wifi signals will be updated by this app.
-Wifis to add (): MyNewWifiSignal","(Required) Info for company portal"
+Wifis to add (1): MyNewWifiSignal
+Wifis to remove (1): MyOldWifiSignal","(Required) Info for company portal"
 "AppUninstallName","","(Optional) AddRemove Program Name (winget id - see winget list). App to uninstall (also done prior to install). This is in addition to the normal choco,winget uninstall. Uses winget to uninstall (winget list myproductid -e)"
 "AppUninstallVersion","","(Optional) AddRemove Product version below which to Uninstall (e.g. 4.5.0). Detection: versions below this will not be considered Detected. Blank=Any version is detected. Use this to repackage an app to upgrade everyone to latest version."
 "AppUninstallProcess","","(Optional) Processes to end prior to uninstall. Acrob* style will work but better if no * is used. Show running names via powershell: get-process -Name Acrob*"
