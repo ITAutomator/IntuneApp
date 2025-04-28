@@ -32,18 +32,18 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Fonts-v110")
+    $IntuneAppValues.Add("AppName","Wifi-v111")
     $IntuneAppValues.Add("AppInstaller","PS1")
-    $IntuneAppValues.Add("AppInstallName","FontManager.ps1")
+    $IntuneAppValues.Add("AppInstallName","WifiManager.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode I")
     $IntuneAppValues.Add("AppUninstallName","")
     $IntuneAppValues.Add("AppUninstallVersion","")
     $IntuneAppValues.Add("AppUninstallProcess","")
-    $IntuneAppValues.Add("SystemOrUser","system")
+    $IntuneAppValues.Add("SystemOrUser","User")
     $IntuneAppValues.Add("Function","intune_requirements.ps1")
     $IntuneAppValues.Add("LogFolder","C:\IntuneApp")
-    $IntuneAppValues.Add("AppVar1","Fonts to Add: RobotoMono-Bold.ttf,RobotoMono-BoldItalic.ttf,RobotoMono-ExtraLight.ttf,RobotoMono-ExtraLightItalic.ttf,RobotoMono-Italic.ttf,RobotoMono-Light.ttf,RobotoMono-LightItalic.ttf,RobotoMono-Medium.ttf,RobotoMono-MediumItalic.ttf,RobotoMono-Regular.ttf,RobotoMono-SemiBold.ttf,RobotoMono-SemiBoldItalic.ttf,RobotoMono-Thin.ttf,RobotoMono-ThinItalic.ttf,Tangerine-Bold.ttf,Tangerine-Regular.ttf")
-    $IntuneAppValues.Add("AppVar2","Fonts to Remove: ")
+    $IntuneAppValues.Add("AppVar1","wifis to Add: MyNewWifiSignal")
+    $IntuneAppValues.Add("AppVar2","wifis to Remove: MyOldWifiSignal")
     $IntuneAppValues.Add("AppVar3","")
     $IntuneAppValues.Add("AppVar4","")
     $IntuneAppValues.Add("AppVar5","")
