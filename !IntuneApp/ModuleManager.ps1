@@ -12,6 +12,8 @@ foreach($module in $GraphModules){
 Function ModuleAction ($module="<none>",$action="update") 
 {
     #check,update,install,uninstall,reinstall
+    Write-Host "PSver: " -NoNewline
+    Write-host "$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)" -ForegroundColor Green
     if ($action -notin ("check","update","install","uninstall","reinstall")) {
         Write-Host "Invalid action: $($action)" -ForegroundColor Red
         return
@@ -107,14 +109,15 @@ Function ModuleAction ($module="<none>",$action="update")
         } # each module that needs an update
         if ($action -in "install","reinstall")
         { # install reinstall
-            Write-Host "Installing $($fm.version)"
+            $reqver = PromptForString -Prompt "Version:" $fm.Version
+            Write-Host "Installing $($reqver)"
             if ($IsAdmin) {
-                Write-Host "Install-Module -Name $module -Scope AllUsers" -ForegroundColor Yellow
-                Install-Module -Name $module -Scope AllUsers -Force
+                Write-Host "Install-Module -Name $module -Scope AllUsers -RequiredVersion $reqver" -ForegroundColor Yellow
+                Install-Module -Name $module -Scope AllUsers -RequiredVersion $reqver -Force
             } # install as admin
             Else {
-                Write-Host "Install-Module -Name $module" -ForegroundColor Yellow
-                Install-Module -Name $module -Force
+                Write-Host "Install-Module -Name $module -RequiredVersion $reqver" -ForegroundColor Yellow
+                Install-Module -Name $module -RequiredVersion $reqver -Force
             } # install as user
             Write-host "Finished installing." -ForegroundColor Green
             PressEnterToContinue
@@ -174,7 +177,7 @@ if (-not (Test-path $csvfile)) {
     Write-Host "Couldn't find csv file: $($csvfile)"
 }
 $rows = Import-Csv $csvfile
-$modules = $rows.modules | Sort-Object
+$modules = @($rows.modules | Sort-Object)
 if (-not $modules){
     Write-Host "Couldn't find 'modules' column in file: $($csvfile)"
 }
@@ -207,6 +210,8 @@ Do { # choose a module
         $HasModule = $true
         Do { # action
             if ($bMenuFirstDisplay){
+                #Write-Host "PSver: " -NoNewline
+                #Write-host "$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)" -ForegroundColor Green
                 $sReturn = ModuleAction -module $module -action "check"
                 if ($sReturn.StartsWith("OK")) {
                     $NeedsUpdate = $false
@@ -225,8 +230,8 @@ Do { # choose a module
             Write-Host "------------------"
             Write-Host "Module: " -NoNewline
             Write-Host $module -ForegroundColor Green
-            #Write-Host "IsAdmin: $($IsAdmin)" -ForegroundColor Yellow
-            #$choices = @("E&xit this module","Relaunch as &Admin","&Check","Up&date","&Uninstall","&Install","&Reinstall")
+            #Write-Host "PSver: " -NoNewline
+            #Write-host "$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)" -ForegroundColor Green
             $choices = @("E&xit this module","&Check")
             Write-Host "C - Check Version"
             if ($isAdmin) {

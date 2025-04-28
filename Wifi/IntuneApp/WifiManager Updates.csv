@@ -1,0 +1,3 @@
+AddRemoveDetect,WifiName,WifiPass,OpenOrWPA2
+Add,MyNewWifiSignal,MyNewWifiPass,WPA2
+Remove,MyOldWifiSignal,,

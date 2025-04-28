@@ -63,6 +63,10 @@ If (-not(IsAdmin))
 }
 #>
 <###### Version History
+2025-04-01
+AskForChoice bug fix when using string results
+LogMsg ($msg ="Log Message", [Switch] $ShowMsg= $false, $maxSize = 1MB)
+Get-CallingScript
 2025-02-04
 CSVSettingsSave minor bug saving initial csv with type info
 2024-12-19
@@ -291,6 +295,7 @@ FolderDelete
 FolderSize $source
 FromUnixTime 
 GetArchitecture
+Get-CallingScript
 Get-CredentialInFile
 Get-FileMetaData
 Get-FileMetaData2
@@ -312,6 +317,7 @@ IsAdmin
 IsOnBlacklist
 LeftChars
 LocalAdmins
+LogMsg ($msg ="Log Message", [Switch] $ShowMsg= $false, $maxSize = 1MB)
 LogsWithMaxSize
 NetMaskToCIDR
 ParseToken - Given a string with open and close delimeters (can be multi-char), returns the string in between those delimeters (the token).
@@ -382,6 +388,18 @@ Function CropString ($StringtoCrop, $MaxLen = 30)
     }
     Return $sReturn
 }
+function Get-CallingScript {
+    $callStack = Get-PSCallStack
+
+    # Skip the first frame, which is the current function
+    foreach ($frame in $callStack[1..($callStack.Count - 1)]) {
+        if ($frame.ScriptName -and ($frame.ScriptName -ne $MyInvocation.ScriptName)) {
+            return $frame.ScriptName
+        }
+    }
+    return $null
+}
+
 Function GetHashOfFiles ($FilePaths, $ByDateOrByContents="ByContents")
 {
     # GetHashOfFiles - Give a list of filepaths, creates an MD5 hash of their content (ByContents) or their date time stamps (ByDate)
@@ -1978,14 +1996,14 @@ Function AskForChoice
         Write-Host $choices[$choice].Replace("&","") -ForegroundColor Green
     }
     ###
-    if ($yesno) # flip the result
-    {
-        If ($choice -eq 0) {$choice=1} else {$choice=0}
-    }
     if ($ReturnString) {
         Return $choices[$choice].Replace("&","")
     }
     else {
+        if ($yesno) # flip the result
+        {
+            If ($choice -eq 0) {$choice=1} else {$choice=0}
+        }
         Return $choice
     }
     ###
@@ -2817,6 +2835,54 @@ Function TimeSpanToString
         $retval += " {0:d2}$($txt_s)" -f $e.Seconds
     }
     Return $retval.Trim()
+}
+Function LogMsg ($msg ="Log Message", [Switch] $ShowMsg= $false, $maxSize = 1MB, $logFilePath = "")
+{
+    <# LogMsg
+    Creates a Log.txt file in the same folder as the .ps1.
+    Resets the file if it exceeds the maxSize.
+    Use ShowMsg to echo the log to display.
+    Entries are date stamped automatically.
+    Usage:
+    LogMsg $msg -ShowMsg
+    #>
+    $lines=@()
+    if ($logFilePath -eq "")
+    {
+        # Get the full path of the script itself
+        $scriptFullPath = Get-CallingScript
+        if ([string]::IsNullOrEmpty($scriptFullPath)) {$scriptFullPath = $PSCommandPath}
+        $scriptFileName = Split-Path $scriptFullPath -Leaf
+        $scriptBaseName = [System.IO.Path]::GetFileNameWithoutExtension($scriptFileName)
+        $logFilePath = Join-Path (Split-Path $scriptFullPath -Parent) "$($scriptBaseName) Log.txt"
+    }
+    # Check if the log file exists
+    if (Test-Path -Path $logFilePath) {
+        # Retrieve file information
+        $fileInfo = Get-Item -Path $logFilePath
+        # Check if file size is greater than the specified max size
+        if ($fileInfo.Length -gt $maxSize) {
+            # Delete the file if it exceeds 5 MB
+            Remove-Item -Path $logFilePath
+            $lines += "---------------------------------------------------"
+            $lines += "Log file reset (exceeded $($maxsize/1MB)MB)"
+            $lines += "---------------------------------------------------"
+        }
+    } # log exists
+    else {
+        $lines += "---------------------------------------------------"
+        $lines += "New Log file created (will be reset if exceeds $($maxsize/1MB)MB)"
+        $lines += "---------------------------------------------------"
+    } # no log
+    # Append a line to the log file (automatically creates the file if it doesn't exist)
+    $lines += $line = "[$((Get-Date).ToString("yyyy-MM-dd HH:mm"))] $msg"
+    # Log / Show
+    ForEach ($line in $lines) {
+        Add-Content -Path $logFilePath -Value $line
+        if ($ShowMsg) { # Show message
+            Write-Host $line
+        } # show message
+    } # each line
 }
 Function LogsWithMaxSize
 {

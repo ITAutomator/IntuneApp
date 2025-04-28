@@ -30,7 +30,7 @@ Function InitializeOrgList ($orglistcsv)
 }
 Function CreatePublishingApp ($OrgDomain, $AppName)
 # Connects to an org and creates the required Registered App to publish Windows Apps
-{
+{ # CreatePublishingApp
     $sResult = ""
     $connected = $false
     Do
@@ -56,6 +56,7 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
                 {
                     Disconnect-MgGraph -ErrorAction Ignore | Out-Null
                     Write-Host "Connecting ... There may be a popup logon window in the background"
+                    PressEnterToContinue "Press Enter to try connecting"
                     Connect-MgGraph -Scopes $scopes -TenantId $OrgDomain -erroraction Stop | Out-Null
                 }
             } # already connected
@@ -162,6 +163,7 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
         DisplayName = $AppName
         SignInAudience = "AzureADMyOrg"
         PublicClient = @{ RedirectUris="https://login.microsoftonline.com/common/oauth2/nativeclient"; } 
+        IsFallbackPublicClient = $true # Allow public client flows (needed for DeviceCode option)
         RequiredResourceAccess = $ReqResAccess
         AdditionalProperties = @{}
     }
@@ -226,7 +228,7 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
     Start-Sleep 3 # pause
     $sResult = $appRegistration.AppId
     Return $sResult
-}
+} # CreatePublishingApp
 Function CreatePublishTemplatePs1Files ($rootpath)
 # Copies the template lines into the 4 ps1files
 {
@@ -435,7 +437,7 @@ Function AppVersionIncrementInCSV ($intune_settings_csvpath)
     $IntuneAppValues_csv | Export-Csv $intune_settings_csvpath -NoTypeInformation
     Return $versionstr_new
 }
-Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps")
+Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps", $GetHash = $true)
 {
     $LogFolder = "C:\IntuneApp"
     #region Search for packages (files named intune_settings.csv)
@@ -526,77 +528,81 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
         $sResultps1 = Ps1FileCheckUpdate $ps1template $file_checks $pkgobj
         if ($sResultps1.StartsWith("ERR"))
         {Return $sResultps1, $null}
-        # update hash for this package (if needed)
-        $HashFileExcludes = @()
-        $HashFileExcludes += "IntuneUtils" # Ignore changes in the utils folder
-        $HashFileExcludes += "intune_packagehash.xml" # Ignore intune_packagehash
-        # build a list of the files to hash
-        $HashFilePaths = @()
-        #files in root that are non-excluded (Note: GCI -Exclude is not reliable)
-        $HashFilePaths += (Get-ChildItem -Path $IntuneAppFolder -File | Where-Object Name -NotIn $HashFileExcludes).Fullname
-        #files in non-excluded subfolders
-        $HashFilePaths += ((Get-ChildItem -Path $IntuneAppFolder -Directory | Where-Object Name -NotIn $HashFileExcludes) | Get-ChildItem -Recurse -File).FullName
-        #core package files (probably don't need these)
-        $HashFilePaths += $file_checks 
-        # get hash of these files
-        $HashFilePaths = $HashFilePaths | Sort-Object | Select-Object -Unique
-        # hash calc
-        #$HashMethod = "ByContents"
-        $HashMethod = "ByDate"
-        $sErr,$sHash,$HashList = GetHashOfFiles $HashFilePaths -ByDateOrByContents $HashMethod
-        $pkgobj.Hash = $sHash
-        $HashFilePath = Join-Path $IntuneAppFolder "intune_packagehash.xml"
-        If (Test-Path $HashFilePath -PathType Leaf)
-        {
-            $hash_obj = Import-Clixml -Path $HashFilePath
-            $sHash_old = $hash_obj.Hash
-        }
-        Else {$sHash_old = "<none>"}
-        If ($sHash_old -ne $sHash)
-        { # hashes don't match - package was updated
-            if (-not $bHashUpdateAllOK){
-                Write-Host ""
-                Write-Host ""
-                Write-host "Hash for this app will be updated: " -NoNewline
-                Write-host $pkgobj.AppName -ForegroundColor Green
-                if ($sHash_old -ne "<none>")
-                {
-                    Write-Host "These files changed since the last hash was computed."
-                    Write-Host "A hash update will cause 'needs update' messaging wherever the app was previously published."
-                    Write-Host "<= means file was removed"
-                    Write-Host "=> means file was added"
-                    Write-Host "(if the same file has both indicators it's been modified, from <= old to => new )"
-                    Write-Host (Compare-Object $hash_obj.HashList $HashList -Property Hash | Format-Table | Out-String)
-                }
-                $choice = (AskForChoice "Update hash value for this app?" -choices "&No","&Yes","Yes to &all" -DefaultChoice 1)
-                if ($choice -eq 0)   {$bHashUpdateOK = $false}
-                if ($choice -in 1,2) {$bHashUpdateOK = $true}
-                if ($choice -eq 2)   {$bHashUpdateAllOK = $true}
+
+        if ($GetHash)
+        { # GetHash is true (default)
+            # update hash for this package (if needed)
+            $HashFileExcludes = @()
+            $HashFileExcludes += "IntuneUtils" # Ignore changes in the utils folder
+            $HashFileExcludes += "intune_packagehash.xml" # Ignore intune_packagehash
+            # build a list of the files to hash
+            $HashFilePaths = @()
+            #files in root that are non-excluded (Note: GCI -Exclude is not reliable)
+            $HashFilePaths += (Get-ChildItem -Path $IntuneAppFolder -File | Where-Object Name -NotIn $HashFileExcludes).Fullname
+            #files in non-excluded subfolders
+            $HashFilePaths += ((Get-ChildItem -Path $IntuneAppFolder -Directory | Where-Object Name -NotIn $HashFileExcludes) | Get-ChildItem -Recurse -File).FullName
+            #core package files (probably don't need these)
+            $HashFilePaths += $file_checks 
+            # get hash of these files
+            $HashFilePaths = $HashFilePaths | Sort-Object | Select-Object -Unique
+            # hash calc
+            #$HashMethod = "ByContents"
+            $HashMethod = "ByDate"
+            $sErr,$sHash,$HashList = GetHashOfFiles $HashFilePaths -ByDateOrByContents $HashMethod
+            $pkgobj.Hash = $sHash
+            $HashFilePath = Join-Path $IntuneAppFolder "intune_packagehash.xml"
+            If (Test-Path $HashFilePath -PathType Leaf)
+            {
+                $hash_obj = Import-Clixml -Path $HashFilePath
+                $sHash_old = $hash_obj.Hash
             }
-            if (-not $bHashUpdateOK)
-            { # skip update package
-                Write-Host "Aborting hash update of [$($pkgobj.AppName)]"
-                Continue
-            } # skip update package
-            else
-            { # update package
-                # update version number in csv
-                $versionstr_new=AppVersionIncrementInCSV $intune_settings_csvpath
-                # Update Values
-                $pkgobj.AppVersion=$versionstr_new
-                $pkgobj.AppNameVer="$($pkgobj.AppName)-v$($versionstr_new)"
-                $sResultps1 = Ps1FileCheckUpdate $ps1template $file_checks $pkgobj
-                # recalc hash (because of csv change)
-                $sErr,$sHash,$HashList = GetHashOfFiles $HashFilePaths -ByDateOrByContents $HashMethod
-                $pkgobj.Hash = $sHash
-                # save hash
-                $hash_obj.Hash          = $sHash
-                $hash_obj.HashList      = $HashList
-                Export-Clixml -InputObject $hash_obj -Path $HashFilePath
-                # keep a list of updated packages
-                $pkgupdated += $pkgobj.AppNameVer
-            } # update package
-        } # hashes don't match - package was updated
+            Else {$sHash_old = "<none>"}
+            If ($sHash_old -ne $sHash)
+            { # hashes don't match - package was updated
+                if (-not $bHashUpdateAllOK){
+                    Write-Host ""
+                    Write-Host ""
+                    Write-host "Hash for this app will be updated: " -NoNewline
+                    Write-host $pkgobj.AppName -ForegroundColor Green
+                    if ($sHash_old -ne "<none>")
+                    {
+                        Write-Host "These files changed since the last hash was computed."
+                        Write-Host "A hash update will cause 'needs update' messaging wherever the app was previously published."
+                        Write-Host "<= means file was removed"
+                        Write-Host "=> means file was added"
+                        Write-Host "(if the same file has both indicators it's been modified, from <= old to => new )"
+                        Write-Host (Compare-Object $hash_obj.HashList $HashList -Property Hash | Format-Table | Out-String)
+                    }
+                    $choice = (AskForChoice "Update hash value for this app?" -choices "&No","&Yes","Yes to &all" -DefaultChoice 1)
+                    if ($choice -eq 0)   {$bHashUpdateOK = $false}
+                    if ($choice -in 1,2) {$bHashUpdateOK = $true}
+                    if ($choice -eq 2)   {$bHashUpdateAllOK = $true}
+                }
+                if (-not $bHashUpdateOK)
+                { # skip update package
+                    Write-Host "Aborting hash update of [$($pkgobj.AppName)]"
+                    Continue
+                } # skip update package
+                else
+                { # update package
+                    # update version number in csv
+                    $versionstr_new=AppVersionIncrementInCSV $intune_settings_csvpath
+                    # Update Values
+                    $pkgobj.AppVersion=$versionstr_new
+                    $pkgobj.AppNameVer="$($pkgobj.AppName)-v$($versionstr_new)"
+                    $sResultps1 = Ps1FileCheckUpdate $ps1template $file_checks $pkgobj
+                    # recalc hash (because of csv change)
+                    $sErr,$sHash,$HashList = GetHashOfFiles $HashFilePaths -ByDateOrByContents $HashMethod
+                    $pkgobj.Hash = $sHash
+                    # save hash
+                    $hash_obj.Hash          = $sHash
+                    $hash_obj.HashList      = $HashList
+                    Export-Clixml -InputObject $hash_obj -Path $HashFilePath
+                    # keep a list of updated packages
+                    $pkgupdated += $pkgobj.AppNameVer
+                } # update package
+            } # hashes don't match - package was updated
+        } # GetHash is true (default)
         #region warnings
         $warnings=@()
         if ($pkgobj.PackageFolder -ne $pkgobj.AppName)
@@ -629,7 +635,7 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
     #endregion sResult
     Return $sResult,$pkgobjs
 }
-Function PackagesLocalUpdateandCheck 
+Function PackagesLocalUpdateandCheck ($GetHash = $true)
 {
         #region update !App Template\IntuneApp\IntuneUtils
         $ps1template = "$($scriptdir)\AppsPublish_Template.ps1"
@@ -644,7 +650,7 @@ Function PackagesLocalUpdateandCheck
         #region package hashes
         Write-Host "Checking / updating package files (takes a few secs)... " -NoNewline
         $search_root  = Split-Path -Path $scriptdir -Parent
-        $sReturn,$pkgs = PackagesLocalChecks $search_root
+        $sReturn,$pkgs = PackagesLocalChecks $search_root -GetHash $GetHash
         Write-Host $sReturn
         if (-not $sReturn.Startswith("OK")) {Write-host $sReturn -ForegroundColor Yellow; PressEnterToContinue ;return}
         #endregion package hashes
@@ -727,12 +733,12 @@ Do
     { # Menu Choice: Publish
         $showmenu_publish=$true
         $verbosepackager=$false
-        if ($PSVersionTable.PSVersion.Major -eq 7) {
-            Write-Host "Note: " -ForegroundColor Green -NoNewline
-            Write-Host "Powershell version 7 detected."
-            Write-Host "You may run into MFA-related connection issues. Consider using Powershell 5 for publishing." -ForegroundColor Green
-            PressEnterToContinue
-        }
+        # if ($PSVersionTable.PSVersion.Major -eq 7) {
+        #     Write-Host "Note: " -ForegroundColor Green -NoNewline
+        #     Write-Host "Powershell version 7 detected."
+        #     Write-Host "You may run into MFA-related connection issues. Consider using Powershell 5 for publishing." -ForegroundColor Green
+        #     PressEnterToContinue
+        # }
         #region choose tenant
         # Get Org info
         $orglistcsv = "$($scriptdir)\AppsPublish_OrgList.csv"
@@ -747,13 +753,15 @@ Do
         if ($choice -eq -1) {Write-Host "Aborted.";Continue}
         if (-not $pkgs)
         { # no local package list yet
-            if (0 -eq (AskForChoice "No local packages checked yet. Use [C]heck before publishing. Check now?"))
-            {
+            if (0 -eq (AskForChoice "No local packages checked yet. Use [C]heck before publishing (otherwise package update status will be unknowable). Check now?"))
+            { # No, don't check now (Note: this is kind of dumb because the hash checking isn't the slow part)
                 Write-Host "Skipping."
+                $pkgs=PackagesLocalUpdateandCheck -GetHash $false
                 Start-sleep 1
-                Continue
+            } # Yes, check now
+            else {
+                $pkgs=PackagesLocalUpdateandCheck -GetHash $true
             }
-            $pkgs=PackagesLocalUpdateandCheck
         } # no local package list yet
         $OrgValues = @{} #hashtable
         $OrgValues.Add("TenantName"             , $Orglist[$choice].Org)
@@ -788,6 +796,7 @@ Do
         #endregion modules
         #region Connect-MgGraph
         Write-Host "[Connect-MgGraph] Connecting to Tenant: $($OrgValues.TenantName) [You may see a sign-on popup]" -ForegroundColor Yellow
+        PressEnterToContinue "Press Enter to try connecting"
         $connected=$false
         $done = $false
         # Method 1 (no scopes - hides consent window if not set up yet)
@@ -1022,9 +1031,17 @@ Do
                     Write-Host "[Connect-MSIntuneGraph] Connecting to Tenant: $($OrgValues.TenantName) [You may see a sign-on popup <OR> subsequent directions for web sign-on]" -ForegroundColor Yellow
                     $connected=$false
                     $done = $false
+                    $DeviceCode = $false
                     Do {# Until Connect-MSIntuneGraph
                         #  Test-AccessToken -RenewalThresholdMinutes 10
-                        $conn_result = Connect-MSIntuneGraph -TenantID $OrgValues.TenantName -ClientID $OrgValues.AppPublisherClientID -RedirectUri "https://login.microsoftonline.com/common/oauth2/nativeclient"
+                        if ($DeviceCode) {
+                            Write-host "[-DeviceCode option] To sign in... information is about to be shown. Open the URL (as an org admin) and copy / paste the code. The process will continue (or timeout)." -ForegroundColor Yellow
+                            Write-host "Note: if this isn't working you may make a one-time adjustment to the IntuneApp Publisher app"
+                            Write-host "      Entra > Applications > App registrations > All applications > [IntuneApp Publisher] > Authentication > Allow public client flows: Yes"
+                            Write-host "      https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$($OrgValues.AppPublisherClientID)"
+                            PressEnterToContinue
+                        }
+                        $conn_result = Connect-MSIntuneGraph -TenantID $OrgValues.TenantName -ClientID $OrgValues.AppPublisherClientID -RedirectUri "https://login.microsoftonline.com/common/oauth2/nativeclient" -DeviceCode:$DeviceCode
                         if ($conn_result)
                         {
                             Write-Host "Connected OK for: $(($conn_result.ExpiresOn-(Get-Date)).TotalHours.toString("0.#")) hrs"
@@ -1035,10 +1052,16 @@ Do
                         {
                             $msg = "Connect-MSIntuneGraph failed. Try again?"
                             #Write-Host $msg -ForegroundColor Yellow
-                            If (0 -eq (AskForChoice $msg))
-                            {
-                                $connected=$false
+                            $connected=$false
+                            $result = AskForChoice $msg -Choices @("&Yes","Yes using the &Device code option","&No") -ReturnString
+                            if ($result -eq "No") {
                                 $done=$true
+                            }
+                            elseif ($result -eq "Yes") {
+                                $done=$false
+                            }
+                            elseif ($result -eq "Yes using the Device code option") {
+                                $DeviceCode = $true
                             }
                         }
                     } Until ($done) # Until Connect-MSIntuneGraph
@@ -1460,7 +1483,18 @@ Do
                 { # something changed
                     $Orglist[$choice]."Last Publish Count" = $apps_touched_count
                 } # something changed
-                $orglist | Export-Csv $orglistcsv -NoTypeInformation
+                Do
+                { # try exporting
+                    Try {
+                        $orglist | Export-Csv $orglistcsv -NoTypeInformation
+                        Break
+                    }
+                    Catch {
+                        Write-Host "Couldn't export to CSV, make sure it's not open/locked: $(Split-Path $orglistcsv -Leaf)"
+                        PressEnterToContinue
+                    }
+                } # try exporting
+                Until ($true)
             } # apps selected
             #endregion update orgcsv
             Write-Host "Check apps at the Intune Windows Apps (Admin center):"
