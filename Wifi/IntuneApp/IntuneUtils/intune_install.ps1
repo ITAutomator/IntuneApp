@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Wifi-v112")
+    $IntuneAppValues.Add("AppName","Wifi-v113")
     $IntuneAppValues.Add("AppInstaller","PS1")
     $IntuneAppValues.Add("AppInstallName","WifiManager.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode I")
