@@ -24,7 +24,17 @@ Or Go to GitHub [here](https://github.com/ITAutomator/IntuneApp) and click `Code
 2. On the menu choose E to edit the list of wifis to add or remove.
 3. To test it interactively use I to install the signals.
 
+## CSV File
+
+| Column Name       | Description       |
+|-----------------  |----------------   |
+| AddRemove  | `Add` or `Remove`                                                      |
+| WifiName   | `MyNewWifiSignal` Signal name to add or remove                         |
+| WifiPass   | `MyNewWifiPass` Signal password. Leave blank for remove or open signal |
+| OpenOrWPA2 | `Open` or `WPA2` Signal type.  Leave blank for remove (unless you want uninstall to put it back)               |
+
 Notes:  
+Uninstall will remove added signals. If you also want uninstall to put back removed signals, include the password and signal type columns in `remove` entries.  
 The script is careful about making changes, so that it can be run repeatedly, skipping items that are already OK.  
 
 More info here: [www.itautomator.com](https://www.itautomator.com)
