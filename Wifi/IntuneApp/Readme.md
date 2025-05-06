@@ -24,7 +24,36 @@ Or Go to GitHub [here](https://github.com/ITAutomator/IntuneApp) and click `Code
 2. On the menu choose E to edit the list of wifis to add or remove.
 3. To test it interactively use I to install the signals.
 
-## CSV File
+## Menu
+
+| Menu Choice       | Description       |
+|-----------------  |----------------   |
+| `I` | to install managed wifis to this PC                          |
+| `U` | to uninstall managed wifis from this PC                      |
+| `D` | Detect if PC has wifis already                               |
+| `S` | Setup intune_settings.csv with these wifis (for use with [IntuneApp](https://github.com/ITAutomator/IntuneApp))   |
+| `E` | Edit the wifis CSV file                                      |
+| `X` | Exit   |
+
+## Command line options
+
+With no command line parameters, the script runs in interactive menu mode.
+
+| Command line     | Description       |
+|-----------------  |----------------   |
+| `WifiManager.ps1 -mode I`   | Install                                                 |
+| `WifiManager.ps1 -mode U`   | Uninstall                                                 |
+| `WifiManager.ps1 -mode D`   | Detect                                                 |
+
+## Example CSV File
+
+| AddRemove | WifiName       | WifiPass       | OpenOrWPA2 |
+|-----------|----------------|----------------|------------|
+| Add       | MyNewWifiSignal | MyNewWifiPass | WPA2       |
+| Remove    | OldWifiSignal   |                |            |
+| Add       | GuestWifi       | GuestPass123   | Open       |
+
+## CSV File Column Descriptions
 
 | Column Name       | Description       |
 |-----------------  |----------------   |
