@@ -43,7 +43,6 @@ With no command line parameters, the script runs in interactive menu mode.
 |-----------------  |----------------   |
 | `WifiManager.ps1 -mode I`   | Install                                                 |
 | `WifiManager.ps1 -mode U`   | Uninstall                                                 |
-| `WifiManager.ps1 -mode D`   | Detect                                                 |
 
 ## Example CSV File
 
