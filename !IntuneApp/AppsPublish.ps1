@@ -747,10 +747,12 @@ Do
         If ($orglist.count -eq 0) {
             Write-Host "No orgs have been prepped yet.  Use the [O]rg prep option."; PressEnterToContinue ;Continue 
         } 
+        Write-host "[AppsPublish_OrgList.csv]" -ForegroundColor Yellow
         $i=0
         Write-Host ($orglist | Select-object @{N="ID";E={(++([ref]$i).Value)}},Org,Packages,"Last Publish Count","Last Publish Date"| Format-Table | Out-String)
-        $choice=ChooseFromList $orglist.Org "--- Publish to Org (AppsPublish_OrgList.csv)" -showmenu $false
-        if ($choice -eq -1) {Write-Host "Aborted.";Continue}
+        $prompt = PromptForString "Publish to Org (1-$($orglist.count), 0 to Exit)"
+        $choice = [int]$prompt
+        if (($choice -eq 0) -or ($choice -gt $orglist.count)) {Write-Host "Aborted.";Continue}
         if (-not $pkgs)
         { # no local package list yet
             if (0 -eq (AskForChoice "No local packages checked yet. Use [C]heck before publishing (otherwise package update status will be unknowable). Check now?"))

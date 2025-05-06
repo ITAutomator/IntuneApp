@@ -269,8 +269,8 @@ Do { # action
     $i=0
     $wifiupdates = Import-Csv -Path $WifiCSVPath
     $wifiupdates | ForEach-Object { Write-Host " $((++$i)) $($_.WifiName) [$($_.AddRemoveDetect)]" }
-    $wifiadds = $wifiupdates | Where-Object { $_.AddRemoveDetect -eq "Add" }
-    $wifirmvs = $wifiupdates | Where-Object { $_.AddRemoveDetect -eq "Remove" }
+    $wifiadds = @($wifiupdates | Where-Object { $_.AddRemoveDetect -eq "Add" })
+    $wifirmvs = @($wifiupdates | Where-Object { $_.AddRemoveDetect -eq "Remove" })
     Write-Host "--------------- wifi Manager Menu ------------------"
     Write-Host "[I] to install managed wifis to this PC"
     Write-Host "[U] to uninstall managed wifis from this PC"
@@ -291,9 +291,13 @@ Do { # action
     } # Exit
     if ($choice -eq "E")
     { # edit
-        Write-Host "Editing $(Split-Path $WifiCSVPath -Leaf) ..."
+        Write-Host "Editing $(Split-Path $WifiCSVPath -Leaf) (see Excel or other .CSV editor window)..."
         Start-Process -FilePath $WifiCSVPath
+        Start-Sleep 5
         PressEnterToContinue -Prompt "Press Enter when finished editing (will update intune_settings.csv)."
+        $wifiupdates = Import-Csv -Path $WifiCSVPath
+        $wifiadds = @($wifiupdates | Where-Object { $_.AddRemoveDetect -eq "Add" })
+        $wifirmvs = @($wifiupdates | Where-Object { $_.AddRemoveDetect -eq "Remove" })
         IntuneSettingsUpdate -IntuneSettingsCSVPath $IntuneSettingsCSVPath -wifiadds $wifiadds -wifirmvs $wifirmvs
         Start-Sleep 3
     } # edit
@@ -304,7 +308,7 @@ Do { # action
     } # intune_settings
     if ($choice -in ("I","D","U"))
     { # install
-        $actions = @("Add", "Remove")
+        $actions = @("Add", "Remove") # do adds before removes in case you are removing access to internet
         ForEach ($action in $actions)
         { # action (add/remove)
             if ($choice -eq "D") {

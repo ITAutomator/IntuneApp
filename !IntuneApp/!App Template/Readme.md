@@ -4,6 +4,9 @@
 
 Your app description goes here.
 It should roughly match what you've entered in IntuneApp\intune_settings.csv
+If you have copied the template app, you must remove '_template' from the filenames to activate them.
+'intune_icon_template.png' -> 'intune_icon.png'
+'intune_settings_template.csv' -> 'intune_settings.csv'
 
 ## IntuneApp Publishing System
 
