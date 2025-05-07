@@ -12,6 +12,7 @@ Or Go to GitHub [here](https://github.com/ITAutomator/IntuneApp) and click `Code
 
 - Uses the  `WifiManager Updates.csv` to add (and remove) wifi *known networks* in Windows.
 - Can be integrated and deployed using the *IntuneApp* deployment system or other package manager.
+- What about Intune-native Wifi settings?  This is alternative way to add wifis for non-Intune or pre-Intune environments.  Additionally, Intune provides no native way to remove wifis.
 
 ## Installation
 
@@ -26,31 +27,31 @@ Or Go to GitHub [here](https://github.com/ITAutomator/IntuneApp) and click `Code
 
 ## Menu
 
-| Menu Choice       | Description       |
-|-----------------  |----------------   |
-| `I` | to install managed wifis to this PC                          |
-| `U` | to uninstall managed wifis from this PC                      |
-| `D` | Detect if PC has wifis already                               |
+| Menu Choice       | Description                                                                                         |
+|-----------------  |----------------                                                                                     |
+| `I` | to install managed wifis to this PC                                                                               |
+| `U` | to uninstall managed wifis from this PC                                                                           |
+| `D` | Detect if PC has wifis already                                                                                    |
 | `S` | Setup intune_settings.csv with these wifis (for use with [IntuneApp](https://github.com/ITAutomator/IntuneApp))   |
-| `E` | Edit the wifis CSV file                                      |
-| `X` | Exit   |
+| `E` | Edit the wifis CSV file                                                                                           |
+| `X` | Exit                                                                                                              |
 
 ## Command line options
 
 With no command line parameters, the script runs in interactive menu mode.
 
-| Command line     | Description       |
-|-----------------  |----------------   |
-| `WifiManager.ps1 -mode I`   | Install                                                 |
-| `WifiManager.ps1 -mode U`   | Uninstall                                                 |
+| Command line     | Description          |
+|-----------------  |----------------     |
+| `WifiManager.ps1 -mode I`   | Install   |
+| `WifiManager.ps1 -mode U`   | Uninstall |
 
 ## Example CSV File
 
 | AddRemove | WifiName       | WifiPass       | OpenOrWPA2 |
 |-----------|----------------|----------------|------------|
 | Add       | MyNewWifiSignal | MyNewWifiPass | WPA2       |
-| Remove    | OldWifiSignal   |                |            |
-| Add       | GuestWifi       | GuestPass123   | Open       |
+| Remove    | OldWifiSignal   |               |            |
+| Add       | GuestWifi       | GuestPass123  | Open       |
 
 ## CSV File Column Descriptions
 
@@ -59,7 +60,7 @@ With no command line parameters, the script runs in interactive menu mode.
 | AddRemove  | `Add` or `Remove`                                                      |
 | WifiName   | `MyNewWifiSignal` Signal name to add or remove                         |
 | WifiPass   | `MyNewWifiPass` Signal password. Leave blank for remove or open signal |
-| OpenOrWPA2 | `Open` or `WPA2` Signal type.  Leave blank for remove (unless you want uninstall to put it back)               |
+| OpenOrWPA2 | `Open` or `WPA2` Signal type.  Leave blank for remove (unless you want uninstall to put it back)    |
 
 Notes:  
 Uninstall will remove added signals. If you also want uninstall to put back removed signals, include the password and signal type columns in `remove` entries.  
