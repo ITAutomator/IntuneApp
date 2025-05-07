@@ -743,7 +743,7 @@ Do
         # Get Org info
         $orglistcsv = "$($scriptdir)\AppsPublish_OrgList.csv"
         If (-not (Test-Path $orglistcsv)) {InitializeOrgList $orglistcsv}
-        $orglist=Import-Csv $orglistcsv
+        $orglist=@(Import-Csv $orglistcsv)
         If ($orglist.count -eq 0) {
             Write-Host "No orgs have been prepped yet.  Use the [O]rg prep option."; PressEnterToContinue ;Continue 
         } 
@@ -753,6 +753,7 @@ Do
         $prompt = PromptForString "Publish to Org (1-$($orglist.count), 0 to Exit)"
         $choice = [int]$prompt
         if (($choice -eq 0) -or ($choice -gt $orglist.count)) {Write-Host "Aborted.";Continue}
+        $choice--
         if (-not $pkgs)
         { # no local package list yet
             if (0 -eq (AskForChoice "No local packages checked yet. Use [C]heck before publishing (otherwise package update status will be unknowable). Check now?"))
