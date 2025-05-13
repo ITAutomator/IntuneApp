@@ -233,10 +233,5 @@ ForEach ($Wifi in $WifisRmv)
         break
     }
 }
-
-
-
-
-
 Write-Host "app_detected (after): $($app_detected)"
 Return $app_detected
