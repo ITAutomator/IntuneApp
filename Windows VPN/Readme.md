@@ -3,6 +3,7 @@
 ## Description of this App
 
 Install a pre-configured Windows VPN client (L2TP/IPSec with pre-shared key) network adapter in the user context.  
+See [Windows VPN ReadMe](https://github.com/ITAutomator/IntuneApp/tree/main/Windows%20VPN/IntuneApp) for more info
 
 ## IntuneApp Publishing System
 
