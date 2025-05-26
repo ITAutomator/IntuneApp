@@ -1,0 +1,6 @@
+Name,Value
+ConnectionName,Portland Office
+ServerAddress,24.110.110.82
+PresharedKey,oojwoiejpoijwefefshca6Np8Ztvg
+SplitTunneling,TRUE
+lancidrs_commaseparated,192.168.150.0/24
