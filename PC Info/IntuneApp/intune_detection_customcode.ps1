@@ -23,22 +23,37 @@ $Filechecks = @()
 ## Look for files
 $folder_common = "$([Environment]::GetFolderPath("ProgramFiles"))\PC Info"
 $Filechecks +="$folder_common\PC Info Setup.ps1"
+$Filechecks +="$folder_common\PC Info.ps1"
 $Filechecks +="$folder_common\PC Info.lnk"
-$bOK = $false
+$bOK = $true # Assume OK
 $i = 0
 ForEach ($Filecheck in $Filechecks)
-{ # Each config (teams ver)
+{ # Each file
     $i+=1
+    Write-Host "File check $($i): $($Filecheck)" -NoNewline
     if (Test-Path $Filecheck -PathType Leaf) {
-        $fnd_msg = "Found"
-        $bOK = $True
+        Write-Host " OK"
     }
     else {
-        $fnd_msg = "Not found"
+        Write-Host " NOT FOUND"
+        $bOK = $false
+        break
     }
-    Write-Host "File check $($i): ($($fnd_msg)) $($Filecheck)"
-    if ($bOK) {break}
-}
+} # Each file
+if ($bOK)
+{ # registry
+    $regkeymain = "HKLM:\Software\Microsoft\Active Setup\Installed Components\PC Info"
+    $regkeyname = "Version"
+    $regkeyvalue = "2"
+    $regvalue = Get-ItemProperty -Path $regkeymain -Name $regkeyname -ErrorAction SilentlyContinue | Select-Object -ExpandProperty $regkeyname
+    if ($regvalue -eq $regkeyvalue) {
+        Write-Host "Reg check: $($regkeymain)\$($regkeyname) is set to $($regkeyvalue) OK"
+    } else {
+        Write-Host "Reg check: $($regkeymain)\$($regkeyname) is set to $($regkeyvalue) NOT FOUND"
+        $bOK = $false
+    }
+} # registry
+
 $app_detected = $bOK
 Write-Host "app_detected (after): $($app_detected)"
 

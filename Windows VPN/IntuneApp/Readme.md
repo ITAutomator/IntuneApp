@@ -5,6 +5,7 @@
 ## Description of this App
 
 Install a pre-configured Windows VPN client (L2TP/IPSec with pre-shared key) network adapter in the user context.  
+See here for the *Windows VPN* blog post (blog): <https://www.itautomator.com/windows-vpn>  
 
 ## Server Setup: Meraki
 

@@ -100,11 +100,13 @@ $scriptBase = "PC Info"
 $folder_common = "$([Environment]::GetFolderPath("ProgramFiles"))\$($scriptBase)"
 $files = @()
 $files += "PC Info Setup.ps1"
+$files += "PC Info.ps1"
 $files += "PC Info.lnk"
+$regkeymain = "HKLM:\Software\Microsoft\Active Setup\Installed Components\$($scriptBase)"
+$regversion = "2"
 if ($mode -eq ""){$mode="menu"}
 Write-Host "-----------------------------------------------------------------------------"
 Write-Host $scriptName -ForegroundColor Yellow
-Write-Host ""
 Write-Host "- Installs / Uninstalls PC Into (to Start Menu)"
 Write-Host "- "
 Write-Host "-          Name: $($scriptBase)"
@@ -112,9 +114,6 @@ Write-Host "-          Mode: $($mode)"
 Write-Host "-         Admin: $(IsAdmin)"
 Write-Host "- folder_common: $($folder_common)"
 Write-Host "-         files: $($files -join ", ")"
-Write-Host "- "
-Write-Host "-----------------------------------------------------------------------------"
-
 ForEach ($file in $files)
 {
     if (-not (Test-Path "$($scriptDir)\$($file)" -PathType Leaf))
@@ -125,7 +124,7 @@ Do
 { # menu loop
     $intReturn = 0
     if ($bShowMenu)
-    { 
+    { # show menu
         $bShowMenu = $true
         # menu
         Write-Host "-----------------------------------------------------------------------------"
@@ -135,148 +134,159 @@ Do
         elseif ($choice -eq "2") {$mode="Install_System"}
         elseif ($choice -eq "3") {$mode="Install_User"}
         elseif ($choice -eq "4") {$mode="Uninstall"}
-    }
+    } # show menu
     if ($mode -eq "Exit")
-    {
+    { # exit
         $bShowMenu = $false
-    }
+    } # exit
     if ($mode -eq "Check")
-        { # Check
-            $bCheckOK = $true # Assume it's installed unless proven otherwise
-            # regkey        
-            $regkeymain = "HKLM:\Software\Microsoft\Active Setup\Installed Components\$($scriptBase)"
-            If ($bCheckOK -and (-not (Test-Path -Path $regkeymain)))
-            { # regkey
-                Write-Host "Couldn't find regkey: $($regkeymain)"
-                $intReturn=21
+    { # Check
+        $bCheckOK = $true # Assume it's installed unless proven otherwise
+        # regkey
+        If ($bCheckOK -and (-not (Test-Path -Path $regkeymain)))
+        { # regkey
+            Write-Host "Couldn't find regkey: $($regkeymain)"
+            $intReturn = 21
+            $bCheckOK=$false
+        } # regkey
+        If ($bCheckOK)
+        { # regvalue
+            $regname = "Version"
+            $regvalue = Get-ItemProperty -Path $regkeymain -Name $regname -ErrorAction SilentlyContinue | Select-Object -ExpandProperty $regname
+            if ($regvalue -ne $regversion) {
+                Write-Host "Couldn't find regversion: $($regversion)"
+                $intReturn = 21
                 $bCheckOK=$false
-            } # regkey
-            # common
-            if ($bCheckOK -and (-not (Test-Path $folder_common -PathType Container)))
-            { # folder
-                Write-Host "Couldn't find folder: $($folder_common)"
-                $intReturn=22
-                $bCheckOK=$false
-            } # folder
-            # files
+            }
+        } # regvalue
+        # common
+        if ($bCheckOK -and (-not (Test-Path $folder_common -PathType Container)))
+        { # folder
+            Write-Host "Couldn't find folder: $($folder_common)"
+            $intReturn = 22
+            $bCheckOK=$false
+        } # folder
+        # files
+        If ($bCheckOK)
+        { # files
             foreach ($file in $files)
             { # file
                 if ($bCheckOK -and (-not (Test-Path "$($folder_common)\$($file)" -PathType Leaf)))
                 { # folder
                     Write-Host "Couldn't find file: "$($folder_common)\$($file)""
-                    $intReturn=22
+                    $intReturn = 22
                     $bCheckOK=$false
                 } # folder
             } # file
-            # result
-            if ($bCheckOK)
-            {
-                Write-Host "Check if installed: OK [$($intReturn)]" -ForegroundColor Green
-            }
-            else
-            {
-                Write-host "Check if installed: Not installed [$($intReturn)]"
-            }
-        } # Check
+        } # files
+        # result
+        if ($bCheckOK)
+        {
+            Write-Host "Check if installed: OK [$($intReturn)]" -ForegroundColor Green
+        }
+        else
+        {
+            Write-host "Check if installed: Not installed [$($intReturn)]"
+        }
+    } # Check
     elseif ($mode -eq "Install_System")
-        { # Install_System
-            if (IsAdmin)
-            { # isadmin
-                New-Item -ItemType Directory -Force -Path $folder_common | Out-Null
-                if (-not (Test-Path $folder_common -PathType Container))
-                { # no target
-                    Write-Host "Couldn't create folder: " $folder_common
-                } # no target
-                else
-                { # has target folder
-                    # copy files
-                    $files | ForEach-Object {Copy-Item -Path "$($scriptDir)\$($_)" -Destination $folder_common -Force}
-                    # create reg keys. These will launch the user side installer (on logon of every user)
-                    $psexe = (Get-Command powershell.exe).Definition # or powershell.exe
-                    $ps1installer = "$($folder_common)\$($files[0])"
-                    $regkeymain = "HKLM:\Software\Microsoft\Active Setup\Installed Components\$($scriptBase)"
-                    New-Item -Path $regkeymain -ErrorAction SilentlyContinue| Out-Null
-                    New-ItemProperty -Path $regkeymain -Name "Version" -Value "1" -ErrorAction SilentlyContinue| Out-Null
-                    New-ItemProperty -Path $regkeymain -Name "StubPath" -Value "`"$($psexe)`" -NoProfile -ExecutionPolicy Bypass -file `"$($ps1installer)`" -mode install_user" -ErrorAction SilentlyContinue| Out-Null
-                    # done
-                    Write-Host "Install System: OK. Users will get the item added to start menu on next logon." -ForegroundColor Green
-                    <#
-                    # or make a lnk
-                    $WshShell = New-Object -comObject WScript.Shell
-                    $Shortcut = $WshShell.CreateShortcut("$Home\Desktop\ColorPix.lnk")
-                    $Shortcut.TargetPath = "C:\Program Files (x86)\ColorPix\ColorPix.exe"
-                    $Shortcut.Save()
-                    #>
-                } # has target folder
-            } # is admin
+    { # Install_System
+        if (IsAdmin)
+        { # isadmin
+            New-Item -ItemType Directory -Force -Path $folder_common | Out-Null
+            if (-not (Test-Path $folder_common -PathType Container))
+            { # no target
+                Write-Host "Couldn't create folder: " $folder_common
+            } # no target
             else
-            { # no admin
-                Write-Host "Requires admin";$intReturn = 15
-            } # no admin
-        } # Install_System
-        elseif ($mode -eq "Install_User")
-        { # Install_User
-            if (Test-Path $folder_common -PathType Container)
-            { # install_system has happened
-                $folder_start =  "$([Environment]::GetFolderPath("StartMenu"))\Programs"
-                if (Test-Path $folder_start -PathType Container)
-                { # has start menu folder
-                    # find .lnk shortcuts in source
-                    $scuts = @($files | Where-Object {$_.EndsWith(".lnk")})
-                    # copy them to start menu folder and pin
-                    foreach ($scut in $scuts)
-                    { # each scut lnk
-                        $file_src_common = "$($folder_common)\$($scut)"
-                        If (Test-Path $file_src_common)
-                        { # src lnk exists
-                            # copy to start menu folder
-                            Copy-Item -Path $file_src_common -Destination $folder_start -Force
-                            <#
+            { # has target folder
+                # copy files
+                $files | ForEach-Object {Copy-Item -Path "$($scriptDir)\$($_)" -Destination $folder_common -Force}
+                # create reg keys. These will launch the user side installer (on logon of every user)
+                $psexe = (Get-Command powershell.exe).Definition # or powershell.exe
+                $ps1installer = "$($folder_common)\$($files[0])"
+                New-Item -Path $regkeymain -ErrorAction SilentlyContinue| Out-Null
+                Set-ItemProperty -Path $regkeymain -Name "Version" -Value $regversion | Out-Null
+                Set-ItemProperty -Path $regkeymain -Name "StubPath" -Value "`"$($psexe)`" -NoProfile -ExecutionPolicy Bypass -file `"$($ps1installer)`" -mode install_user" | Out-Null
+                # done
+                Write-Host "Install System: OK. Users will get the item added to start menu on next logon." -ForegroundColor Green
+                <#
+                # create shortcut on desktop
+                $WshShell = New-Object -comObject WScript.Shell
+                $Shortcut = $WshShell.CreateShortcut("$Home\Desktop\ColorPix.lnk")
+                $Shortcut.TargetPath = "C:\Program Files (x86)\ColorPix\ColorPix.exe"
+                $Shortcut.Save()
+                #>
+            } # has target folder
+        } # is admin
+        else
+        { # no admin
+            Write-Host "Requires admin";$intReturn = 15
+        } # no admin
+    } # Install_System
+    elseif ($mode -eq "Install_User") 
+    { # Install_User
+        if (Test-Path $folder_common -PathType Container)
+        { # install_system has happened
+            $folder_start =  "$([Environment]::GetFolderPath("StartMenu"))\Programs"
+            if (Test-Path $folder_start -PathType Container)
+            { # has start menu folder
+                # find .lnk shortcuts in source
+                $scuts = @($files | Where-Object {$_.EndsWith(".lnk")})
+                # copy them to start menu folder and pin
+                foreach ($scut in $scuts)
+                { # each scut lnk
+                    $file_src_common = "$($folder_common)\$($scut)"
+                    If (Test-Path $file_src_common)
+                    { # src lnk exists
+                        # copy to start menu folder
+                        Copy-Item -Path $file_src_common -Destination $folder_start -Force
+                        <#
+                        # pin
+                        # Unfortunately pinning under program control is no longer allowed by microsoft
+                        $i=0
+                        $pinned=$false
+                        $shell = New-Object -ComObject "Shell.Application"
+                        While ($i -le 5)
+                        { # waiting for menu
+                            # delay a little so menu can appear
+                            $i+=1
+                            Start-Sleep 1
                             # pin
-                            # Unfortunately pinning under program control is no longer allowed by microsoft
-                            $i=0
-                            $pinned=$false
-                            $shell = New-Object -ComObject "Shell.Application"
-                            While ($i -le 5)
-                            { # waiting for menu
-                                # delay a little so menu can appear
-                                $i+=1
-                                Start-Sleep 1
-                                # pin
-                                $sh_folder = $shell.Namespace($folder_start)
-                                $sh_item = $sh_folder.Parsename($scut)
-                                $verb = $sh_item.Verbs() | Where-Object {$_.Name.replace("&","") -like 'pin to start*'}
-                                if ($verb) {
-                                    $verb.DoIt() # Access is denied. (0x80070005 (E_ACCESSDENIED))
-                                    $pinned = $true
-                                    Break # out of while
-                                } # has menu
-                            } # waiting for menu
-                            If (-not $pinned)
-                            { # pin didn't happen
-                                Write-Host "Pin to start didn't happen: $($scut)"
-                                $intReturn = 70
-                            } # pin didn't happen
-                            #>
-                        } # src lnk exists
-                        else
-                        { # src lnk missing
-                            Write-Host "Missing file: $($file_src_common)"
-                            $intReturn = 73
-                        } # src lnk missing
-                    } # each scut lnk
-                    If ($intReturn -eq 0)
-                    {
-                        Write-Host "User Install: OK" -ForegroundColor Green
-                    }
-                } # has start menu folder
-            } # install_system has happened
-            else
-            { # install_system hasn't happened
-                Write-Host "Missing folder (Install_System hasn't happend yet, start with that): $($folder_common)"
-                $intReturn = 78
-            } # install_system hasn't happened 
-        } # Install_User
+                            $sh_folder = $shell.Namespace($folder_start)
+                            $sh_item = $sh_folder.Parsename($scut)
+                            $verb = $sh_item.Verbs() | Where-Object {$_.Name.replace("&","") -like 'pin to start*'}
+                            if ($verb) {
+                                $verb.DoIt() # Access is denied. (0x80070005 (E_ACCESSDENIED))
+                                $pinned = $true
+                                Break # out of while
+                            } # has menu
+                        } # waiting for menu
+                        If (-not $pinned)
+                        { # pin didn't happen
+                            Write-Host "Pin to start didn't happen: $($scut)"
+                            $intReturn = 70
+                        } # pin didn't happen
+                        #>
+                    } # src lnk exists
+                    else
+                    { # src lnk missing
+                        Write-Host "Missing file: $($file_src_common)"
+                        $intReturn = 73
+                    } # src lnk missing
+                } # each scut lnk
+                If ($intReturn -eq 0)
+                {
+                    Write-Host "User Install: OK" -ForegroundColor Green
+                }
+            } # has start menu folder
+        } # install_system has happened
+        else
+        { # install_system hasn't happened
+            Write-Host "Missing folder (Install_System hasn't happend yet, start with that): $($folder_common)"
+            $intReturn = 78
+        } # install_system hasn't happened 
+    } # Install_User
     elseif ($mode -eq "uninstall")
     { # Uninstall
         # erase from user
@@ -310,7 +320,7 @@ Do
             else
             {
                 Write-Host "Must be admin to remove: $($regkeymain)"
-                $intReturn=84
+                $intReturn = 84
             }
         } # regkey exists
         # erase from common
@@ -323,10 +333,17 @@ Do
             else
             {
                 Write-Host "Must be admin to remove: $($folder_common)"
-                $intReturn=83
+                $intReturn = 83
             }
         } # folder exists
-        Write-Host "Uninstall complete."
+        if ($intReturn -eq 0)
+        {
+            Write-Host "Uninstall: OK" -ForegroundColor Green
+        }
+        else
+        {
+            Write-Host "Uninstall: Failed [$($intReturn)]" -ForegroundColor Yellow
+        }
     } # Uninstall
 } Until (-not $bShowMenu)
 Write-Host "Done [$($intReturn)]"
