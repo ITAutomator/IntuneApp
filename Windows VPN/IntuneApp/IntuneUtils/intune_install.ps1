@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Windows VPN-v111")
+    $IntuneAppValues.Add("AppName","Windows VPN-v112")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","WindowsVPN.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode A")
@@ -42,7 +42,7 @@ Function IntuneAppValues
     $IntuneAppValues.Add("SystemOrUser","user")
     $IntuneAppValues.Add("Function","intune_install.ps1")
     $IntuneAppValues.Add("LogFolder","C:\IntuneApp")
-    $IntuneAppValues.Add("AppVar1","VPN Connection Name: Rethinkit Office")
+    $IntuneAppValues.Add("AppVar1","VPN Connection Name: Contoso Office")
     $IntuneAppValues.Add("AppVar2","")
     $IntuneAppValues.Add("AppVar3","")
     $IntuneAppValues.Add("AppVar4","")
