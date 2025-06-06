@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Winget Update-v132")
+    $IntuneAppValues.Add("AppName","Winget Update-v133")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","WingetUpdate.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode auto")
@@ -834,8 +834,19 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
     } # chocverb
     Return $intReturnCode,$strReturnMsg
 }
+Function GetArchitecture
+{
+    $architecture = $ENV:PROCESSOR_ARCHITECTURE
+    switch ($architecture) {
+        "AMD64" { "x64" }
+        "ARM64" { "ARM64" }
+        "x86"   { "x86" }
+        default { "Unknown architecture: $architecture" }
+    }
+}
 function Get-VCRedistVersion
 {
+    $platform = GetArchitecture # Get OS Arch type (x64 or ARM64)
     # Function to get current VC++ Redistributable version from registry
     $regKeys = @(
         "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\$platform",
@@ -1613,12 +1624,11 @@ $customps1_injection_lines +='To debug this script, put a break in the script an
 $customps1_injection_lines +='Detection and Requirements scripts are run every few hours (for all required apps), so they should be conservative with resources.'
 $customps1_injection_lines +=' '
 $customps1_injection_lines +='#>'
-$customps1_injection_lines +=''
 $customps1_injection_lines +='# add a possible path to winget'
-$customps1_injection_lines +='$ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe" -ErrorAction SilentlyContinue'
+$customps1_injection_lines +='$ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*__8wekyb3d8bbwe" -ErrorAction SilentlyContinue'
 $customps1_injection_lines +='if ($ResolveWingetPath)'
 $customps1_injection_lines +='{ # change path to include winget.exe (for this session)'
-$customps1_injection_lines +='    $WingetPath = $ResolveWingetPath[-1].Path'
+$customps1_injection_lines +='    $WingetPath = $ResolveWingetPath[0].Path'
 $customps1_injection_lines +='    $env:Path   = $env:Path+";"+$WingetPath'
 $customps1_injection_lines +='}'
 $customps1_injection_lines +='$cmdpath=(Get-Command winget.exe -ErrorAction Ignore).Source'

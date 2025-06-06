@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Notepad++-v195")
+    $IntuneAppValues.Add("AppName","Notepad++-v196")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Notepad++.Notepad++")
     $IntuneAppValues.Add("AppInstallArgs","")
@@ -834,8 +834,19 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
     } # chocverb
     Return $intReturnCode,$strReturnMsg
 }
+Function GetArchitecture
+{
+    $architecture = $ENV:PROCESSOR_ARCHITECTURE
+    switch ($architecture) {
+        "AMD64" { "x64" }
+        "ARM64" { "ARM64" }
+        "x86"   { "x86" }
+        default { "Unknown architecture: $architecture" }
+    }
+}
 function Get-VCRedistVersion
 {
+    $platform = GetArchitecture # Get OS Arch type (x64 or ARM64)
     # Function to get current VC++ Redistributable version from registry
     $regKeys = @(
         "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\$platform",

@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Workspot Client-v113")
+    $IntuneAppValues.Add("AppName","Workspot Client-v114")
     $IntuneAppValues.Add("AppInstaller","msi")
     $IntuneAppValues.Add("AppInstallName","WorkspotClientSetup64.msi")
     $IntuneAppValues.Add("AppInstallArgs","/quiet AllUsers=1 RdpInitialMultiMon=true CacheLastUser=true")
@@ -834,8 +834,19 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
     } # chocverb
     Return $intReturnCode,$strReturnMsg
 }
+Function GetArchitecture
+{
+    $architecture = $ENV:PROCESSOR_ARCHITECTURE
+    switch ($architecture) {
+        "AMD64" { "x64" }
+        "ARM64" { "ARM64" }
+        "x86"   { "x86" }
+        default { "Unknown architecture: $architecture" }
+    }
+}
 function Get-VCRedistVersion
 {
+    $platform = GetArchitecture # Get OS Arch type (x64 or ARM64)
     # Function to get current VC++ Redistributable version from registry
     $regKeys = @(
         "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\$platform",

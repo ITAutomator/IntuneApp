@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Winget Update-v132")
+    $IntuneAppValues.Add("AppName","Winget Update-v133")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","WingetUpdate.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode auto")
@@ -834,8 +834,19 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
     } # chocverb
     Return $intReturnCode,$strReturnMsg
 }
+Function GetArchitecture
+{
+    $architecture = $ENV:PROCESSOR_ARCHITECTURE
+    switch ($architecture) {
+        "AMD64" { "x64" }
+        "ARM64" { "ARM64" }
+        "x86"   { "x86" }
+        default { "Unknown architecture: $architecture" }
+    }
+}
 function Get-VCRedistVersion
 {
+    $platform = GetArchitecture # Get OS Arch type (x64 or ARM64)
     # Function to get current VC++ Redistributable version from registry
     $regKeys = @(
         "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\$platform",
@@ -1649,60 +1660,7 @@ If ($IntuneApp.Function -in ("intune_Requirements.ps1"))
         # see if $customps1_lines injection happend
         $customps1_injection_lines = @()
         # injection may happen below here
-#region INJECTION SITE for intune_requirements_customcode.ps1
-##########################################################
-$customps1_injection_lines +='<# -------- Custom Requirements code'
-$customps1_injection_lines +='Put your custom code here'
-$customps1_injection_lines +='delete this file from your package if it is not needed. It normally isn''t needed.'
-$customps1_injection_lines +=''
-$customps1_injection_lines +='Return value'
-$customps1_injection_lines +='$true if requirements met, $false if not met'
-$customps1_injection_lines +=''
-$customps1_injection_lines +='Intune'
-$customps1_injection_lines +='Intune will show ''Not applicable'' for those device where requirements aren''t met'
-$customps1_injection_lines +=''
-$customps1_injection_lines +='Notes'
-$customps1_injection_lines +='$requirements_met is assumed true coming in to this script'
-$customps1_injection_lines +='Writehost commands, once injected, will be converted to WriteLog commands, and will log text to the Intune log (c:\IntuneApps)'
-$customps1_injection_lines +='This is because requirements checking gets tripped up by writehost so nothing should get displayed at all.'
-$customps1_injection_lines +='This must be a stand-alone script - no local files are available, it will be copied to a temp folder and run under system context.'
-$customps1_injection_lines +='However this script is a child process of intune_requirements.ps1, and has those functions and variables available to it.'
-$customps1_injection_lines +='For instance, $intuneapp.appvar1-5 which is injected from the intune_settings.csv, is usable.'
-$customps1_injection_lines +='To debug this script, put a break in the script and run the parent ps1 file mentioned above.'
-$customps1_injection_lines +='Do not allow Write-Output or other unintentional ouput, other than the return value.'
-$customps1_injection_lines +=' '
-$customps1_injection_lines +='#>'
-$customps1_injection_lines +='$requirements_met = $true'
-$customps1_injection_lines +='# add a possible path to winget'
-$customps1_injection_lines +='$ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*__8wekyb3d8bbwe" -ErrorAction SilentlyContinue'
-$customps1_injection_lines +='if ($ResolveWingetPath)'
-$customps1_injection_lines +='{ # change path to include winget.exe (for this session)'
-$customps1_injection_lines +='    $WingetPath = $ResolveWingetPath[-1].Path'
-$customps1_injection_lines +='    $env:Path   = $env:Path+";"+$WingetPath'
-$customps1_injection_lines +='}'
-$customps1_injection_lines +='$cmdpath=(Get-Command winget.exe -ErrorAction Ignore).Source'
-$customps1_injection_lines +='if (-not $cmdpath) {$cmdpath="<path-not-found>"}'
-$customps1_injection_lines +='# show command'
-$customps1_injection_lines +='WriteLog "Command: $($cmdpath)\winget.exe -v"'
-$customps1_injection_lines +='# current ver'
-$customps1_injection_lines +='try{'
-$customps1_injection_lines +='    $ver_current=winget -v'
-$customps1_injection_lines +='}'
-$customps1_injection_lines +='Catch{'
-$customps1_injection_lines +='    $ver_current="0.0"'
-$customps1_injection_lines +='}'
-$customps1_injection_lines +='WriteLog "Current version: $($ver_current)"'
-$customps1_injection_lines +='if ($null -eq $ver_current) {$ver_current="v0.0.0"}'
-$customps1_injection_lines +='if ("" -eq $ver_current) {$ver_current="v0.0.0"}'
-$customps1_injection_lines +='# Is it upgradable (above 1.2)'
-$customps1_injection_lines +='if ([version]$ver_current.Replace("v","") -le [version]"1.2.0") {'
-$customps1_injection_lines +='    WriteLog "Winget must be 1.2 or above to be updated by this program."'
-$customps1_injection_lines +='    $requirements_met = $false  '
-$customps1_injection_lines +='}'
-$customps1_injection_lines +='WriteLog "requirements_met (after custom code): $($requirements_met)"'
-$customps1_injection_lines +='Return $requirements_met'
-##########################################################
-#endregion INJECTION SITE for intune_requirements_customcode.ps1
+        ### <<intune_requirements_customcode.ps1 injection site>> ###
         # injection may happen above here
         if ($customps1_injection_lines.count -gt 0)
         { # code was injected above

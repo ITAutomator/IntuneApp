@@ -24,12 +24,11 @@ To debug this script, put a break in the script and run the parent ps1 file (Det
 Detection and Requirements scripts are run every few hours (for all required apps), so they should be conservative with resources.
  
 #>
-
 # add a possible path to winget
-$ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe" -ErrorAction SilentlyContinue
+$ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*__8wekyb3d8bbwe" -ErrorAction SilentlyContinue
 if ($ResolveWingetPath)
 { # change path to include winget.exe (for this session)
-    $WingetPath = $ResolveWingetPath[-1].Path
+    $WingetPath = $ResolveWingetPath[0].Path
     $env:Path   = $env:Path+";"+$WingetPath
 }
 $cmdpath=(Get-Command winget.exe -ErrorAction Ignore).Source
