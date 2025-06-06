@@ -68,7 +68,7 @@ Write-Host "- Show hidden files, show extensions"
 #Write-Host "- Recycle bin display delete confirmation (by policy unfortunately - seems to require elevation)"
 Write-Host "- (Win 10) Disable 'Occasionally show suggestions in Start' in Windows 10"
 Write-Host "- (Win 10) Set cortana to be only an icon"
-Write-Host "- (Win 11) Move the Start Menu to the left"
+#Write-Host "- (Win 11) Move the Start Menu to the left"
 Write-Host "- (Win 11) Turn off opening of Widgets on hover"
 Write-Host "- (Win 11) Set Search to Hide Icon"
 #Write-Host "- Set lid closed action to 'Do Nothing' (for laptops in docking stations)"
@@ -223,18 +223,19 @@ if ($os[1] -eq "Win 10")
 $restart_explorer=$false
 if ($os[1] -eq "Win 11")
     {
-    Write-Host ""
-    Write-Host "- (Win 11) Move the Start Menu to the left"
-    $Regkey="Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    $Regval="TaskbarAl"
-    $Regset=0
-    $Regtype="dword"
-    $result = RegSetCheckFirst "HKCU" $Regkey $Regval $Regset $Regtype
-    Write-Host $result
-    if (-not($result.StartsWith("[Already set]"))) {$restart_explorer=$true}
+    #move the start menu to the left
+    # Write-Host ""
+    # Write-Host "- (Win 11) Move the Start Menu to the left"
+    # $Regkey="Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+    # $Regval="TaskbarAl"
+    # $Regset=0
+    # $Regtype="dword"
+    # $result = RegSetCheckFirst "HKCU" $Regkey $Regval $Regset $Regtype
+    # Write-Host $result
+    # if (-not($result.StartsWith("[Already set]"))) {$restart_explorer=$true}
+    #kill running widgets.exe
     Write-Host ""
     Write-Host "- (Win 11) Turn off opening of Widgets on hover"
-    #kill running widgets.exe
     Get-Process widgets | Stop-Process -ErrorAction Ignore
     #run reg as package
     Invoke-CommandInDesktopPackage -AppId "Widgets" -PackageFamilyName "MicrosoftWindows.Client.WebExperience_cw5n1h2txyewy" -Command reg.exe -Args "add `"HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Dsh`" /v `"HoverEnabled`" /t REG_DWORD /d 0 /f"

@@ -4,7 +4,7 @@ Setup Windows User
 Basic settings for a Windows User - this app is run once 
 - Pin / Unpin apps from start menu and taskbar (more difficult in Win 11)
 - Set some screen saver defaults (can be overridden by user and / or group policy)
-- Move the Start Menu to the left
+- Move the Start Menu to the center (was left until Jun 2025)
 - Turn off opening of Widgets on hover
 - Set Search to Hide Icon
 - Show Windows notifications

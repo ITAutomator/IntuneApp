@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Winget Update-v129")
+    $IntuneAppValues.Add("AppName","Winget Update-v132")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","WingetUpdate.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode auto")
@@ -834,6 +834,27 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
     } # chocverb
     Return $intReturnCode,$strReturnMsg
 }
+function Get-VCRedistVersion
+{
+    # Function to get current VC++ Redistributable version from registry
+    $regKeys = @(
+        "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\$platform",
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\$platform"
+    )
+    foreach ($key in $regKeys) {
+        if (Test-Path $key) {
+            try {
+                $ver = Get-ItemProperty -Path $key | Select-Object -ExpandProperty Version -ErrorAction SilentlyContinue
+                if ($ver) {
+                    # Match and remove all non-digit characters at the beginning of the string
+                    $cleanVer = $ver -replace '^[^0-9]+', ''
+                    return [Version]$cleanVer
+                }
+            } catch {}
+        }
+    }
+    return $null
+}
 function winget_lines_clean
 {
   [CmdletBinding()]
@@ -950,20 +971,63 @@ Function winget_install
 {
 	if (IsAdmin)
 	{ #isadmin
-		# install winget itself
-        <#
-        $ChocoApp = "winget-cli"
-        $intReturnCode, $strReturnMsg = ChocolateyAction -ChocoVerb "install" -ChocoApp $ChocoApp
-        if ($intReturnCode -eq 0)
-        {[string]$result="OK Installed Winget via: Choco install $($ChocoApp) -y: $($strReturnMsg)"}
-        else
-        {[string]$result="ERR Couldn't install Winget via [Choco install $($ChocoApp) -y: $($strReturnMsg)]"}
-        #>
-		[string]$result="ERR - Update Windows to receive a later winget."
+		# install the Microsoft Visual C++ Redistributable for Visual Studio 2015, 2017, and 2019.
+        # https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170
+        #
+        # Define minimum required version for Visual C++ Redistributable
+        $minVersion = [Version]"14.0.0.0"
+        # Check current version
+        $currentVersion = Get-VCRedistVersion
+        if ($currentVersion -and $currentVersion -ge $minVersion) {
+            $msg = "Microsoft Visual C++ Redistributable already installed (version $currentVersion)."
+            [string]$result="OK - $($msg)"
+        } else {
+            # Determine architecture (supports x64 and ARM64)
+            $arch = (Get-CimInstance -ClassName Win32_OperatingSystem).OSArchitecture.ToLower()
+            if ($arch -like "*arm*") {
+                $platform = "ARM64"
+            } elseif ($arch -like "*64*") {
+                $platform = "x64"
+            } else {
+                $platform = "x86"
+            }
+            # Set download URL and installer path
+            switch ($platform) {
+                "ARM64" {
+                    $vcRedistUrl = "https://aka.ms/vs/17/release/vc_redist.arm64.exe"
+                }
+                "x64" {
+                    $vcRedistUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+                }
+                default {
+                    return "ERR - Unsupported architecture: $platform. Skipping Visual C++ Redistributable install."
+                }
+            }
+            Write-Host "Installing Microsoft Visual C++ Redistributable ($platform) from ($($vcRedistUrl))..."
+            # Ensure TLS 1.2 for web downloads
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            $installerName = ($vcRedistUrl -split "/")[-1]
+            $tempInstaller = "$env:TEMP\$installerName"
+            # Download the installer
+            Invoke-WebRequest -Uri $vcRedistUrl -OutFile $tempInstaller -UseBasicParsing
+            # Silently install
+            Start-Process -FilePath $tempInstaller -ArgumentList "/install", "/quiet", "/norestart" -Wait
+            # Cleanup
+            Remove-Item $tempInstaller -Force -ErrorAction SilentlyContinue
+            # Verify installation
+            $newVersion = Get-VCRedistVersion
+            if ($newVersion -and $newVersion -ge $minVersion) {
+                $msg = "Successfully installed VC++ Redistributable ($platform) version $newVersion."
+                [string]$result="OK - $($msg)"
+            } else {
+                $msg = "Installation of VC++ Redistributable failed. Please check manually."
+                [string]$result="ERR - $($msg)"
+            }
+        }
 	} #isadmin
 	else
 	{ #noadmin
-		[string]$result="ERR - Update Windows to receive a later winget."
+		[string]$result="ERR - Update winget by installing Microsoft Visual C++ Redistributable failed due to non-elevation."
 	} #noadmin
     return $result
 }
@@ -981,7 +1045,9 @@ Function winget_core ($WingetMin ="1.6")
             Try { # run winget
                 $version = winget -v
             }
-            Catch {$version = "0"} # error means v0
+            Catch {$version="v0.0.0"} # error means v0
+            if ($null -eq $version) {$version="v0.0.0"}
+            if ("" -eq $version) {$version="v0.0.0"}
             $version = $version.Replace("v","")
             if (($WingetMin  -ne "") -and ((GetVersionFromString $version) -lt (GetVersionFromString $WingetMin)))
             { # update needed
@@ -1519,7 +1585,128 @@ If ($IntuneApp.Function -in ("intune_Detection.ps1"))
         # see if $customps1_lines injection happend
         $customps1_injection_lines = @()
         # injection may happen below here
-        ### <<intune_detection_customcode.ps1 injection site>> ###
+#region INJECTION SITE for intune_detection_customcode.ps1
+##########################################################
+$customps1_injection_lines +='<# -------- Custom Detection code'
+$customps1_injection_lines +='Put your custom code here'
+$customps1_injection_lines +='Delete this file from your package if it is not needed. Normally, it is not needed.'
+$customps1_injection_lines +='Winget and Choco packages detect themselves without needing this script.'
+$customps1_injection_lines +='Packages can also use AppUninstallName CSV entries for additional Winget detection (without needing this script)'
+$customps1_injection_lines +=''
+$customps1_injection_lines +='Return value'
+$customps1_injection_lines +='$true if detected, $false if not detected'
+$customps1_injection_lines +='If the app is detected, the app will be considered installed and the setup script will not run.'
+$customps1_injection_lines +=''
+$customps1_injection_lines +='Intune'
+$customps1_injection_lines +='Intune will show ''Installed'' for those devices where app is detected'
+$customps1_injection_lines +=''
+$customps1_injection_lines +='Notes'
+$customps1_injection_lines +='$app_detected may already be true if regular detection found via IntuneApps.csv or winget or choco'
+$customps1_injection_lines +='Your code can choose to accept or ignore this detection.'
+$customps1_injection_lines +='WriteHost commands, once injected, will be converted to WriteLog commands, and will log text to the Intune log (c:\IntuneApps)'
+$customps1_injection_lines +='This is because detection checking gets tripped up by writehost so nothing should get displayed at all.'
+$customps1_injection_lines +='Do not allow Write-Output or other unintentional ouput, other than the return value.'
+$customps1_injection_lines +='This must be a stand-alone script - no local files are available, it will be copied to a temp folder and run under system context.'
+$customps1_injection_lines +='However this script is a child process of intune_detection.ps1, and has those functions and variables available to it.'
+$customps1_injection_lines +='For instance, $IntuneApp.AppVar1 ... $IntuneApp.AppVar5 are injected from the intune_settings.csv, and are usable.'
+$customps1_injection_lines +='To debug this script, put a break in the script and run the parent ps1 file (Detection).'
+$customps1_injection_lines +='Detection and Requirements scripts are run every few hours (for all required apps), so they should be conservative with resources.'
+$customps1_injection_lines +=' '
+$customps1_injection_lines +='#>'
+$customps1_injection_lines +=''
+$customps1_injection_lines +='# add a possible path to winget'
+$customps1_injection_lines +='$ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe" -ErrorAction SilentlyContinue'
+$customps1_injection_lines +='if ($ResolveWingetPath)'
+$customps1_injection_lines +='{ # change path to include winget.exe (for this session)'
+$customps1_injection_lines +='    $WingetPath = $ResolveWingetPath[-1].Path'
+$customps1_injection_lines +='    $env:Path   = $env:Path+";"+$WingetPath'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='$cmdpath=(Get-Command winget.exe -ErrorAction Ignore).Source'
+$customps1_injection_lines +='if (-not $cmdpath) {$cmdpath="<path-not-found>"}'
+$customps1_injection_lines +='# show command'
+$customps1_injection_lines +='WriteLog "Command: $($cmdpath)\winget.exe -v"'
+$customps1_injection_lines +='# current ver'
+$customps1_injection_lines +='try{'
+$customps1_injection_lines +='    $ver_current=winget -v'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='Catch{'
+$customps1_injection_lines +='    $ver_current="0.0"'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='if ($null -eq $ver_current) {$ver_current="v0.0.0"}'
+$customps1_injection_lines +='if ("" -eq $ver_current) {$ver_current="v0.0.0"}'
+$customps1_injection_lines +='WriteLog "Current version: $($ver_current) [winget -v]"'
+$customps1_injection_lines +='# Is it upgradable (above 1.2)'
+$customps1_injection_lines +='if ([version]$ver_current.Replace("v","") -le [version]"1.2.0") {'
+$customps1_injection_lines +='    WriteLog "Winget must be 1.2 or above to be updated by this program.";Start-Sleep 2;exit 5'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='# Fetch the URI of the latest version of the winget-cli from GitHub releases'
+$customps1_injection_lines +='$ver_latest = "v1.2.0"'
+$customps1_injection_lines +='try{'
+$customps1_injection_lines +='    $latestWingetMsixBundleUri = $(Invoke-RestMethod https://api.github.com/repos/microsoft/winget-cli/releases/latest).assets.browser_download_url | Where-Object { $_.EndsWith(''.msixbundle'') }'
+$customps1_injection_lines +='    $ver_latest = ($latestWingetMsixBundleUri -split "/")[7]'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='catch{'
+$customps1_injection_lines +='    WriteLog "Couldn''t find latest version online [https://api.github.com/repos/microsoft/winget-cli/releases/latest]";Start-Sleep 2'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='WriteLog " Latest version: $($ver_latest) [https://api.github.com]"'
+$customps1_injection_lines +='# Is it already up to date?'
+$customps1_injection_lines +='if ([version]$ver_current.Replace("v","") -ge [version]$ver_latest.Replace("v","")) {'
+$customps1_injection_lines +='    WriteLog "Winget is already up to date."'
+$customps1_injection_lines +='    $app_detected = $true'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='Else {'
+$customps1_injection_lines +='    WriteLog "Winget not up to date."'
+$customps1_injection_lines +='    $app_detected = $false'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='Return $app_detected'
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +=''
+$customps1_injection_lines +='WriteLog "app_detected (before): $($app_detected)"'
+$customps1_injection_lines +='if ($app_detected)'
+$customps1_injection_lines +='{'
+$customps1_injection_lines +='    WriteLog "App has already been detected (via C:\IntuneApp\IntuneApps.csv). Custom code ignored"'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='Else'
+$customps1_injection_lines +='{'
+$customps1_injection_lines +='	$Filechecks = @()'
+$customps1_injection_lines +='	## Look for files'
+$customps1_injection_lines +='    $Filechecks +="$($Env:ProgramData)\My Company\Wallpaper\$($intuneapp.appvar1)"'
+$customps1_injection_lines +='	$Filechecks +="$($Env:ProgramFiles)\Dell\CommandUpdate\dcu-cli.exe"'
+$customps1_injection_lines +='	$bOK = $false'
+$customps1_injection_lines +='	$i = 0'
+$customps1_injection_lines +='	ForEach ($Filecheck in $Filechecks)'
+$customps1_injection_lines +='	{ # Each config (teams ver)'
+$customps1_injection_lines +='		$i+=1'
+$customps1_injection_lines +='		if (Test-Path $Filecheck -PathType Leaf) {'
+$customps1_injection_lines +='			$fnd_msg = "Found"'
+$customps1_injection_lines +='			$bOK = $True'
+$customps1_injection_lines +='		}'
+$customps1_injection_lines +='		else {'
+$customps1_injection_lines +='			$fnd_msg = "Not found"'
+$customps1_injection_lines +='		}'
+$customps1_injection_lines +='		WriteLog "File check $($i): ($($fnd_msg)) $($Filecheck)"'
+$customps1_injection_lines +='		if ($bOK) {break}'
+$customps1_injection_lines +='	}'
+$customps1_injection_lines +='	$app_detected = $bOK'
+$customps1_injection_lines +='    WriteLog "app_detected (after): $($app_detected)"'
+$customps1_injection_lines +='}'
+$customps1_injection_lines +='Return $app_detected'
+$customps1_injection_lines +='#endregion Check for file'
+##########################################################
+#endregion INJECTION SITE for intune_detection_customcode.ps1
         # injection may happen above here
         if ($customps1_injection_lines.count -gt 0)
         { # code was injected above

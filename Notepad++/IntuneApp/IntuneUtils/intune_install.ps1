@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Notepad++-v194")
+    $IntuneAppValues.Add("AppName","Notepad++-v195")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Notepad++.Notepad++")
     $IntuneAppValues.Add("AppInstallArgs","")
@@ -834,6 +834,27 @@ Function ChocolateyAction ($MinChocoVer="2.0",$ChocoVerb="list",$ChocoApp="appna
     } # chocverb
     Return $intReturnCode,$strReturnMsg
 }
+function Get-VCRedistVersion
+{
+    # Function to get current VC++ Redistributable version from registry
+    $regKeys = @(
+        "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\$platform",
+        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\$platform"
+    )
+    foreach ($key in $regKeys) {
+        if (Test-Path $key) {
+            try {
+                $ver = Get-ItemProperty -Path $key | Select-Object -ExpandProperty Version -ErrorAction SilentlyContinue
+                if ($ver) {
+                    # Match and remove all non-digit characters at the beginning of the string
+                    $cleanVer = $ver -replace '^[^0-9]+', ''
+                    return [Version]$cleanVer
+                }
+            } catch {}
+        }
+    }
+    return $null
+}
 function winget_lines_clean
 {
   [CmdletBinding()]
@@ -950,20 +971,63 @@ Function winget_install
 {
 	if (IsAdmin)
 	{ #isadmin
-		# install winget itself
-        <#
-        $ChocoApp = "winget-cli"
-        $intReturnCode, $strReturnMsg = ChocolateyAction -ChocoVerb "install" -ChocoApp $ChocoApp
-        if ($intReturnCode -eq 0)
-        {[string]$result="OK Installed Winget via: Choco install $($ChocoApp) -y: $($strReturnMsg)"}
-        else
-        {[string]$result="ERR Couldn't install Winget via [Choco install $($ChocoApp) -y: $($strReturnMsg)]"}
-        #>
-		[string]$result="ERR - Update Windows to receive a later winget."
+		# install the Microsoft Visual C++ Redistributable for Visual Studio 2015, 2017, and 2019.
+        # https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170
+        #
+        # Define minimum required version for Visual C++ Redistributable
+        $minVersion = [Version]"14.0.0.0"
+        # Check current version
+        $currentVersion = Get-VCRedistVersion
+        if ($currentVersion -and $currentVersion -ge $minVersion) {
+            $msg = "Microsoft Visual C++ Redistributable already installed (version $currentVersion)."
+            [string]$result="OK - $($msg)"
+        } else {
+            # Determine architecture (supports x64 and ARM64)
+            $arch = (Get-CimInstance -ClassName Win32_OperatingSystem).OSArchitecture.ToLower()
+            if ($arch -like "*arm*") {
+                $platform = "ARM64"
+            } elseif ($arch -like "*64*") {
+                $platform = "x64"
+            } else {
+                $platform = "x86"
+            }
+            # Set download URL and installer path
+            switch ($platform) {
+                "ARM64" {
+                    $vcRedistUrl = "https://aka.ms/vs/17/release/vc_redist.arm64.exe"
+                }
+                "x64" {
+                    $vcRedistUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+                }
+                default {
+                    return "ERR - Unsupported architecture: $platform. Skipping Visual C++ Redistributable install."
+                }
+            }
+            Write-Host "Installing Microsoft Visual C++ Redistributable ($platform) from ($($vcRedistUrl))..."
+            # Ensure TLS 1.2 for web downloads
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            $installerName = ($vcRedistUrl -split "/")[-1]
+            $tempInstaller = "$env:TEMP\$installerName"
+            # Download the installer
+            Invoke-WebRequest -Uri $vcRedistUrl -OutFile $tempInstaller -UseBasicParsing
+            # Silently install
+            Start-Process -FilePath $tempInstaller -ArgumentList "/install", "/quiet", "/norestart" -Wait
+            # Cleanup
+            Remove-Item $tempInstaller -Force -ErrorAction SilentlyContinue
+            # Verify installation
+            $newVersion = Get-VCRedistVersion
+            if ($newVersion -and $newVersion -ge $minVersion) {
+                $msg = "Successfully installed VC++ Redistributable ($platform) version $newVersion."
+                [string]$result="OK - $($msg)"
+            } else {
+                $msg = "Installation of VC++ Redistributable failed. Please check manually."
+                [string]$result="ERR - $($msg)"
+            }
+        }
 	} #isadmin
 	else
 	{ #noadmin
-		[string]$result="ERR - Update Windows to receive a later winget."
+		[string]$result="ERR - Update winget by installing Microsoft Visual C++ Redistributable failed due to non-elevation."
 	} #noadmin
     return $result
 }
@@ -981,7 +1045,9 @@ Function winget_core ($WingetMin ="1.6")
             Try { # run winget
                 $version = winget -v
             }
-            Catch {$version = "0"} # error means v0
+            Catch {$version="v0.0.0"} # error means v0
+            if ($null -eq $version) {$version="v0.0.0"}
+            if ("" -eq $version) {$version="v0.0.0"}
             $version = $version.Replace("v","")
             if (($WingetMin  -ne "") -and ((GetVersionFromString $version) -lt (GetVersionFromString $WingetMin)))
             { # update needed

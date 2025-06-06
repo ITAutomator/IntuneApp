@@ -39,6 +39,8 @@ Catch{
     $ver_current="0.0"
 }
 Write-host "Current version: $($ver_current)"
+if ($null -eq $ver_current) {$ver_current="v0.0.0"}
+if ("" -eq $ver_current) {$ver_current="v0.0.0"}
 # Is it upgradable (above 1.2)
 if ([version]$ver_current.Replace("v","") -le [version]"1.2.0") {
     Write-Host "Winget must be 1.2 or above to be updated by this program."
