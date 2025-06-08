@@ -2,7 +2,7 @@
 
 ## Description of this App
 
-This app is a remval app. It uninstalls other apps.  
+This app is a removal app. It uninstalls other apps.  
 Edit the list of apps to remove at the top of the `Uninstaller.ps1` script and `intune_detection_customcode.ps1` scripts.  
 The idea is that if the device shows *this removal app* as detected or installed, it has verified the removal of the apps scripted for removal.  
 
