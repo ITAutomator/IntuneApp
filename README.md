@@ -454,3 +454,11 @@ If you are replacing a previously pushed package, use this *IntuneApp* technique
 
 - Change `AppUninstallVersion` to match the last `AppVersion`  
 - If you don’t adjust this, endpoints with prior versions will not get the *new* package  
+
+## Version History
+
+| Version    | Description                |
+|------------|----------------------------|
+| 2025-06-08 | Winget install on fresh Windows install fix. When winget is run as a service, if no admin has run the MS Store or if VCredistributable is missing, winget returns no output.  This is now detected and fix via an inline VCredist install |
+| 2025-04-10 | Allow for ARM architecture. ARM Installers run in 32 bit mode will self-adjust to 64 bit mode. |
+| 2025-03-01 | Initial release |

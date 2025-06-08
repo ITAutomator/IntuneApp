@@ -1,6 +1,6 @@
 "Name","Value","Comment"
 "AppName","Google Drive","(Required) Base package name (e.g 7zip) (Remove ! Character which hides sample apps)"
-"AppVersion","155","(Optional) Package version. Whole numbers beginning with 100. Nothing to do with product version. (e.g. 100 for 7zip-v100) (Recommended)"
+"AppVersion","157","(Optional) Package version. Whole numbers beginning with 100. Nothing to do with product version. (e.g. 100 for 7zip-v100) (Recommended)"
 "AppInstaller","winget","(Required) winget,choco,exe,msi,ps1,cmd. If winget, choco is used, leave AppUninstallName blank unless you want to uninstall an additional app"
 "AppInstallName","Google.GoogleDrive ","(Required) winget appid (case sensitive) or choco appid or filename of .exe or .msi or .ps1 or .cmd (wildcard OK). See https://winstall.app or https://community.chocolatey.org/packages for package ids."
 "AppInstallArgs","","(Optional) Prefix with ARGS: Installer arguments for msi,ps1,exe,cmd (for msi usually /quiet or /q /norestart) (for ps1 with multi param try -var1 xyz -var2 pdq named format, else entire value is first param )"

@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Notepad++-v196")
+    $IntuneAppValues.Add("AppName","Notepad++-v198")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Notepad++.Notepad++")
     $IntuneAppValues.Add("AppInstallArgs","")
@@ -993,15 +993,7 @@ Function winget_install
             $msg = "Microsoft Visual C++ Redistributable already installed (version $currentVersion)."
             [string]$result="OK - $($msg)"
         } else {
-            # Determine architecture (supports x64 and ARM64)
-            $arch = (Get-CimInstance -ClassName Win32_OperatingSystem).OSArchitecture.ToLower()
-            if ($arch -like "*arm*") {
-                $platform = "ARM64"
-            } elseif ($arch -like "*64*") {
-                $platform = "x64"
-            } else {
-                $platform = "x86"
-            }
+            $platform = GetArchitecture # Get OS Arch type (x64 or ARM64)
             # Set download URL and installer path
             switch ($platform) {
                 "ARM64" {
@@ -1458,7 +1450,7 @@ if ($IntuneApp.AppInstallName -eq "") {Write-host "AppInstallName is empty. Abor
 #endregion Check Values
 #region Relaunch as 64 bit Powershell
 $argsString = ""
-If ($ENV:PROCESSOR_ARCHITEW6432 -eq "AMD64")
+If ($null -ne $ENV:PROCESSOR_ARCHITEW6432) # -eq "AMD64"
 { #32 bit
     #region rebuild the argument list
     foreach($k in $MyInvocation.BoundParameters.keys)
@@ -1477,6 +1469,7 @@ If ($ENV:PROCESSOR_ARCHITEW6432 -eq "AMD64")
     $exename = "$env:WINDIR\SysNative\WindowsPowershell\v1.0\PowerShell.exe"
     #$exename = "$env:ProgramFiles\PowerShell\7\pwsh.exe" # for now we won't consider v7 until it's windows native
     #endregion
+    IntuneLog "PROCESSOR_ARCHITEW6432 is not empty [$($ENV:PROCESSOR_ARCHITEW6432)] - Relaunching as 64-bit PowerShell"
     IntuneLog "Restarting as 64-bit: powershell.exe -File `"$($scriptname)`" $($argsString)"
     Try
     {Start-Process -FilePath $exename -ArgumentList $argumentlist -Wait -NoNewWindow}
