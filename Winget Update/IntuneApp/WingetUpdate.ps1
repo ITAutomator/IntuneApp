@@ -171,6 +171,8 @@ If (-not(IsAdmin)) {
 }
 Write-Host "About to update winget"
 if ($mode -ne 'auto') {Pause}
+Write-Host "Method 1: Update winget using Microsoft.UI.Xaml and Microsoft.VCLibs"
+Write-Host "------------------------------------------------------------"
 # temp folder
 Write-Host "1 - Creating a temp folder"
 $TmpFld=GetTempFolder -Prefix "wingetinstall_"
@@ -214,17 +216,34 @@ Write-Progress -activity "done" -Completed
 # cleanup
 Write-Host "Cleaning up temp folder"
 Remove-Item $TmpFld -Recurse -Force
-
+Write-Host "------------------------------------------------------------"
+Write-Host "Done"
 # updated ver
 $ver_updated=winget -v
 Write-host "Updated version: $($ver_updated)"
 Write-host " Latest version: $($ver_latest)"
-Write-Host "Done"
-
-# Is it not up to date?
+# Is it not up to date afther method 1?
 if ([version]$ver_updated.Replace("v","") -lt [version]$ver_latest.Replace("v","")) {
-    Write-Host "ERR: Winget didn't make it to the latest version (check logs).";Start-Sleep 2;exit 10
+    Write-Host "ERR: Winget didn't make it to the latest version (check logs). We will try Method 2";Start-Sleep 2
+    # Method 2: Use winget to update itself
+    Write-Host "Method 2: Update winget using winget itself"
+    Write-Host "------------------------------------------------------------"
+    Write-Host "Step 1: Resetting App Installer"
+    Write-Host "Get-AppxPackage -Name 'Microsoft.DesktopAppInstaller' | Reset-AppxPackage"
+    Get-AppxPackage -Name 'Microsoft.DesktopAppInstaller' | Reset-AppxPackage
+    Write-Host "Step 2: Updating App Installer using winget"
+    Write-Host "winget upgrade --id Microsoft.DesktopAppInstaller"
+    "Y" | winget upgrade --id Microsoft.Winget.Source
+    Write-Host "------------------------------------------------------------"
+    Write-Host "Done"
+    # updated ver
+    $ver_updated=winget -v
+    Write-host "Updated version: $($ver_updated)"
+    Write-host " Latest version: $($ver_latest)"
+    # Is it not up to date after method 2?
+    if ([version]$ver_updated.Replace("v","") -lt [version]$ver_latest.Replace("v","")) {
+        Write-Host "ERR: Winget didn't make it to the latest version (check logs).";Start-Sleep 2;exit 10
+    }
 }
-
 if ($mode -ne 'auto') {Pause}
 Exit 0

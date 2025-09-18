@@ -19,6 +19,49 @@
 # \7zipInstaller\IntuneApp\   intune_settings.csv
 #                             intune_install
 #>
+function Get-TokenDetailsFromHeader {
+    param (
+        [Parameter(Mandatory)]
+        $AuthToken
+    )
+
+    $tokenHeader = $AuthToken.Authorization
+    if (-not $tokenHeader) {
+        Write-Warning "Authorization header not found."
+        return
+    }
+
+    $rawToken = $tokenHeader -replace '^Bearer\s+', ''
+    $parts = $rawToken -split '\.'
+    if ($parts.Count -lt 2) {
+        Write-Warning "Invalid JWT format."
+        return
+    }
+
+    # Base64 decode payload
+    $payload = $parts[1].Replace('-', '+').Replace('_', '/')
+    switch ($payload.Length % 4) {
+        2 { $payload += '==' }
+        3 { $payload += '=' }
+    }
+
+    try {
+        $bytes = [Convert]::FromBase64String($payload)
+        $json = [Text.Encoding]::UTF8.GetString($bytes)
+        $claims = $json | ConvertFrom-Json
+
+        return [pscustomobject]@{
+            TenantId = $claims.tid
+            User     = $claims.upn
+            Issuer   = $claims.iss
+            Expires  = $claims.exp | ForEach-Object { [DateTimeOffset]::FromUnixTimeSeconds($_).UtcDateTime }
+            Scopes   = $claims.scp
+            Audience = $claims.aud
+        }
+    } catch {
+        Write-Warning "Failed to decode token: $_"
+    }
+}
 Function InitializeOrgList ($orglistcsv)
 # Creates an empty OrgList
 {
@@ -467,6 +510,13 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
     $warningsallpkgs = @()
     $i = 0
     $i_count = $package_paths.count
+    if ($i_count -ge 10)
+    { # more than 10 packages
+        Write-Host "Found $($i_count) packages to check"
+        if (AskForChoice "Auto-update hash values [No to stop and ask for any updated packages]"){
+            $bHashUpdateAllOK = $true
+        }
+    } # more than 10 packages
     Write-Progress -Activity "Checking Packages" -Status "Starting" -PercentComplete 0
     ForEach ($pkg in $package_paths)
     { # Each pkg (csv) file
@@ -559,25 +609,28 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
             Else {$sHash_old = "<none>"}
             If ($sHash_old -ne $sHash)
             { # hashes don't match - package was updated
-                if (-not $bHashUpdateAllOK){
-                    Write-Host ""
-                    Write-Host ""
-                    Write-host "Hash for this app will be updated: " -NoNewline
-                    Write-host $pkgobj.AppName -ForegroundColor Green
-                    if ($sHash_old -ne "<none>")
-                    {
-                        Write-Host "These files changed since the last hash was computed."
-                        Write-Host "A hash update will cause 'needs update' messaging wherever the app was previously published."
-                        Write-Host "<= means file was removed"
-                        Write-Host "=> means file was added"
-                        Write-Host "(if the same file has both indicators it's been modified, from <= old to => new )"
-                        Write-Host (Compare-Object $hash_obj.HashList $HashList -Property Hash | Format-Table | Out-String)
-                    }
+                Write-Host ""
+                Write-Host ""
+                Write-host "Hash for this app will be updated: " -NoNewline
+                Write-host $pkgobj.AppName -ForegroundColor Green
+                if ($sHash_old -ne "<none>")
+                { # show the hash diff
+                    Write-Host "------------------------------------------------------------"
+                    Write-Host "These files changed since the last hash was computed."
+                    Write-Host "A hash update will cause 'needs update' indicators wherever the app was previously published."
+                    Write-Host "<= means file was removed"
+                    Write-Host "=> means file was added"
+                    Write-Host "(if the same file has both indicators it has been modified from <= old to => new )"
+                    Write-Host (Compare-Object $hash_obj.HashList $HashList -Property Hash | Format-Table | Out-String)
+                    Write-Host "------------------------------------------------------------"
+                } # show the hash diff
+                if (-not $bHashUpdateAllOK) { # ask for hash update
                     $choice = (AskForChoice "Update hash value for this app?" -choices "&No","&Yes","Yes to &all" -DefaultChoice 1)
                     if ($choice -eq 0)   {$bHashUpdateOK = $false}
                     if ($choice -in 1,2) {$bHashUpdateOK = $true}
                     if ($choice -eq 2)   {$bHashUpdateAllOK = $true}
-                }
+                } # ask for hash update
+                else {$bHashUpdateOK = $true} # auto-update
                 if (-not $bHashUpdateOK)
                 { # skip update package
                     Write-Host "Aborting hash update of [$($pkgobj.AppName)]"
@@ -750,10 +803,24 @@ Do
         Write-host "[AppsPublish_OrgList.csv]" -ForegroundColor Yellow
         $i=0
         Write-Host ($orglist | Select-object @{N="ID";E={(++([ref]$i).Value)}},Org,Packages,"Last Publish Count","Last Publish Date"| Format-Table | Out-String)
-        $prompt = PromptForString "Publish to Org (1-$($orglist.count), 0 to Exit)"
-        $choice = [int]$prompt
-        if (($choice -eq 0) -or ($choice -gt $orglist.count)) {Write-Host "Aborted.";Continue}
+        $choice_OK =$false
+        Do {
+            $prompt = PromptForString "Publish to Org (1-$($orglist.count), 0 to Exit)"
+            Try {
+                $choice = [int]$prompt
+                if ($choice -le $orglist.count) {
+                    $choice_OK =$true
+                }
+                else {
+                    write-host "ERR: Invalid choice. Please enter a number between 1 and $($orglist.count) or 0 to exit."
+                }
+            }
+            Catch {Write-Host "ERR: Invalid choice."}
+        } Until ($choice_OK)
+        if ($choice -eq 0) {Write-Host "Aborted.";Continue}
         $choice--
+        Write-Host "You chose Org: " -NoNewline
+        Write-Host $orglist[$choice].Org -ForegroundColor Yellow
         if (-not $pkgs)
         { # no local package list yet
             if (0 -eq (AskForChoice "No local packages checked yet. Use [C]heck before publishing (otherwise package update status will be unknowable). Check now?"))
@@ -789,6 +856,7 @@ Do
         $modules+="Microsoft.Graph.Groups"
         $modules+="Microsoft.Graph.Users"
         $modules+="Microsoft.Graph.Authentication"
+        # $modules+="Microsoft.PowerShell.ConsoleGuiTools" # for Out-ConsoleGridView (PS7 only)
         ForEach ($module in $modules)
         { 
             Write-Host "Loadmodule $($module)..." -NoNewline ; $lm_result=LoadModule $module -checkver $checkver; Write-Host $lm_result
@@ -811,23 +879,37 @@ Do
         $RequiredScopes += "User.ReadWrite.All"
         #$RequiredScopes += "DeviceManagementApps.Read.All" # not sure about this one
         $RequiredScopes += "DeviceManagementApps.ReadWrite.All"
-        Write-Host "Connecting ... There may be a popup logon window in the background"
-        $connected_ok = Connect-MgGraph -TenantId $OrgValues.TenantName -Scopes $RequiredScopes
-        #
-        if (!($connected_ok)) 
-        { # connect failed
-            Write-Host "[connection failed]"
-        }
-        else
-        { # connect ok
-            Write-Host "CONNECTED"
-            Write-Host "--------------------"
-        }
+        Do {
+            Write-Host "Connecting ... There may be a popup logon window in the background"
+            $connected_ok = Connect-MgGraph -TenantId $OrgValues.TenantName -Scopes $RequiredScopes
+            #
+            if (!($connected_ok)) 
+            { # connect failed
+                Write-Host "[connection failed]"
+                if (AskforChoice -Message "Try again?")
+                { # yes, try again
+                    Write-Host "Retrying connection..."
+                    Start-Sleep -Seconds 2
+                } # yes, try again
+                else
+                { # no, exit
+                    Write-Host "Exiting."
+                    Start-Sleep -Seconds 2
+                    Exit
+                } # no, exit
+            }
+            else
+            { # connect ok
+                Write-Host "Connected  ... OK"
+                Write-Host "--------------------"
+                break # exit connect loop
+            }
+        } while ($true) # connect loop
         Do { # menu loop
             # Get Required group ID
             Write-Host "Required org group: " -NoNewline
             Write-Host $OrgValues.PublishToGroupIncluded -NoNewline -ForegroundColor Yellow
-            Write-Host " ... " -NoNewline
+            Write-Host " ...  (there may be a popup in the background) ... " -NoNewline
             $group = Get-MgGroup -Filter "displayName eq '$($OrgValues.PublishToGroupIncluded)'"
             $Required_OrgGroupId = $group.Id
             if ($Required_OrgGroupId) {
@@ -839,10 +921,10 @@ Do
                 Write-Host $OrgValues.PublishToGroupIncluded -ForegroundColor Yellow
                 Write-Host $OrgValues.PublishToGroupExcluded -ForegroundColor Yellow
                 if (-not (AskForChoice))
-                {Continue} # skip process
+                {Continue} # skip processConnect-MSIntuneGraph
             }
             #region Check published apps
-            Write-Host "Checking published apps in $($OrgValues.TenantName)..." -NoNewline
+            Write-Host "Checking published apps in: " -nonewline; Write-host $OrgValues.TenantName -ForegroundColor Yellow
             # Get List of apps
             $IntuneApps = Get-MgDeviceAppManagementMobileApp -All -ErrorAction Ignore
             $IntuneApps = $IntuneApps | Where-Object {$_.AdditionalProperties."@odata.type" -in ("#microsoft.graph.win32LobApp")}
@@ -950,7 +1032,11 @@ Do
             ,@{Name = 'AppDescription'   ; Expression = {CropString $_.AppDescription.Replace("`n","").Replace("`r","")}} | Sort-object AppName
             Write-Host "Choose apps from the popup list (may be behind this window - check taskbar): " -NoNewline
             $msg= "Select rows and click OK (Use Ctrl and Shift and Filter features to multi-select)"
-            $pkgselects =  @($pkgchoices | Out-GridView -PassThru -Title $msg)
+            # Note: Out-GridView filtering doesn't work in PS7. So we can use Out-ConsoleGridView instead, but it's probably not worth it because it's not as good.
+            #ps5 
+            $pkgselects =  @($pkgchoices | Out-GridView -PassThru -Title $msg) 
+            #ps7 only Install-Module Microsoft.PowerShell.ConsoleGuiTools for Out-ConsoleGridView
+            #$pkgselects =  @($pkgchoices | Out-ConsoleGridView -OutputMode Multiple -Title "Select Packages") 
             #endregion app selections
             if ($pkgselects.Count -eq 0)
             { # apps canceled
@@ -1031,7 +1117,6 @@ Do
                     {Continue}
                     Write-host "Publishing $($pkgselects.count) apps"
                     #region Connect to MSIntuneGraph
-                    Write-Host "[Connect-MSIntuneGraph] Connecting to Tenant: $($OrgValues.TenantName) [You may see a sign-on popup <OR> subsequent directions for web sign-on]" -ForegroundColor Yellow
                     $connected=$false
                     $done = $false
                     $DeviceCode = $false
@@ -1044,10 +1129,29 @@ Do
                             Write-host "      https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$($OrgValues.AppPublisherClientID)"
                             PressEnterToContinue
                         }
-                        $conn_result = Connect-MSIntuneGraph -TenantID $OrgValues.TenantName -ClientID $OrgValues.AppPublisherClientID -RedirectUri "https://login.microsoftonline.com/common/oauth2/nativeclient" -DeviceCode:$DeviceCode
-                        if ($conn_result)
+                        # This can fail in PS7 (without the DeviceCode option): The embedded WebView2 browser cannot be started because a runtime component cannot be loaded. For troubleshooting details, see https://aka.ms/msal-net-webview2 
+                        # Download and install from Microsoft (Look for the Evergreen Standalone Installer (x64)): https://developer.microsoft.com/en-us/microsoft-edge/webview2/
+                        $connect_try = $true # assume we need to connect
+                        if ($AuthToken) { # existing token found
+                            Write-Host "Connect-MSIntuneGraph: Token AuthToken found." -ForegroundColor Yellow
+                            if (($AuthToken.ExpiresOn-(Get-Date)).TotalHours -gt 0) {
+                                $token_claims = Get-TokenDetailsFromHeader $AuthToken
+                                if ($token_claims.TenantId -eq (Get-MgContext).TenantId) {
+                                    Write-Host "Connect-MSIntuneGraph: Token is valid for this Org. Using existing token." -ForegroundColor Yellow
+                                    $connect_try = $false
+                                } else {
+                                    Write-Host "Connect-MSIntuneGraph: Token ($($token_claims.User)) is NOT valid for this Org ($($OrgValues.TenantName)). Reconnecting." -ForegroundColor Yellow
+                                    $connect_try = $true
+                                }
+                            }
+                        } # existing token found
+                        if ($connect_try) {
+                            Write-Host "[Connect-MSIntuneGraph] Connecting to Tenant: $($OrgValues.TenantName) [You may see a sign-on popup <OR> subsequent directions for web sign-on]" -ForegroundColor Yellow
+                            $AuthToken = Connect-MSIntuneGraph -TenantID $OrgValues.TenantName -ClientID $OrgValues.AppPublisherClientID -RedirectUri "https://login.microsoftonline.com/common/oauth2/nativeclient" -DeviceCode:$DeviceCode
+                        }
+                        if ($AuthToken)
                         {
-                            Write-Host "Connected OK for: $(($conn_result.ExpiresOn-(Get-Date)).TotalHours.toString("0.#")) hrs"
+                            Write-Host "Connected OK for: $(($AuthToken.ExpiresOn-(Get-Date)).TotalHours.toString("0.#")) hrs"
                             $connected=$true
                             $done=$true
                         }

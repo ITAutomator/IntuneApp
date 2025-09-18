@@ -236,16 +236,16 @@ if ($os[1] -eq "Win 11")
     #kill running widgets.exe
     Write-Host ""
     Write-Host "- (Win 11) Turn off opening of Widgets on hover"
-    Get-Process widgets | Stop-Process -ErrorAction Ignore
+    Get-Process widgets -ErrorAction Ignore | Stop-Process -ErrorAction Ignore
     #run reg as package
     Invoke-CommandInDesktopPackage -AppId "Widgets" -PackageFamilyName "MicrosoftWindows.Client.WebExperience_cw5n1h2txyewy" -Command reg.exe -Args "add `"HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Dsh`" /v `"HoverEnabled`" /t REG_DWORD /d 0 /f"
     Write-Host ""
-    Write-Host "- (Win 11) Set Search to Hide Icon"
+    Write-Host "- (Win 11) Set Search to Icon only"
     #0, the search box will be hidden
     #1 Icon only
     #2 Search box
     #3 Search button
-    $searchchoice = 0
+    $searchchoice = 1
     Set-ItemProperty -Path HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Search -Name SearchBoxTaskbarMode -Value $searchchoice -Type DWord -Force
 }
 

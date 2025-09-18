@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Windows VPN-v115")
+    $IntuneAppValues.Add("AppName","Windows VPN-v131")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","WindowsVPN.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode A")
@@ -1251,10 +1251,10 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
                 Else { # translate all else incl system to machine
                     $Winget_command += "machine"}
             }
-            #1603 means elevation needed, -1978335212 means app not found
+            # 1603 means elevation needed, -1978335212 means app not found
             $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
-            #Successfully uninstalled or No installed package found matching input criteria are OK results
-            if (($exitcode  -eq 0) -or ($exitcode -eq -1978335212))
+            # (Successfully uninstalled) or (No installed package found matching input criteria) are OK results
+            if ($exitcode  -eq 0) # -or ($exitcode -eq -1978335212)
             { # 1st uninstall ok
                 $intReturnCode=0
                 $strReturnMsg="OK $($intReturnCode): Winget [$($WingetApp)] app uninstalled. [$($Winget_command)]"
@@ -1268,7 +1268,7 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
 				else { # name match
 					$Winget_command = "uninstall","--name",$WingetApp,"--disable-interactivity","--silent","--force"
 				}
-				#1603 means elevation needed, -1978335212 means app not found
+				# 1603 means elevation needed, -1978335212 means app not found
                 $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
                 if ($exitcode  -eq 0)
                 { # 2nd uninstall ok

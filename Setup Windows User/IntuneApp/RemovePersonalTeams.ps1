@@ -1,3 +1,8 @@
+$scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName }
+$scriptDir      = Split-Path -Path $scriptFullname -Parent
+$scriptName     = Split-Path -Path $scriptFullname -Leaf
+Write-Host "-----------------------------------------------------------------------------"
+Write-Host ("$scriptName        Computer:$env:computername User:$env:username PSver:"+($PSVersionTable.PSVersion.Major))
 Write-host "Removing Microsoft Teams (Personal)..."
 $MSTeams = "MicrosoftTeams"
 $WinPackage = Get-AppxPackage | Where-Object { $_.Name -eq $MSTeams }

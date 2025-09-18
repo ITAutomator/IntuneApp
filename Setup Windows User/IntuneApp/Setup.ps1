@@ -73,6 +73,10 @@ Write-host "Mode: $($mode)      NeedsAdmin: $($NeedsAdmin)    IsAdmin: " -NoNewl
 if ($NeedsAdmin -eq $Isadmin) {Write-Host $Isadmin} else {Write-Host $Isadmin -ForegroundColor Red}
 Write-Host ""
 Write-Host "Calls subscripts."
+Write-Host "  User StartMenu Cleanup.ps1"
+Write-Host "  User UserPrep.ps1"
+Write-Host "  RemovePersonalTeams.ps1"
+Write-Host "  TimeZone\TimeZone.ps1"
 Write-Host ""
 Write-Host "-----------------------------------------------------------------------------"
 if ($mode_auto) {PauseTimed -quiet} else {PauseTimed}
@@ -87,11 +91,12 @@ If ($NeedsAdmin) {
 $ps1 = "$($scriptDir)\User StartMenu Cleanup.ps1" ; $cmd_out = & $ps1 -mode $mode
 $ps1 = "$($scriptDir)\User UserPrep.ps1"          ; $cmd_out = & $ps1 -mode $mode
 $ps1 = "$($scriptDir)\RemovePersonalTeams.ps1"    ; $cmd_out = & $ps1 -mode $mode
-$ps1 = "$($scriptDir)\TimeZone.ps1"               ; $cmd_out = & $ps1 -mode $mode
+$ps1 = "$($scriptDir)\TimeZone\TimeZone.ps1"               ; $cmd_out = & $ps1 -mode $mode
 
 # supress output
 if ($cmd_out) {$cmd_out = $null}
 # Done
 Start-Sleep 3
 Write-Host "Done." -ForegroundColor Yellow
+if ($mode_auto) {PauseTimed -quiet} else {PauseTimed}
 Exit $exitcode

@@ -63,6 +63,8 @@ If (-not(IsAdmin))
 }
 #>
 <###### Version History
+2025-08-08
+CopyFilesIfNeeded - Added a check for source folder existence
 2025-04-01
 AskForChoice bug fix when using string results
 LogMsg ($msg ="Log Message", [Switch] $ShowMsg= $false, $maxSize = 1MB)
@@ -2632,7 +2634,6 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod="hash", $delete_extr
     $retcode=0 # 0 no files needed copying, 10 files needed copying but OK, 20 Error copying files
     $retmsg=@()
     ##
-    
     if (Test-Path -LiteralPath $target -PathType Leaf)
     {
         $retcode=20
@@ -2648,8 +2649,13 @@ Function CopyFilesIfNeeded ($source, $target,$CompareMethod="hash", $delete_extr
         else # C:\Source\*.txt  (a wildcard)
         {
             $sourceroot = Split-Path $source -Parent
+            if (-not (Test-Path -LiteralPath $sourceroot -PathType Container))
+            {
+                $retcode=20
+                $retmsg+="ERR:20 Couldn't find source '$($sourceroot)'"
+                Return $retcode, $retmsg
+            }
         }
-
         $retcode=0 #Assume OK
         if ($deeply){
             $Files = Get-ChildItem -LiteralPath $source -File -Recurse

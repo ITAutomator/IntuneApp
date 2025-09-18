@@ -125,7 +125,7 @@ Do { # action
     }
     Write-Host " ServerAddress: " -NoNewline
     Write-host $($settings.ServerAddress) -ForegroundColor Green
-    Write-Host "   Credentails: " -NoNewline
+    Write-Host "   Credentials: " -NoNewline
     Write-host $($cred_source) -ForegroundColor Green
     Write-Host ""
     Write-Host "[A] add    the VPN adapter for this user." -ForegroundColor $addcolor

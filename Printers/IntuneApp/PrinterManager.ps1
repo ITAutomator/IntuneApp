@@ -659,6 +659,7 @@ Do { # action
                 }
                 $OKtoinstall = $true
                 ######## Add Port
+                $PrinterPorts   = Get-PrinterPort   | Where-Object {($PortMonsToInclude -Contains $_.PortMonitor)}
                 if ($printerports | Where-Object Name -eq $port) {
                     Write-Host "OK: Port $($port) already exists"
                 }
