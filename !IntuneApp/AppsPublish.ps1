@@ -991,6 +991,14 @@ Do
                 $pkg = $pkgs | Where-Object AppName -eq $IntuneApp.DisplayName
                 if ($pkg)
                 { # matching local app found
+                    if ($pkg.Fullpath.count -gt 1)
+                    { # there are duplicate apps with same name
+                        Write-Host "Warning: There are duplicate apps with the same name in the CSV file: " -ForegroundColor Yellow
+                        Write-Host "AppName: $($IntuneApp.DisplayName)"
+                        $pkg.Fullpath | Write-Host
+                        PressEnterToContinue "These will be ignored. Correct this problem before the next publication. Press Enter to Continue"
+                        Continue
+                    } # there are duplicate apps with same name
                     $pkg.PublishedAppId = $IntuneApp.Id
                     $pkg.PublishedDate  = $IntuneApp.CreatedDateTime.ToString("yyyy-MM-dd")
                     $pub_hash = ParseToken $IntuneApp.Description "Hash: [" "]"

@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Adobe Reader-v201")
+    $IntuneAppValues.Add("AppName","Adobe Reader-v202")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Adobe.Acrobat.Reader.64-bit")
     $IntuneAppValues.Add("AppInstallArgs","")
