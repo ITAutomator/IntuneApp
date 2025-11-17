@@ -2,7 +2,7 @@
 
 ## Description   
 
-Removes users from the local administrators group.  (De-elevates them)
+Removes users from the local administrators group.  (De-elevates them)  
 The primary purpose would be to remove the initial joining user – who is automatically made a local administrator.  
 
 Main Menu  
