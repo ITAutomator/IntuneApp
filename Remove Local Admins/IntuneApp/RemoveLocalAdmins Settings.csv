@@ -1,5 +1,3 @@
 "Name","Value"
 "AdminsToAllow","AdminContoso,AdminFabrikant,AzureAD\JohnAdmin"
 "AdminsToRemove","AzureAD\*,.\*"
-"SettingsFileCreatedBy","LP-JS\JasonSimotas"
-"SettingsFileCreatedDate","2025-11-16"
