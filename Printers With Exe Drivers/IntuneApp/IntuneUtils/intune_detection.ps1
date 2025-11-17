@@ -32,9 +32,9 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Printers With Exe Drivers-v112")
+    $IntuneAppValues.Add("AppName","Printers With Exe Drivers-v113")
     $IntuneAppValues.Add("AppInstaller","ps1")
-    $IntuneAppValues.Add("AppInstallName","PrinterSetup.ps1")
+    $IntuneAppValues.Add("AppInstallName","PrinterSetupExe.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode install")
     $IntuneAppValues.Add("AppUninstallName","")
     $IntuneAppValues.Add("AppUninstallVersion","")

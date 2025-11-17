@@ -121,7 +121,7 @@ if (-not (Test-Path $PrnCSVPathAdd)) {
 }
 $PrnCSVRowsRmv      = @(Import-Csv $PrnCSVPathRmv)
 $PrnCSVRowsAdd      = @(Import-Csv $PrnCSVPathAdd)
-$PrnCSVRowsAddThisCPU = $PrnCSVRowsAdd | Where-Object CPU -eq $Arch
+$PrnCSVRowsAddThisCPU = @($PrnCSVRowsAdd | Where-Object CPU -eq $Arch)
 # display
 Write-Host "PrintersToAdd.csv ($($PrnCSVRowsAdd.Count) rows, $($PrnCSVRowsAddThisCPU.count) for this CPU [$($Arch)])"
 $PrnCSVRowsAdd | ForEach-Object {Write-Host "- [$($_.CPU)] $($_.Printer) ($($_.Installer)) $(if ($_.CPU -ne $Arch) {' SKIP: not for this CPU'})"}
@@ -238,7 +238,7 @@ else {
 # get printers that are installed
 write-host "------ Removing Printers"
 $Printers       = Get-Printer
-if (($Printers.count -gt 0)-and ($PrnUninstall.count -gt 0))
+if (($Printers.count -gt 0) -and ($PrnUninstall.count -gt 0))
 { # Remove
     # filter PrintersToRemove for printers we have
     $entries = $PrnUninstall
@@ -261,7 +261,10 @@ else {
 if ($mode -ne 'uninstall')
 { # install mode
     write-host "------ Adding Printers"
-    if (($Printers.count -gt 0)-and ($PrnCSVRowsAddThisCPU.count -gt 0))
+    # Write-host "------------------------------"
+    # Write-host ($PrnCSVRowsAddThisCPU.Printer -join ", ")
+    # Write-host "------------------------------"
+    if ($PrnCSVRowsAddThisCPU.count -gt 0)
     { # Add
         $entries = $PrnCSVRowsAddThisCPU
         $i = 0

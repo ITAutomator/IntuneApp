@@ -32,18 +32,18 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Remove Apps-v110")
+    $IntuneAppValues.Add("AppName","Remove Local Admins (Template)-v211")
     $IntuneAppValues.Add("AppInstaller","ps1")
-    $IntuneAppValues.Add("AppInstallName","Uninstallers.ps1")
-    $IntuneAppValues.Add("AppInstallArgs","ARGS: -mode auto")
+    $IntuneAppValues.Add("AppInstallName","RemoveLocalAdmins.ps1")
+    $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode R")
     $IntuneAppValues.Add("AppUninstallName","")
     $IntuneAppValues.Add("AppUninstallVersion","")
     $IntuneAppValues.Add("AppUninstallProcess","")
     $IntuneAppValues.Add("SystemOrUser","system")
-    $IntuneAppValues.Add("Function","intune_detection.ps1")
+    $IntuneAppValues.Add("Function","intune_requirements.ps1")
     $IntuneAppValues.Add("LogFolder","C:\IntuneApp")
-    $IntuneAppValues.Add("AppVar1","")
-    $IntuneAppValues.Add("AppVar2","")
+    $IntuneAppValues.Add("AppVar1","Admins to Remove: AzureAD\*,.\*")
+    $IntuneAppValues.Add("AppVar2","Admins to Allow: AdminContoso,AdminFabrikant,AzureAD\JohnAdmin")
     $IntuneAppValues.Add("AppVar3","")
     $IntuneAppValues.Add("AppVar4","")
     $IntuneAppValues.Add("AppVar5","")
@@ -1589,160 +1589,7 @@ If ($IntuneApp.Function -in ("intune_Detection.ps1"))
         # see if $customps1_lines injection happend
         $customps1_injection_lines = @()
         # injection may happen below here
-#region INJECTION SITE for intune_detection_customcode.ps1
-##########################################################
-$customps1_injection_lines +='<# -------- Custom Detection code'
-$customps1_injection_lines +='Put your custom code here'
-$customps1_injection_lines +='Delete this file from your package if it is not needed. Normally, it is not needed.'
-$customps1_injection_lines +='Winget and Choco packages detect themselves without needing this script.'
-$customps1_injection_lines +='Packages can also use AppUninstallName CSV entries for additional Winget detection (without needing this script)'
-$customps1_injection_lines +=''
-$customps1_injection_lines +='Return value'
-$customps1_injection_lines +='$true if detected, $false if not detected'
-$customps1_injection_lines +='If the app is detected, the app will be considered installed and the setup script will not run.'
-$customps1_injection_lines +=''
-$customps1_injection_lines +='Intune'
-$customps1_injection_lines +='Intune will show ''Installed'' for those devices where app is detected'
-$customps1_injection_lines +=''
-$customps1_injection_lines +='Notes'
-$customps1_injection_lines +='$app_detected may already be true if regular detection found via IntuneApps.csv or winget or choco'
-$customps1_injection_lines +='Your code can choose to accept or ignore this detection.'
-$customps1_injection_lines +='WriteHost commands, once injected, will be converted to WriteLog commands, and will log text to the Intune log (c:\IntuneApps)'
-$customps1_injection_lines +='This is because detection checking gets tripped up by writehost so nothing should get displayed at all.'
-$customps1_injection_lines +='Do not allow Write-Output or other unintentional ouput, other than the return value.'
-$customps1_injection_lines +='This must be a stand-alone script - no local files are available, it will be copied to a temp folder and run under system context.'
-$customps1_injection_lines +='However this script is a child process of intune_detection.ps1, and has those functions and variables available to it.'
-$customps1_injection_lines +='For instance, $IntuneApp.AppVar1 ... $IntuneApp.AppVar5 are injected from the intune_settings.csv, and are usable.'
-$customps1_injection_lines +='To debug this script, put a break in the script and run the parent ps1 file (Detection).'
-$customps1_injection_lines +='Detection and Requirements scripts are run every few hours (for all required apps), so they should be conservative with resources.'
-$customps1_injection_lines +='#>'
-$customps1_injection_lines +='Function Uninstall-Application {'
-$customps1_injection_lines +='    [CmdletBinding()]'
-$customps1_injection_lines +='    Param('
-$customps1_injection_lines +='        # Mandatory parameter'
-$customps1_injection_lines +='        [Parameter(Mandatory = $true)]  [string] $App,'
-$customps1_injection_lines +='        [Parameter(Mandatory = $false)] [string] $UninstallOrList = ''List'''
-$customps1_injection_lines +='    )'
-$customps1_injection_lines +='    $apps_found = 0'
-$customps1_injection_lines +='    $apps_max = 1 # dont uninstall if more than x found '
-$customps1_injection_lines +='    $apps_removed = 0'
-$customps1_injection_lines +=''
-$customps1_injection_lines +='    # Registry paths to check (64-bit and 32-bit on 64-bit OS)'
-$customps1_injection_lines +='    $uninstallKeyPaths = @('
-$customps1_injection_lines +='        "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",'
-$customps1_injection_lines +='        "HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"'
-$customps1_injection_lines +='    )'
-$customps1_injection_lines +='    $list_apps=@() '
-$customps1_injection_lines +='    foreach ($keyPath in $uninstallKeyPaths) {'
-$customps1_injection_lines +='        # Get any registry entries whose DisplayName contains $App'
-$customps1_injection_lines +='        $apps = @()'
-$customps1_injection_lines +='        $apps += Get-ItemProperty $keyPath -ErrorAction SilentlyContinue | Where-Object {$_.DisplayName -like "*$App*"}'
-$customps1_injection_lines +='        if ($UninstallOrList -ne "uninstall") {'
-$customps1_injection_lines +='            $apps_found += $apps.count'
-$customps1_injection_lines +='            $list_apps += $apps'
-$customps1_injection_lines +='            Continue # go to next item in loop'
-$customps1_injection_lines +='        }'
-$customps1_injection_lines +='        if ($apps.count -gt $apps_max) {'
-$customps1_injection_lines +='            WriteLog "ERR: Too many apps found [$($apps.count)] matching *$($App)*. The max is: $($apps_max)"'
-$customps1_injection_lines +='            #WriteLog "-------------------------------------------------------------"'
-$customps1_injection_lines +='            $apps.DisplayName | WriteLog '
-$customps1_injection_lines +='            #WriteLog "-------------------------------------------------------------"'
-$customps1_injection_lines +='            return "ERR: Too many apps found [$($apps.count)] matching *$($App)*. The max is: $($apps_max)"'
-$customps1_injection_lines +='        }'
-$customps1_injection_lines +='        foreach ($appEntry in $apps) {'
-$customps1_injection_lines +='            $apps_found += 1'
-$customps1_injection_lines +='            WriteLog "Found matching software: $($appEntry.DisplayName)"'
-$customps1_injection_lines +='            if ($null -ne $appEntry.UninstallString) {'
-$customps1_injection_lines +='                # Copy the original uninstall command from the registry'
-$customps1_injection_lines +='                $uninstallCmd = $appEntry.UninstallString'
-$customps1_injection_lines +=''
-$customps1_injection_lines +='                # Detect MSI-based uninstallers'
-$customps1_injection_lines +='                if ($uninstallCmd -match ''MsiExec'') {'
-$customps1_injection_lines +='                    # If /qn or /quiet isn''t in the string, append /qn'
-$customps1_injection_lines +='                    if ($uninstallCmd -notmatch ''/q'') {'
-$customps1_injection_lines +='                        $uninstallCmd += '' /qn'''
-$customps1_injection_lines +='                    }'
-$customps1_injection_lines +='                }'
-$customps1_injection_lines +='                else {'
-$customps1_injection_lines +='                    # For non-MSI uninstallers, try appending /silent'
-$customps1_injection_lines +='                    # (Some may require /S, /quiet, or other parameters. Adjust as needed.)'
-$customps1_injection_lines +='                    $uninstallCmd += '' /silent'''
-$customps1_injection_lines +='                }'
-$customps1_injection_lines +='                WriteLog "Running Uninstall Command (Silent): $uninstallCmd"'
-$customps1_injection_lines +='                try {'
-$customps1_injection_lines +='                    Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $uninstallCmd -Wait -NoNewWindow'
-$customps1_injection_lines +='                    WriteLog "$($appEntry.DisplayName) uninstalled successfully."'
-$customps1_injection_lines +='                    $apps_removed += 1'
-$customps1_injection_lines +='                }'
-$customps1_injection_lines +='                catch {'
-$customps1_injection_lines +='                    Write-Warning "Failed to uninstall $($appEntry.DisplayName): $_"'
-$customps1_injection_lines +='                }'
-$customps1_injection_lines +='            }'
-$customps1_injection_lines +='            else {'
-$customps1_injection_lines +='                Write-Warning "No valid uninstall string found for $($appEntry.DisplayName)."'
-$customps1_injection_lines +='            } # uninstall string found'
-$customps1_injection_lines +='        } # each app found'
-$customps1_injection_lines +='    } # each reg key'
-$customps1_injection_lines +='    If ($apps_found -eq 0) {'
-$customps1_injection_lines +='        $result = "ERR: No matching app found: *$($App)*"'
-$customps1_injection_lines +='        WriteLog $result'
-$customps1_injection_lines +='    }'
-$customps1_injection_lines +='    elseif ($UninstallOrList -ne "uninstall") {'
-$customps1_injection_lines +='        $list_apps_display = @($list_apps.DisplayName | Select-Object -Unique | Sort-Object)'
-$customps1_injection_lines +='        $result = "OK: Listing apps [$($list_apps_display.count) unique] of [$($list_apps.count) matching *$($App)*]"'
-$customps1_injection_lines +='        WriteLog $result'
-$customps1_injection_lines +='        #WriteLog "-------------------------------------------------------------"'
-$customps1_injection_lines +='        $list_apps_display | WriteLog '
-$customps1_injection_lines +='        #WriteLog "-------------------------------------------------------------"'
-$customps1_injection_lines +='    }'
-$customps1_injection_lines +='    elseif ($apps_found -ne $apps_removed) {'
-$customps1_injection_lines +='        $result = "ERR: $($apps_found) apps found, but only $($apps_removed) uninstalld"'
-$customps1_injection_lines +='        WriteLog $result'
-$customps1_injection_lines +='    } '
-$customps1_injection_lines +='    else {'
-$customps1_injection_lines +='        $result = "OK: $($apps_removed) uninstalled"'
-$customps1_injection_lines +='        WriteLog $result'
-$customps1_injection_lines +='    }'
-$customps1_injection_lines +='    Return $result'
-$customps1_injection_lines +='} # Uninstall-Application'
-$customps1_injection_lines +=''
-$customps1_injection_lines +='#####################'
-$customps1_injection_lines +='# Main script starts here'
-$customps1_injection_lines +='#####################'
-$customps1_injection_lines +=''
-$customps1_injection_lines +='#####################'
-$customps1_injection_lines +='# Edit these variables to change the apps to uninstall'
-$customps1_injection_lines +='# Also edit the same list in the Uninstaller.ps1 script'
-$customps1_injection_lines +='#####################'
-$customps1_injection_lines +='$appnames = @()'
-$customps1_injection_lines +='$appnames += "7-Zip"'
-$customps1_injection_lines +=''
-$customps1_injection_lines +='###'
-$customps1_injection_lines +='$appcount = 0'
-$customps1_injection_lines +='WriteLog "Checking for any of these apps: $($appnames -join(", "))"'
-$customps1_injection_lines +='foreach ($appname in $appnames)'
-$customps1_injection_lines +='{ # appname'
-$customps1_injection_lines +='    $appaction = "list"'
-$customps1_injection_lines +='    WriteLog "Checking for $($appname)"'
-$customps1_injection_lines +='    $result = Uninstall-Application -App $appname -UninstallOrList $appaction'
-$customps1_injection_lines +='    if  ($result.startswith("OK")) {'
-$customps1_injection_lines +='        $appcount++'
-$customps1_injection_lines +='        WriteLog "$($appname): Found"'
-$customps1_injection_lines +='    }'
-$customps1_injection_lines +='    else {'
-$customps1_injection_lines +='        WriteLog "$($appname): Not Found"'
-$customps1_injection_lines +='    } # result starts with OK'
-$customps1_injection_lines +='    WriteLog "-------------------------------------------------------------"'
-$customps1_injection_lines +='} # appname in $appnames'
-$customps1_injection_lines +='$app_detected = $appcount -eq 0'
-$customps1_injection_lines +='# Return'
-$customps1_injection_lines +='WriteLog "app_detected indicates if uninstaller (the app detected) has been run for all these apps."'
-$customps1_injection_lines +='WriteLog "True  = uninstall not needed"'
-$customps1_injection_lines +='WriteLog "False = uninstall needed"'
-$customps1_injection_lines +='WriteLog "app_detected: $($app_detected)"'
-$customps1_injection_lines +='Return $app_detected'
-##########################################################
-#endregion INJECTION SITE for intune_detection_customcode.ps1
+        ### <<intune_detection_customcode.ps1 injection site>> ###
         # injection may happen above here
         if ($customps1_injection_lines.count -gt 0)
         { # code was injected above

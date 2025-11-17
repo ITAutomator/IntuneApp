@@ -1,6 +1,6 @@
 Name,Value
-ConnectionName,Portland Office
-ServerAddress,24.110.110.82
-PresharedKey,oojwoiejpoijwefefshca6Np8Ztvg
+ConnectionName,Contoso Office
+ServerAddress,24.110.14.82
+PresharedKey,oojwoiejsfoiininwia6Np8Ztvg
 SplitTunneling,TRUE
 lancidrs_commaseparated,192.168.150.0/24

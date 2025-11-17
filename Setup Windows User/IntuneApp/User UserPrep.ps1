@@ -68,6 +68,7 @@ Write-Host "- Show hidden files, show extensions"
 #Write-Host "- Recycle bin display delete confirmation (by policy unfortunately - seems to require elevation)"
 Write-Host "- (Win 10) Disable 'Occasionally show suggestions in Start' in Windows 10"
 Write-Host "- (Win 10) Set cortana to be only an icon"
+Write-Host "- (Win 11) Tablet mode off"
 #Write-Host "- (Win 11) Move the Start Menu to the left"
 Write-Host "- (Win 11) Turn off opening of Widgets on hover"
 Write-Host "- (Win 11) Set Search to Hide Icon"
@@ -223,6 +224,16 @@ if ($os[1] -eq "Win 10")
 $restart_explorer=$false
 if ($os[1] -eq "Win 11")
     {
+    #- (Win 11) Tablet mode off 
+    Write-Host ""
+    Write-Host "- (Win 11) Tablet mode off: untick settings > personalization > taskbar > taskbar behaviors > optimize for touch interactions when this device is used as a tablet"
+    $Regkey="Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+    $Regval="ExpandableTaskbar"
+    $Regset=0
+    $Regtype="dword"
+    $result = RegSetCheckFirst "HKCU" $Regkey $Regval $Regset $Regtype
+    Write-Host $result
+    if (-not($result.StartsWith("[Already set]"))) {$restart_explorer=$true}
     #move the start menu to the left
     # Write-Host ""
     # Write-Host "- (Win 11) Move the Start Menu to the left"
