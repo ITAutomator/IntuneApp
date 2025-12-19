@@ -1386,6 +1386,14 @@ Do
                             AllowAvailableUninstall   = $true
                             Publisher                 = $pkg.Publisher
                             }
+                        # Error checking
+                        $pattern="(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)"
+                        if (($pkg.InformationURL -ne $null) -and (-not ($pkg.InformationURL -match $pattern))) {
+                            Write-Host "Warning: Removing InformationURL '$($pkg.InformationURL)' due to failed match pattern '$($pattern)'" -ForegroundColor Yellow
+                            Write-Host "(Does it start with https:// ?)" -ForegroundColor Yellow
+                            $pkg.InformationURL=$null
+                            PressEnterToContinue
+                        }
                         # Optional args
                         if($pkg.InformationURL) {$SplatArgs.InformationURL = $pkg.InformationURL}
                         if($pkg.PrivacyURL)     {$SplatArgs.PrivacyURL     = $pkg.PrivacyURL}
@@ -1394,6 +1402,7 @@ Do
                         if($pkg.Developer)      {$SplatArgs.Developer      = $pkg.Developer}
                         if($pkg.AppVersion)     {$SplatArgs.AppVersion     = $pkg.AppVersion}
                         if($pkg.Publisher)      {$SplatArgs.Publisher      = $pkg.Publisher} else {$SplatArgs.Publisher = "<none>"} # Publisher is required
+                        # Adding
                         Write-Host "Adding $($pkg.AppName) to $($OrgValues.TenantName) ... "
                         $AutoRetries=2
                         Do

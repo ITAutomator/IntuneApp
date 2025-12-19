@@ -18,11 +18,31 @@ Puts a Company Files folder on company computers.
 
 # Setup Steps
 
-Drop your company files and folders into the Public Desktop folder within the app package folder
- 
-If you have previously deployed a file (or folder) that you want removed, add it's full path to
-`Desktop Company Files ToRemove.csv`
-If these files exist they will be removed  
+Double click `Desktop Company Files (As admin).cmd` to see the menu  
+
+```code
+--------------- Choices  ------------------
+[B] Browse the source folder to make changes
+[C] Copy company files to Public Desktop
+[R] Remove company files from Public Desktop
+[D] Detect company files on Public Desktop
+[I] IntuneSettings.csv Injection (prep for publishing in IntuneApps)
+-------------------------------------------
+```
+Choose `[B] Browse the source folder to make changes`  
+The app package contains a source folder called `Public Desktop`.  
+Here, create a `Company Files` folder (or several) which will get copied to the Public Desktop of computers.  
+*Note: Files placed directly in the `Public Desktop` folder will be ignored.  Only folders are allowed in this root.*  
+   
+Copy files (e.g. shortcuts) and subfolders into the `Company Files` folder.  
+
+## Test
+To copuy to the current machine choose `[C] Copy `  
+To remove from the current machine choose `[R] Remove `  
+To check if the current machine is up to date choose `[D] Detect `  
+
+## IntuneApp Prep
+To prep for IntuneApp publishing (see below) choose `[I] IntuneSettings.csv Injection`
 
 ## IntuneApp Publishing System
 

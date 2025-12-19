@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Remove Local Admins-v212")
+    $IntuneAppValues.Add("AppName","Remove Local Admins-v213")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","RemoveLocalAdmins.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode R")
