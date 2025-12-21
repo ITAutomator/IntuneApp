@@ -70,53 +70,80 @@ Function GetHashOfFiles ($FilePaths, $ByDateOrByContents="ByContents")
     $sHash= (Get-FileHash  -Algorithm MD5 -InputStream ([IO.MemoryStream]::new([char[]]$Hashstring))).Hash
     Return $sErr,$sHash,$HashList
 }
-
-
 #  AppVar1 format:
 #  Company Files (Folder1)|511CA236B813559BF3485CBFEEC05599*Company Files (Folder2)|511CA236B813559BF3485CBFEEC05599
+#  AppVar2 format:
+#  Anti-spam policies - Microsoft Defender.url*DeleteMe Folder
 $app_detected = $false
-if (($IntuneApp.AppVar1 -match "|") -and ($null -ne $IntuneApp.AppVar1) ){
-    $FolderPubDesktop=[System.Environment]::GetFolderPath("CommonDesktopDirectory")
-    $SourceHashes = @()
+$FolderPubDesktop=[System.Environment]::GetFolderPath("CommonDesktopDirectory")
+$SourceHashes = @()
+if (($IntuneApp.AppVar1 -match "|") -and ($null -ne $IntuneApp.AppVar1) -and ($IntuneApp.AppVar1 -ne "")) {
     $SourceHashes = $IntuneApp.AppVar1 -split "\*"
-    Write-Host "-----------------------------------------------------"
-    Write-Host "Detecting company files on Public Desktop"
-    $bMatchAll = $true
-    $count = 0
-    Foreach ($SourceHash in $SourceHashes) {
-        # region: parse source name and hash
-        $SourceNameHash = $SourceHash -split "\|"
-        $SourceHash = @{
-            SourceName = $SourceNameHash[0]
-            Hash = $SourceNameHash[1]
-        }
-        # endregion: parse source name and hash
-        Write-Host "$((++$count))) " -NoNewline
-        Write-Host $SourceHash.SourceName -ForegroundColor Blue -NoNewline
-        $TargetFiles = Get-ChildItem "$($FolderPubDesktop)\$($SourceHash.SourceName)" -File -Recurse
-        $sErr,$sHash,$HashList = GetHashOfFiles $TargetFiles.FullName -ByDateOrByContents "ByDate"
-        Write-Host " Files:" -NoNewline
-        Write-host $TargetFiles.Count -ForegroundColor Blue -NoNewline
-        Write-Host " Hash:" -NoNewline
-        Write-host $sHash -ForegroundColor Blue -NoNewline
-        if ($sHash -eq $SourceHash.Hash) {
-            Write-Host " OK" -ForegroundColor Blue
-        } # hash match
-        else {
-            Write-Host " MISMATCH" -ForegroundColor Yellow
-            $bMatchAll = $false
-        } # hash mismatch
-    } # each source hash
-    if ($bMatchAll) {
-        Write-Host "Result: OK - All company files are present and correct on Public Desktop" -ForegroundColor Blue
+} # has appvar1
+$Removes = @()
+if (($IntuneApp.Appvar2 -ne "") -and ($null -ne $IntuneApp.AppVar2) ){
+    $Removes = $IntuneApp.Appvar2 -split "\*"
+} # has appvar2
+Write-Host "-----------------------------------------------------"
+Write-Host "Detecting company files on Public Desktop"
+$bMatchAll = $true
+$count = 0
+Foreach ($SourceHash in $SourceHashes) {
+    # region: parse source name and hash
+    $SourceNameHash = $SourceHash -split "\|"
+    $SourceHash = @{
+        SourceName = $SourceNameHash[0]
+        Hash = $SourceNameHash[1]
     }
+    # endregion: parse source name and hash
+    Write-Host "$((++$count))) " -NoNewline
+    Write-Host $SourceHash.SourceName -ForegroundColor Blue -NoNewline
+    $TargetFiles = Get-ChildItem "$($FolderPubDesktop)\$($SourceHash.SourceName)" -File -Recurse
+    $sErr,$sHash,$HashList = GetHashOfFiles $TargetFiles.FullName -ByDateOrByContents "ByDate"
+    Write-Host " Files:" -NoNewline
+    Write-host $TargetFiles.Count -ForegroundColor Blue -NoNewline
+    Write-Host " Hash:" -NoNewline
+    Write-host $sHash -ForegroundColor Blue -NoNewline
+    if ($sHash -eq $SourceHash.Hash) {
+        Write-Host " OK" -ForegroundColor Blue
+    } # hash match
     else {
-        Write-Host "Result: Warning - Some company files are missing or different on Public Desktop" -ForegroundColor Yellow
+        Write-Host " MISMATCH" -ForegroundColor Yellow
+        $bMatchAll = $false
+    } # hash mismatch
+} # each source hash
+# Delete Checking
+$bDeletesOK = $true
+If ($Removes.Count -gt 0) {
+    Write-Host "$(Split-Path $FilesToRemoveCSV -Leaf)"
+    $count=0
+    Foreach ($Remove in $Removes) {
+        Write-Host "$((++$count))) " -NoNewline
+        Write-Host $Remove -ForegroundColor Blue -NoNewline
+        $PathToRemove = "$($FolderPubDesktop)\$($Remove)"
+        if (Test-Path $PathToRemove) {
+            $bDeletesOK = $false
+            Write-Host " [Err, File found]" -ForegroundColor Yellow
+        } # found
+        else {
+            Write-Host " [OK, Missing]" -ForegroundColor Blue
+        } # missing
+    } # each remove
+} # has removes
+Write-Host "Detect Result: " -NoNewline
+if ($bMatchAll -and $bDeletesOK) {
+    Write-Host "OK: All files detected. No removals needed." -ForegroundColor Blue
+    $app_detected = $true
+} # all good
+else {
+    $ErrMsg = @()
+    if (-not $bMatchAll) {
+        $ErrMsg += "Not all files matched."
     }
-    $app_detected = $bMatchAll
-} # there's a | char
-else { # no | char, assume nothing to copy therefore app is detected
-	$app_detected = $true
-    Write-Host "Result: OK - No company files specified to check on Public Desktop" -ForegroundColor Blue
-} # there's no | char
+    if (-not $bDeletesOK) {
+        $ErrMsg += "Not all FilesToRemove are deleted."
+    }
+    Write-Host "Err: $($ErrMsg -join ' ')" -ForegroundColor Yellow
+    $app_detected = $false
+} # has mismatches
 Return $app_detected

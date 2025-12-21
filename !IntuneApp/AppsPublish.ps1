@@ -1388,7 +1388,7 @@ Do
                             }
                         # Error checking
                         $pattern="(http[s]?|[s]?ftp[s]?)(:\/\/)([^\s,]+)"
-                        if (($pkg.InformationURL -ne $null) -and (-not ($pkg.InformationURL -match $pattern))) {
+                        if (('' -ne $pkg.InformationURL) -and ($null -ne $pkg.InformationURL) -and (-not ($pkg.InformationURL -match $pattern))) {
                             Write-Host "Warning: Removing InformationURL '$($pkg.InformationURL)' due to failed match pattern '$($pattern)'" -ForegroundColor Yellow
                             Write-Host "(Does it start with https:// ?)" -ForegroundColor Yellow
                             $pkg.InformationURL=$null

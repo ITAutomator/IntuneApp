@@ -37,7 +37,7 @@ Here, create a `Company Files` folder (or several) which will get copied to the 
 Copy files (e.g. shortcuts) and subfolders into the `Company Files` folder.  
 
 ## Test
-To copuy to the current machine choose `[C] Copy `  
+To copy to the current machine choose `[C] Copy `  
 To remove from the current machine choose `[R] Remove `  
 To check if the current machine is up to date choose `[D] Detect `  
 
