@@ -1,6 +1,6 @@
 #################### APPSPUBLISH_TEMPLATE.PS1 FILE
 #
-# THIS IS THE APPSPUBLISH_TEMPLATE.PS1 FILE. DO NOT EDIT THIS CODE
+# THIS IS THE APPSPUBLISH_TEMPLATE.PS1 FILE. DO NOT EDIT THIS CODE.
 # THIS CONTAINS THE MASTER COPY OF THE MANAGED CODE THAT GETS INJECTED INTO THE 4 INTUNE PS1 FILES FOR ALL INTUNEAPPS
 #
 # This code is not intended to be run directly, it is injected into the 4 Intune scripts 
@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Desktop Company Files-v147")
+    $IntuneAppValues.Add("AppName","Desktop Company Files-v164")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","Desktop Company Files.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode C")
@@ -42,7 +42,7 @@ Function IntuneAppValues
     $IntuneAppValues.Add("SystemOrUser","System")
     $IntuneAppValues.Add("Function","intune_detection.ps1")
     $IntuneAppValues.Add("LogFolder","C:\IntuneApp")
-    $IntuneAppValues.Add("AppVar1","Company Files|D3204ECEF813DAD03770B52137722A1F")
+    $IntuneAppValues.Add("AppVar1","Company Files|8DF6FA9BF87F3DA2F05DD62B7D2814B2")
     $IntuneAppValues.Add("AppVar2","")
     $IntuneAppValues.Add("AppVar3","")
     $IntuneAppValues.Add("AppVar4","")
@@ -52,6 +52,8 @@ Function IntuneAppValues
 Function IntuneLog ($line, $quiet=$false,$appname="",$logfolder="",$appfunction="")
 {
     if ($IntuneApp.Function -eq "AppsPublish_Template.ps1") {return} # debug mode is active
+    # for exporting to CSV.  Example: Export-Csv -Path $csvFile -NoTypeInformation -Force -Encoding $utf8Encoding
+    $utf8Encoding = if ($PSVersionTable.PSEdition -eq 'Core') { 'utf8BOM' } else { 'utf8' } # UTF8-with-BOM string based on PowerShell Edition
     $scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName }
     $scriptName     = Split-Path -Path $scriptFullname -Leaf
     ## Load IntuneApp values if they aren't already loaded
@@ -100,10 +102,10 @@ Function IntuneLog ($line, $quiet=$false,$appname="",$logfolder="",$appfunction=
     { # logfolder exists
         # delete logfile if over 1MB
         $logfile = "$($logfolder)\Log_$($IntuneAppName).txt"
-        if (Test-Path -Path $logfile) {if (((Get-Item $logfile).length) -gt 1MB) {Remove-Item $logfile;Add-Content $logfile "$($dt) [Log file was reset because it grew over 1MB]"}}
-        if (-not (Test-Path -Path $logfile)) {Add-Content $logfile "$($dt) [Log file initialized - will reset if it grows over 1MB]"} # 1st line has info about logfile itself
+        if (Test-Path -Path $logfile) {if (((Get-Item $logfile).length) -gt 1MB) {Remove-Item $logfile;Add-Content $logfile "$($dt) [Log file was reset because it grew over 1MB]" -Encoding $utf8Encoding}}
+        if (-not (Test-Path -Path $logfile)) {Add-Content $logfile "$($dt) [Log file initialized - will reset if it grows over 1MB]" -Encoding $utf8Encoding} # 1st line has info about logfile itself
         # append to logfile
-        Add-Content $logfile $logline
+        Add-Content $logfile $logline -Encoding $utf8Encoding
     } # logfolder exists
 }
 Function IntuneAppsCSV ($mode="GetStatus",$appnamever="",$setstatus="", $setdescription="",$systemoruser="system",$logfolder="")
@@ -133,6 +135,8 @@ Function IntuneAppsCSV ($mode="GetStatus",$appnamever="",$setstatus="", $setdesc
       SetStatus Detected
     #>
     #if ($null -eq $IntuneApp) {$IntuneApp=IntuneAppValues}
+    # for exporting to CSV.  Example: Export-Csv -Path $csvFile -NoTypeInformation -Force -Encoding $utf8Encoding
+    $utf8Encoding = if ($PSVersionTable.PSEdition -eq 'Core') { 'utf8BOM' } else { 'utf8' } # UTF8-with-BOM string based on PowerShell Edition
     if ($logfolder -in "","<<IntuneLogFolder>>") {$logfolder="C:\IntuneApp"} # It's still the template value, hardcode this until it gets published to an org-based value
     $csvAppsfile="$($logfolder)\v2\IntuneApps.csv"
     # split IntuneAppNameVer(AAAA-vVVVV) into IntuneAppName (AAAA) and IntuneAppVer VVVV)
@@ -148,7 +152,7 @@ Function IntuneAppsCSV ($mode="GetStatus",$appnamever="",$setstatus="", $setdesc
     If ($AppVer -eq "")
         {$AppVer = "1"}
     ## create empty csv if needed with the column headings
-    if (-not (Test-Path -Path $csvAppsfile)) {Add-Content $csvAppsfile "AppName,AppVer,Username,Status,Description"}
+    if (-not (Test-Path -Path $csvAppsfile)) {Add-Content $csvAppsfile "AppName,AppVer,Username,Status,Description" -Encoding $utf8Encoding}
     ## import from csv
     $csvApps = @(Import-Csv $csvAppsfile)
     $bChangeMade = $false
@@ -261,7 +265,7 @@ Function IntuneAppsCSV ($mode="GetStatus",$appnamever="",$setstatus="", $setdesc
     }
     If ($bChangeMade)
     {
-        $csvApps | Where-Object AppName -ne "TO_DELETE"| Sort-Object AppName | Export-Csv -Encoding UTF8 -Path $csvAppsfile -NoTypeInformation
+        $csvApps | Where-Object AppName -ne "TO_DELETE"| Sort-Object AppName | Export-Csv -Encoding $utf8Encoding -Path $csvAppsfile -NoTypeInformation
     }
     Return $approw
 }
@@ -532,7 +536,8 @@ Function TranscriptRemoveHeaderFooter ($TsFile)
             {$TsLines_new+=$line}
         }
     }
-    [System.IO.File]::WriteAllLines($TsFile,$TsLines_new) # writes UTF8 file
+    $utf8Encoding = [System.Text.UTF8Encoding]::new($true) # with BOM
+    [System.IO.File]::WriteAllLines($TsFile,$TsLines_new,$utf8Encoding) # writes UTF8 file
 }
 Function PS1WithLogging ($ps1, $ps1args="")
 {
@@ -1198,7 +1203,7 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
         } #verb:list
         elseif ($Wingetverb -eq "install")
         { # winget install
-            $Winget_command = "install","--id",$WingetApp,"--exact","--accept-package-agreements"
+            $Winget_command = "install","--id",$WingetApp,"--exact","--accept-package-agreements","--source","winget"
             #$exitcode,$Winget_return,$stderr=StartProc "winget" $Winget_command
             $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
             # exitcode: (https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md)
@@ -1218,7 +1223,7 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
                 } # 2nd install can't be tried
                 else
                 { # 2nd install attempt, without scope
-                    $Winget_command = "install","--id",$WingetApp,"--exact","--accept-package-agreements"
+                    $Winget_command = "install","--id",$WingetApp,"--exact","--accept-package-agreements","--source","winget"
                     $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
                     $chkresults = (($Winget_return -like "*Successfully installed*") -or ($Winget_return -like "*Found an existing package already installed*"))
                     if (-not $chkresults) {
@@ -1615,9 +1620,23 @@ $customps1_injection_lines +='However this script is a child process of intune_d
 $customps1_injection_lines +='For instance, $IntuneApp.AppVar1 ... $IntuneApp.AppVar5 are injected from the intune_settings.csv, and are usable.'
 $customps1_injection_lines +='To debug this script, put a break in the script and run the parent ps1 file (Detection).'
 $customps1_injection_lines +='Detection and Requirements scripts are run every few hours (for all required apps), so they should be conservative with resources.'
-$customps1_injection_lines +=' '
 $customps1_injection_lines +='#>'
-$customps1_injection_lines +=''
+$customps1_injection_lines +='Function FixMojibake ($mojibake)'
+$customps1_injection_lines +='{'
+$customps1_injection_lines +='    # Convert a string with Mojibake characters to their correct UTF8 equivalents.  The Intune IME can cause Mojibake characters to appear in scripts.'
+$customps1_injection_lines +='    # Usage:   FixMojibake "hÃ´ne skill. this looks like a ÃŸ but is a sharp S. And this Ã¡ccented a."'
+$customps1_injection_lines +='    # Returns: "hône skill. this looks like a ß but is a sharp S. And this áccented a."'
+$customps1_injection_lines +='    $return = $mojibake'
+$customps1_injection_lines +='    # Convert the string bytes from source to destination encoding'
+$customps1_injection_lines +='    $sourceEncoding = [System.Text.Encoding]::GetEncoding(1252) # Windows-1252 encoding'
+$customps1_injection_lines +='    $bytes = $sourceEncoding.GetBytes($mojibake)'
+$customps1_injection_lines +='    if ($bytes -contains 195) { # Mojibake often contains Ã (195)'
+$customps1_injection_lines +='        # WriteLog "Found Mojibake char 195!"'
+$customps1_injection_lines +='        $destEncoding = [System.Text.Encoding]::UTF8 # UTF8 encoding'
+$customps1_injection_lines +='        $return = $destEncoding.GetString($bytes) # Convert bytes to string using destination encoding'
+$customps1_injection_lines +='    }'
+$customps1_injection_lines +='    Return $return'
+$customps1_injection_lines +='}'
 $customps1_injection_lines +='Function GetHashOfFiles ($FilePaths, $ByDateOrByContents="ByContents")'
 $customps1_injection_lines +='{'
 $customps1_injection_lines +='    # GetHashOfFiles - Give a list of filepaths, creates an MD5 hash of their content (ByContents) or their date time stamps (ByDate)'
@@ -1670,6 +1689,13 @@ $customps1_injection_lines +='#  Anti-spam policies - Microsoft Defender.url*Del
 $customps1_injection_lines +='$app_detected = $false'
 $customps1_injection_lines +='$FolderPubDesktop=[System.Environment]::GetFolderPath("CommonDesktopDirectory")'
 $customps1_injection_lines +='$SourceHashes = @()'
+$customps1_injection_lines +='WriteLog "FolderPubDesktop  : $($FolderPubDesktop)"'
+$customps1_injection_lines +='WriteLog "AppVar1 (ToCopy)  : $($IntuneApp.AppVar1)"'
+$customps1_injection_lines +='WriteLog "AppVar2 (ToRemove): $($IntuneApp.AppVar2)"'
+$customps1_injection_lines +='$IntuneApp.AppVar1 = FixMojibake $IntuneApp.AppVar1'
+$customps1_injection_lines +='$IntuneApp.AppVar2 = FixMojibake $IntuneApp.AppVar2'
+$customps1_injection_lines +='WriteLog "AppVar1 (ToCopy)   [Fixed Mojibake]: $($IntuneApp.AppVar1)"'
+$customps1_injection_lines +='WriteLog "AppVar2 (ToRemove) [Fixed Mojibake]: $($IntuneApp.AppVar2)"'
 $customps1_injection_lines +='if (($IntuneApp.AppVar1 -match "|") -and ($null -ne $IntuneApp.AppVar1) -and ($IntuneApp.AppVar1 -ne "")) {'
 $customps1_injection_lines +='    $SourceHashes = $IntuneApp.AppVar1 -split "\*"'
 $customps1_injection_lines +='} # has appvar1'
@@ -1689,11 +1715,14 @@ $customps1_injection_lines +='        SourceName = $SourceNameHash[0]'
 $customps1_injection_lines +='        Hash = $SourceNameHash[1]'
 $customps1_injection_lines +='    }'
 $customps1_injection_lines +='    # endregion: parse source name and hash'
-$customps1_injection_lines +='    WriteLog "$((++$count))) " -NoNewline'
+$customps1_injection_lines +='    WriteLog "ToCopy $((++$count))) " -NoNewline'
 $customps1_injection_lines +='    WriteLog $SourceHash.SourceName -ForegroundColor Blue -NoNewline'
-$customps1_injection_lines +='    $TargetFiles = Get-ChildItem "$($FolderPubDesktop)\$($SourceHash.SourceName)" -File -Recurse'
-$customps1_injection_lines +='    $sErr,$sHash,$HashList = GetHashOfFiles $TargetFiles.FullName -ByDateOrByContents "ByDate"'
-$customps1_injection_lines +='    WriteLog " Files:" -NoNewline'
+$customps1_injection_lines +='    WriteLog " [" -NoNewline'
+$customps1_injection_lines +='    $folderTarget = "$($FolderPubDesktop)\$($SourceHash.SourceName)"'
+$customps1_injection_lines +='    WriteLog $folderTarget -ForegroundColor Blue -NoNewline'
+$customps1_injection_lines +='    $TargetFiles = Get-ChildItem $folderTarget -File -Recurse'
+$customps1_injection_lines +='    $sErr,$sHash,$HashList = GetHashOfFiles $TargetFiles.FullName -ByDateOrByContents "ByContents"'
+$customps1_injection_lines +='    WriteLog "] Files:" -NoNewline'
 $customps1_injection_lines +='    WriteLog $TargetFiles.Count -ForegroundColor Blue -NoNewline'
 $customps1_injection_lines +='    WriteLog " Hash:" -NoNewline'
 $customps1_injection_lines +='    WriteLog $sHash -ForegroundColor Blue -NoNewline'
@@ -1702,16 +1731,22 @@ $customps1_injection_lines +='        WriteLog " OK" -ForegroundColor Blue'
 $customps1_injection_lines +='    } # hash match'
 $customps1_injection_lines +='    else {'
 $customps1_injection_lines +='        WriteLog " MISMATCH" -ForegroundColor Yellow'
+$customps1_injection_lines +='        WriteLog "   Expected Hash: $($SourceHash.Hash) [$($SourceHash.SourceName)]"'
+$customps1_injection_lines +='        WriteLog " Mismatched Hash: $($sHash) [$($folderTarget)]"'
+$customps1_injection_lines +='        WriteLog "------------ Mismatched Details"'
+$customps1_injection_lines +='        ForEach ($HashListElem in $HashList) {'
+$customps1_injection_lines +='            WriteLog "Hash: $($HashListElem.Hash) $($HashListElem.Name) [UTC $($HashListElem.LastWriteTime)] [$($HashListElem.Length) Bytes]"'
+$customps1_injection_lines +='        }'
+$customps1_injection_lines +='        WriteLog "------------ Hash: $($sHash)"'
 $customps1_injection_lines +='        $bMatchAll = $false'
 $customps1_injection_lines +='    } # hash mismatch'
 $customps1_injection_lines +='} # each source hash'
 $customps1_injection_lines +='# Delete Checking'
 $customps1_injection_lines +='$bDeletesOK = $true'
 $customps1_injection_lines +='If ($Removes.Count -gt 0) {'
-$customps1_injection_lines +='    WriteLog "$(Split-Path $FilesToRemoveCSV -Leaf)"'
 $customps1_injection_lines +='    $count=0'
 $customps1_injection_lines +='    Foreach ($Remove in $Removes) {'
-$customps1_injection_lines +='        WriteLog "$((++$count))) " -NoNewline'
+$customps1_injection_lines +='        WriteLog "ToDelete $((++$count))) " -NoNewline'
 $customps1_injection_lines +='        WriteLog $Remove -ForegroundColor Blue -NoNewline'
 $customps1_injection_lines +='        $PathToRemove = "$($FolderPubDesktop)\$($Remove)"'
 $customps1_injection_lines +='        if (Test-Path $PathToRemove) {'
@@ -1751,11 +1786,13 @@ $customps1_injection_lines +='Return $app_detected'
             Rename-Item -Path $tmpfile.FullName -NewName $customps1_tmp_name
             $customps1_tmp_fullpath = "$($tmpfile.DirectoryName)\$($customps1_tmp_name)"
             # write lines
-            [System.IO.File]::WriteAllLines($customps1_tmp_fullpath,$customps1_injection_lines) # writes UTF8 file
+            $utf8Encoding = [System.Text.UTF8Encoding]::new($true) # with BOM
+            [System.IO.File]::WriteAllLines($customps1_tmp_fullpath,$customps1_injection_lines,$utf8Encoding) # writes UTF8 file
             IntuneLog "Running injected .ps1 file: $(Split-Path -Path $customps1_tmp_fullpath -leaf)"
             $ps1_exit,$ps1_output = PS1WithLogging -ps1 $customps1_tmp_fullpath
             $app_detected = $ps1_output # apply results of ps1_output
             # cleanup
+            IntuneLog "Removing injected .ps1 file: $($customps1_tmp_fullpath)"
             Remove-Item $customps1_tmp_fullpath -Force
         } # code was injected above
     } # no ps1 found
@@ -1815,7 +1852,8 @@ If ($IntuneApp.Function -in ("intune_Requirements.ps1"))
             Rename-Item -Path $tmpfile.FullName -NewName $customps1_tmp_name
             $customps1_tmp_fullpath = "$($tmpfile.DirectoryName)\$($customps1_tmp_name)"
             # write lines
-            [System.IO.File]::WriteAllLines($customps1_tmp_fullpath,$customps1_injection_lines) # writes UTF8 file
+            $utf8Encoding = [System.Text.UTF8Encoding]::new($true) # with BOM
+            [System.IO.File]::WriteAllLines($customps1_tmp_fullpath,$customps1_injection_lines,$utf8Encoding) # writes UTF8 file
             IntuneLog "Running injected .ps1 file: $(Split-Path -Path $customps1_tmp_fullpath -leaf)"
             $ps1_exit,$ps1_output = PS1WithLogging -ps1 $customps1_tmp_fullpath
             $requirements_met = $ps1_output # apply results of ps1_output

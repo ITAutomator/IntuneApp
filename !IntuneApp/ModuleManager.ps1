@@ -1,4 +1,4 @@
-<# ####### Update Manually (Run elevated)
+﻿<# ####### Update Manually (Run elevated)
 $GraphModules = Get-InstalledModule | Where {$_.Name -Match "Graph"}; $GraphModules 
 foreach($module in $GraphModules){
 	Write-Host "Update-Module $($module.Name)..."

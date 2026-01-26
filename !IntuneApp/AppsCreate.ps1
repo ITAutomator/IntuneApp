@@ -1,4 +1,4 @@
-Function GetPackages ($search_root="C:\Users\Public\Documents\IntuneApps")
+﻿Function GetPackages ($search_root="C:\Users\Public\Documents\IntuneApps")
 {
     #region Search for packages (files named intune_settings.csv)
     If (-not (Test-Path $search_root -PathType Container)) {Return "search_root not found: $($search_root)"}

@@ -1,4 +1,4 @@
-# To enable scrips, Run powershell 'as admin' then type Set-ExecutionPolicy Unrestricted
+﻿# To enable scrips, Run powershell 'as admin' then type Set-ExecutionPolicy Unrestricted
 #
 <# Readme
 # https://github.com/ITAutomator/IntuneApp
@@ -19,32 +19,29 @@
 # \7zipInstaller\IntuneApp\   intune_settings.csv
 #                             intune_install
 #>
-function Get-TokenDetailsFromHeader {
+Function Get-TokenDetailsFromHeader
+{ # Get-TokenDetailsFromHeader
     param (
         [Parameter(Mandatory)]
         $AuthToken
     )
-
     $tokenHeader = $AuthToken.Authorization
     if (-not $tokenHeader) {
         Write-Warning "Authorization header not found."
         return
     }
-
     $rawToken = $tokenHeader -replace '^Bearer\s+', ''
     $parts = $rawToken -split '\.'
     if ($parts.Count -lt 2) {
         Write-Warning "Invalid JWT format."
         return
     }
-
     # Base64 decode payload
     $payload = $parts[1].Replace('-', '+').Replace('_', '/')
     switch ($payload.Length % 4) {
         2 { $payload += '==' }
         3 { $payload += '=' }
     }
-
     try {
         $bytes = [Convert]::FromBase64String($payload)
         $json = [Text.Encoding]::UTF8.GetString($bytes)
@@ -61,19 +58,19 @@ function Get-TokenDetailsFromHeader {
     } catch {
         Write-Warning "Failed to decode token: $_"
     }
-}
+} # Get-TokenDetailsFromHeader
 Function InitializeOrgList ($orglistcsv)
-# Creates an empty OrgList
-{
+{ # InitializeOrgList
+    # Creates an empty OrgList
     if (-not (Test-Path ($orglistcsv)))
     {
         ######### Template
         '"Org","Packages","Last Publish Count","Last Publish Date","PublishToGroupIncluded","PublishToGroupExcluded","AppPublisherClientID"' | Add-Content $orglistcsv
     }
-}
+} # InitializeOrgList
 Function CreatePublishingApp ($OrgDomain, $AppName)
-# Connects to an org and creates the required Registered App to publish Windows Apps
 { # CreatePublishingApp
+    # Connects to an org and creates the required Registered App to publish Windows Apps
     $sResult = ""
     $connected = $false
     Do
@@ -253,8 +250,6 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
         }
     } # Some cookie to remove?
     ####### Create MgApplication: Done
-    # Disconnect-MgGraph | Out-Null
-    ####
     $retval="OK"
     Write-Host "-----------------------------------------------------------------------------"
     Write-Host "Package-publishing Application setup complete"
@@ -273,8 +268,8 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
     Return $sResult
 } # CreatePublishingApp
 Function CreatePublishTemplatePs1Files ($rootpath)
-# Copies the template lines into the 4 ps1files
-{
+{ # CreatePublishTemplatePs1Files
+    # Copies the template lines into the 4 ps1files
     $sReturn="OK"
     $ps1template = "$($rootpath)\AppsPublish_Template.ps1"
     $ps1path = "$($rootpath)\!App Template\IntuneApp\IntuneUtils"
@@ -291,19 +286,20 @@ Function CreatePublishTemplatePs1Files ($rootpath)
     }
     $iUpdateCount=0
     $sUpdateList=@()
-    $ps1source = Get-Content $ps1template
+    $ps1source = Get-Content $ps1template -Encoding UTF8
     ForEach ($ps1file in $ps1files)
     { # replace each ps1file
         $ps1targetfile = "$($ps1path)\$($ps1file)"
         if (Test-Path $ps1targetfile -PathType Leaf) {
-            $ps1target = Get-Content $ps1targetfile
+            $ps1target = Get-Content $ps1targetfile -Encoding UTF8
         } 
         Else{ # target doesn't exist
             $ps1target = $null
         }
         if (($null -eq $ps1target) -or (ContentsHaveChanged $ps1source $ps1target))
         { # target doesn't exist or is different
-            [System.IO.File]::WriteAllLines($ps1targetfile,$ps1source) # writes UTF8 file
+            $utf8Encoding = [System.Text.UTF8Encoding]::new($true) # with BOM
+            [System.IO.File]::WriteAllLines($ps1targetfile,$ps1source,$utf8Encoding) # writes UTF8 file
             $iUpdateCount+=1
             $sUpdateList+=$ps1file
         } # files are different
@@ -315,13 +311,13 @@ Function CreatePublishTemplatePs1Files ($rootpath)
         $sReturn = "OK: no template files updated"
     }
     Return $sReturn
-}
+} # CreatePublishTemplatePs1Files
 Function UpdatePS1File ($ps1template, $ps1file, $pkgobj, $injection_site, $injection_file, $fnvalues)
-# Splices in the template lines (from the ps1template .ps1 file) into the ps1file
-{
+{ # UpdatePS1File
+    # Splices in the template lines (from the ps1template .ps1 file) into the ps1file
     # Also updates the appvalues in the ps1file from the csv file
     $return="OK"
-    $ps1source = Get-Content $ps1template  # template file
+    $ps1source = Get-Content $ps1template -Encoding UTF8 # template file
     $ps1target_new =@()                    # package file (new) starts empty
     ForEach ($linesource in $ps1source)
     { # each line in ps1source
@@ -360,7 +356,7 @@ Function UpdatePS1File ($ps1template, $ps1file, $pkgobj, $injection_site, $injec
                 # inject the file
                 $ps1target_new+="#region INJECTION SITE for $(Split-Path $injection_file -Leaf)"
                 $ps1target_new+="##########################################################"
-                $inject_lines = Get-Content $injection_file
+                $inject_lines = Get-Content $injection_file -Encoding UTF8
                 ForEach ($inject_line in $inject_lines)
                 {
                     # change the line a bit to a staging line
@@ -384,7 +380,7 @@ Function UpdatePS1File ($ps1template, $ps1file, $pkgobj, $injection_site, $injec
     # Done creating lines for new file
     # check old file
     if (Test-Path $ps1file -PathType Leaf) {
-        $ps1target = Get-Content $ps1file      # package file (old)
+        $ps1target = Get-Content $ps1file -Encoding UTF8  # package file (old)
     } 
     Else{ # target doesn't exist
         $ps1target = $null
@@ -392,17 +388,26 @@ Function UpdatePS1File ($ps1template, $ps1file, $pkgobj, $injection_site, $injec
     # write file if needed
     if (($null -eq $ps1target) -or (ContentsHaveChanged $ps1target_new $ps1target))
     { # target doesn't exist of is different
-        [System.IO.File]::WriteAllLines($ps1file,$ps1target_new) # writes UTF8 file
-        $return ="Updated. Intune vars found: $($lineswithvars)"
+        $filebase = Split-Path $ps1file -Leaf
+        if ($filebase -in ("intune_detection.ps1","intune_requirements.ps1")) {
+            $encoding = "UTF8"
+            $utf8Encoding = [System.Text.UTF8Encoding]::new($false) # with no BOM
+        }
+        else { # "intune_install.ps1","intune_uninstall.ps1",
+            $encoding = "UTF8NoBOM"
+            $utf8Encoding = [System.Text.UTF8Encoding]::new($true) # with BOM
+        }
+        [System.IO.File]::WriteAllLines($ps1file,$ps1target_new,$utf8Encoding) # writes UTF8 file
+        $return ="Updated [$($encoding)]. Intune vars found: $($lineswithvars)"
     }
     else
     { # template ok,no change
         $return ="OK. No change"
     }
     Return $return
-}
+} # UpdatePS1File
 Function Ps1FileCheckUpdate ($ps1template, $file_checks, $pkgobj)
-{
+{ # Ps1FileCheckUpdate
     $LogFolder = "C:\IntuneApp"
     $sResult = "OK"
     $i=0
@@ -466,9 +471,11 @@ Function Ps1FileCheckUpdate ($ps1template, $file_checks, $pkgobj)
         If ($updated_count -gt 0) {$sResult += ": $($updated_count) files updated"}
     }
     Return $sResult
-}
+} # Ps1FileCheckUpdate
 Function AppVersionIncrementInCSV ($intune_settings_csvpath)
-{
+{ # AppVersionIncrementInCSV
+    # for exporting to CSV.  Example: Export-Csv -Path $csvFile -NoTypeInformation -Force -Encoding $utf8Encoding
+    $utf8Encoding = if ($PSVersionTable.PSEdition -eq 'Core') { 'utf8BOM' } else { 'utf8' } # UTF8-with-BOM string based on PowerShell Edition
     $IntuneAppValues_csv = Import-Csv $intune_settings_csvpath
     $versionstr_old = ($IntuneAppValues_csv | Where-Object Name -EQ AppVersion).Value
     if ($versionstr_old-eq "")
@@ -477,11 +484,11 @@ Function AppVersionIncrementInCSV ($intune_settings_csvpath)
     [string]$versionstr_new = [int]$versionstr_old + 1
     # Update CSV file
     ($IntuneAppValues_csv | Where-Object Name -EQ AppVersion).Value = $versionstr_new
-    $IntuneAppValues_csv | Export-Csv $intune_settings_csvpath -NoTypeInformation
+    $IntuneAppValues_csv | Export-Csv $intune_settings_csvpath -NoTypeInformation -Encoding $utf8Encoding
     Return $versionstr_new
-}
+} # AppVersionIncrementInCSV
 Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps", $GetHash = $true)
-{
+{ # PackagesLocalChecks
     $LogFolder = "C:\IntuneApp"
     #region Search for packages (files named intune_settings.csv)
     If (-not (Test-Path $search_root -PathType Container)) {Return "search_root not found: $($search_root)"}
@@ -489,12 +496,21 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
     $package_paths = @()
     ForEach ($package_file in $package_files)
     { # each csv file
-        $package_path=$package_file.FullName
-        if (-not (Split-Path (Split-path (Split-Path $package_path -Parent) -Parent) -Leaf).StartsWith("!"))
-        { #not a disabled package (grandparent folder has a ! in front)
-            $package_path = $package_path.Replace("$($search_root)\","")
-            $package_paths += $package_path
-        }
+        #$package_path=$package_file.FullName
+        $package_foldername = Split-Path (Split-path (Split-Path $package_file.FullName -Parent) -Parent) -Leaf
+        if (-not ($package_foldername).StartsWith("!"))
+        { # not a disabled package (grandparent folder has a ! in front)
+            #$package_path = $package_file.FullName.Replace("$($search_root)\","")
+            #$package_paths += $package_path
+
+            $objThis = [pscustomobject][ordered]@{
+                RelPath        = $package_file.FullName.Replace("$($search_root)\","")
+                FolderName     = $package_foldername
+                IntuneSettingsCSVDate   = $package_file.LastWriteTime.ToString("yyyy-MM-dd")
+                }
+            $package_paths += $objThis
+
+        } # not a disabled package
     } # each csv file
     if ($package_paths.count -eq 0) {Return "Couldn't find any package files (intune_settings.csv): $($search_root)"}
     #endregion Search for packages (files named intune_settings.csv)
@@ -510,15 +526,28 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
     $warningsallpkgs = @()
     $i = 0
     $i_count = $package_paths.count
+    $bCheckAllPackages = $true
     if ($i_count -ge 10)
     { # more than 10 packages
         Write-Host "Found $($i_count) packages to check"
+        # consider all packages or a subset
+        if (-not (AskForChoice "Check all packages? [No to select packages (faster)]")){
+            $bCheckAllPackages = $false
+            Write-Host "Choose apps from the popup list (may be behind this window - check taskbar): " -NoNewline
+            $msg= "Select rows and click OK (Use Ctrl and Shift and Filter features to multi-select)"
+            # Select
+            $package_paths =  @($package_paths | Out-GridView -PassThru -Title $msg) 
+            $i_count = $package_paths.count
+            Write-Host "Selected packages to check: " -NoNewline
+            Write-host $i_count -ForegroundColor Yellow
+        } # select packages
+        # auto-update all hashes?
         if (AskForChoice "Auto-update hash values [No to stop and ask for any updated packages]"){
             $bHashUpdateAllOK = $true
         }
     } # more than 10 packages
     Write-Progress -Activity "Checking Packages" -Status "Starting" -PercentComplete 0
-    ForEach ($pkg in $package_paths)
+    ForEach ($pkg in $package_paths.RelPath)
     { # Each pkg (csv) file
         $i+=1
         $PercentComplete = (($i / $i_count) * 100)
@@ -576,9 +605,7 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
         # checks that all files exist, and injects them with updated variables and custom code (for detection and requirements files)
         $ps1template = "$($search_root)\!IntuneApp\AppsPublish_Template.ps1"
         $sResultps1 = Ps1FileCheckUpdate $ps1template $file_checks $pkgobj
-        if ($sResultps1.StartsWith("ERR"))
-        {Return $sResultps1, $null}
-
+        if ($sResultps1.StartsWith("ERR")) {Return $sResultps1, $null}
         if ($GetHash)
         { # GetHash is true (default)
             # update hash for this package (if needed)
@@ -686,10 +713,10 @@ Function PackagesLocalChecks($search_root="C:\Users\Public\Documents\IntuneApps"
         $sResult += ". Warnings: $($warningsallpkgs.count) [$($warningsallpkgs -join ', ')]"
     }
     #endregion sResult
-    Return $sResult,$pkgobjs
-}
+    Return $sResult,$bCheckAllPackages,$pkgobjs
+} # PackagesLocalChecks
 Function PackagesLocalUpdateandCheck ($GetHash = $true)
-{
+{ # PackagesLocalUpdateandCheck
         #region update !App Template\IntuneApp\IntuneUtils
         $ps1template = "$($scriptdir)\AppsPublish_Template.ps1"
         If (-not (Test-Path $ps1template)) {write-host "Err: Couldn't find $($ps1template)";return}
@@ -703,12 +730,12 @@ Function PackagesLocalUpdateandCheck ($GetHash = $true)
         #region package hashes
         Write-Host "Checking / updating package files (takes a few secs)... " -NoNewline
         $search_root  = Split-Path -Path $scriptdir -Parent
-        $sReturn,$pkgs = PackagesLocalChecks $search_root -GetHash $GetHash
+        $sReturn,$bCheckAllPackages,$pkgs = PackagesLocalChecks $search_root -GetHash $GetHash
         Write-Host $sReturn
         if (-not $sReturn.Startswith("OK")) {Write-host $sReturn -ForegroundColor Yellow; PressEnterToContinue ;return}
         #endregion package hashes
-        Return $pkgs
-}
+        Return $bCheckAllPackages,$pkgs
+} # PackagesLocalUpdateandCheck
 # Main Procedure
 $scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName }
 $scriptDir      = Split-Path -Path $scriptFullname -Parent
@@ -719,6 +746,8 @@ $scriptVer      = "v"+(Get-Item $scriptFullname).LastWriteTime.ToString("yyyy-MM
 $psm1="$($scriptDir)\ITAutomator.psm1";if ((Test-Path $psm1)) {Import-Module $psm1 -Force} else {write-output "Err 99: Couldn't find '$(Split-Path $psm1 -Leaf)'";Start-Sleep -Seconds 10;Exit(99)}
 $psm1="$($scriptDir)\ITAutomator M365.psm1";if ((Test-Path $psm1)) {Import-Module $psm1 -Force} else {write-output "Err 99: Couldn't find '$(Split-Path $psm1 -Leaf)'";Start-Sleep -Seconds 10;Exit(99)}
 #
+# for exporting to CSV.  Example: Export-Csv -Path $csvFile -NoTypeInformation -Force -Encoding $utf8Encoding
+$utf8Encoding = if ($PSVersionTable.PSEdition -eq 'Core') { 'utf8BOM' } else { 'utf8' } # UTF8-with-BOM string based on PowerShell Edition
 #region Transcript Open
 $Transcript = [System.IO.Path]::GetTempFileName()               
 Start-Transcript -path $Transcript | Out-Null
@@ -732,17 +761,17 @@ Write-Host ""
 Write-Host "Published Apps (named IntuneApps...) can be found in the Intune Windows Apps list here:"
 Write-Host "https://intune.microsoft.com/?ref=AdminCenter#view/Microsoft_Intune_DeviceSettings/AppsWindowsMenu/~/windowsApps" -ForegroundColor Green
 Write-Host "-----------------------------------------------------------------------------"
-$bShowmenu=$true
+$bShowmenu = $true
 Do
 { # show menu
-    if ($pkgs)
-    {
-        $chkInfo = " (Checked: $($pkgs.count))"
-    }
-    else
-    {
-        $chkInfo = ""
-    }
+    # if ($pkgs)
+    # {
+    #     $chkInfo = " (Checked: $($pkgs.count))"
+    # }
+    # else
+    # {
+    #     $chkInfo = ""
+    # }
     Write-Host "-----------------------------------------------------------------------------"
 	Write-Host "Computer:$($env:computername) User:$($env:username) PSver:$($PSVersionTable.PSVersion.Major)"
     Write-Host $scriptName -ForegroundColor Yellow -nonewline
@@ -753,7 +782,7 @@ Do
     Write-Host "C - Check local apps prior to publication$($chkInfo)" -ForegroundColor Yellow
     Write-Host "    Checks local apps for changes / updates hash (recommended for Publish option)"
     Write-Host "P - Publish apps" -ForegroundColor Yellow
-    Write-Host "    Publishes apps to an og"
+    Write-Host "    Publishes apps to an org"
     Write-Host "O - Prep a new Org for publishing apps" -ForegroundColor Yellow
     Write-Host "    Creates an entry in AppsPublish_Orgs.csv and creates an App publishing app used by this program in Entra."
     Write-Host "M - Install / upgrade modules" -ForegroundColor Yellow
@@ -763,13 +792,12 @@ Do
     $actionchoices = @("E&xit","&Check","&Publish","&Org prep","&Modules")
     $ps1file = ""
     ##
-    $action=AskForChoice -message $msg -choices $actionchoices -defaultChoice 0
-    Write-Host "Action [$($action)]: $($actionchoices[$action].Replace('&',''))"
-    If ($action -eq 0)
+    $action=AskForChoice -message $msg -choices $actionchoices -defaultChoice 0 -ReturnString
+    If ($action -eq "Exit")
     { # Menu Choice: Exit
         $bShowmenu=$false
     } # Menu Choice: Exit
-    ElseIf ($action -eq 1)
+    ElseIf ($action -eq "Check")
     { # Menu Choice: Check
         if ($pkgs)
         {
@@ -780,9 +808,10 @@ Do
                 Continue
             }
         }
-        $pkgs=PackagesLocalUpdateandCheck
+        $bCheckAllPackages,$pkgs_ret=PackagesLocalUpdateandCheck
+        $pkgs=@($pkgs_ret)
     } # Menu Choice: Check
-    ElseIf ($action -eq 2)
+    ElseIf ($action -eq "Publish")
     { # Menu Choice: Publish
         $showmenu_publish=$true
         $verbosepackager=$false
@@ -821,16 +850,26 @@ Do
         $choice--
         Write-Host "You chose Org: " -NoNewline
         Write-Host $orglist[$choice].Org -ForegroundColor Yellow
+        if ($pkgs)
+        {
+            Write-Host "$($pkgs.count) packages have already been selected and checked."
+            if (AskForChoice "Select different packages for publishing?" -DefaultChoice 1)
+            { # re-check packages
+                $pkgs=$null
+            }
+        }
         if (-not $pkgs)
         { # no local package list yet
             if (0 -eq (AskForChoice "No local packages checked yet. Use [C]heck before publishing (otherwise package update status will be unknowable). Check now?"))
             { # No, don't check now (Note: this is kind of dumb because the hash checking isn't the slow part)
                 Write-Host "Skipping."
-                $pkgs=PackagesLocalUpdateandCheck -GetHash $false
+                $bCheckAllPackages,$pkgs_ret=PackagesLocalUpdateandCheck #-GetHash $false
+                $pkgs=@($pkgs_ret)
                 Start-sleep 1
             } # Yes, check now
             else {
-                $pkgs=PackagesLocalUpdateandCheck -GetHash $true
+                $bCheckAllPackages,$pkgs_ret=PackagesLocalUpdateandCheck #-GetHash $false
+                $pkgs=@($pkgs_ret)
             }
         } # no local package list yet
         $OrgValues = @{} #hashtable
@@ -865,46 +904,58 @@ Do
             }
         }
         #endregion modules
-        #region Connect-MgGraph
         Write-Host "[Connect-MgGraph] Connecting to Tenant: $($OrgValues.TenantName) [You may see a sign-on popup]" -ForegroundColor Yellow
-        PressEnterToContinue "Press Enter to try connecting"
-        $connected=$false
-        $done = $false
-        # Method 1 (no scopes - hides consent window if not set up yet)
-        #$connected_ok = ConnectMgGraph -domain $OrgValues.TenantName
-        # Method 2 (w scopes - asks for consent if needed)
-        $RequiredScopes = @()
-        $RequiredScopes += "Group.ReadWrite.All"
-        $RequiredScopes += "GroupMember.ReadWrite.All"
-        $RequiredScopes += "User.ReadWrite.All"
-        #$RequiredScopes += "DeviceManagementApps.Read.All" # not sure about this one
-        $RequiredScopes += "DeviceManagementApps.ReadWrite.All"
-        Do {
-            Write-Host "Connecting ... There may be a popup logon window in the background"
-            $connected_ok = Connect-MgGraph -TenantId $OrgValues.TenantName -Scopes $RequiredScopes
-            #
-            if (!($connected_ok)) 
-            { # connect failed
-                Write-Host "[connection failed]"
-                if (AskforChoice -Message "Try again?")
-                { # yes, try again
-                    Write-Host "Retrying connection..."
-                    Start-Sleep -Seconds 2
-                } # yes, try again
-                else
-                { # no, exit
-                    Write-Host "Exiting."
-                    Start-Sleep -Seconds 2
-                    Exit
-                } # no, exit
+        # Connect-MgGraph
+        $mgScopes = @()
+        $mgScopes += "Mail.ReadWrite"
+        $mgScopes += "User.ReadWrite.All"
+        $mgScopes += "Group.ReadWrite.All"
+        $mgScopes += "Directory.ReadWrite.All"
+        $mgScopes += "DeviceManagementApps.ReadWrite.All"
+        if (-not (Get-Command -Name Connect-MgGraph -ErrorAction SilentlyContinue)) {
+            Write-Host "Connect-MgGraph is NOT available. You may need to install the Microsoft Graph module:"
+            Write-Host 'Install-Module Microsoft.Graph -Scope CurrentUser'
+            PressEnterToContinue
+            exit
+        }
+        # Check if we are already connected
+        while ($true) {
+            # Check if already connected to Microsoft Graph
+            $mgContext = Get-MgContext
+            if ($mgContext -and $mgContext.Account -and $mgContext.TenantId) {
+                $tenantDomain = (Get-MgDomain | Where-Object { $_.IsDefault }).Id
+                Write-Host "Connect-MgGraph is connected to Account $($mgContext.Account) Tenant Domain: " -NoNewline
+                Write-Host $tenantDomain -ForegroundColor Green
+                $response = AskForChoice "Choice: " -Choices @("&Use this connection","&Disconnect and try again","E&xit") -ReturnString
+                # If the user types 'exit', break out of the loop
+                if ($response -eq 'Disconnect and try again') {
+                    Write-Host "Disconnect-MgGraph..."
+                    Disconnect-MgGraph | Out-Null
+                    PressEnterToContinue "Done. Press <Enter> to connect again."
+                    Continue # loop again
+                }
+                elseif ($response -eq 'exit') {
+                    return
+                }
+                else { # on to next step
+                    break
+                }
+            } else {
+                Write-Host "Connect-MgGraph not connected. Connecting now..."
+                PressEnterToContinue "Open a browser to an admin session on the desired tenant and press Enter."
+                Connect-MgGraph -Scopes $mgScopes -NoWelcome
+                # Confirm connection
+                $mgContext = Get-MgContext
+                if ($mgContext) {
+                    Write-Host "Now connected to Microsoft Graph as $($mgContext.Account)"
+                    $tenantDomain = (Get-MgDomain | Where-Object { $_.IsDefault }).Id
+                    Write-Host "Tenant Domain: $tenantDomain" -ForegroundColor Green
+                } else {
+                    Write-Error "Connect-MgGraph: Failed"
+                }
             }
-            else
-            { # connect ok
-                Write-Host "Connected  ... OK"
-                Write-Host "--------------------"
-                break # exit connect loop
-            }
-        } while ($true) # connect loop
+        } # while true forever loop
+        Write-Host
         Do { # menu loop
             # Get Required group ID
             Write-Host "Required org group: " -NoNewline
@@ -925,12 +976,8 @@ Do
             }
             #region Check published apps
             Write-Host "Checking published apps in: " -nonewline; Write-host $OrgValues.TenantName -ForegroundColor Yellow
-            # Get List of apps
-            $IntuneApps = Get-MgDeviceAppManagementMobileApp -All -ErrorAction Ignore
-            $IntuneApps = $IntuneApps | Where-Object {$_.AdditionalProperties."@odata.type" -in ("#microsoft.graph.win32LobApp")}
-            Write-Host "$($IntuneApps.Count) Apps"
             # clear entries (in case we've looped around after unpublishing)
-            $pkgs = $pkgs | Where-Object PublicationStatus -ne "Package Missing" # remove any intune-only apps, they will be added by discovery
+            $pkgs = @($pkgs | Where-Object PublicationStatus -ne "Package Missing") # remove any intune-only apps, they will be added by discovery
             ForEach ($pkg in $pkgs) # set the remainder to unpublished
             { # each pkg
                 $pkg.PublishedAppId = ""
@@ -939,6 +986,16 @@ Do
                 $pkg.Required_Org = ""
                 $pkg.Required_Pkg = ""
             } # each pkg
+            # Get List of apps
+            $IntuneApps = Get-MgDeviceAppManagementMobileApp -All -ErrorAction Ignore
+            $IntuneApps = $IntuneApps | Where-Object {$_.AdditionalProperties."@odata.type" -in ("#microsoft.graph.win32LobApp")}
+            Write-Host "$($IntuneApps.Count) Apps"
+            # If subset of apps to publish, filter the IntuneApps list
+            if ($bCheckAllPackages -eq $false)
+            {
+                $IntuneApps = $IntuneApps | Where-Object DisplayName -in $pkgs.AppName
+                Write-Host "Filtered to $($IntuneApps.Count) Apps"
+            }
             $i = 0
             $i_count = $IntuneApps.count
             Write-Progress -Activity "Checking Published Packages" -Status "Starting" -PercentComplete 0
@@ -1335,7 +1392,7 @@ Do
                         # Create intunewin zip file in temp folder along with in-mem script files for intune: end
                         #### AppDescription
                         if ($pkg.AppDescription) {
-                            $AppDescription=$pkg.AppDescription
+                            $AppDescription=($pkg.AppDescription -split "`r?`n") -join "`r`n " # normalize newlines
                         }
                         else {
                             $AppDescription="(None)"
@@ -1610,7 +1667,7 @@ Do
                 Do
                 { # try exporting
                     Try {
-                        $orglist | Export-Csv $orglistcsv -NoTypeInformation
+                        $orglist | Export-Csv $orglistcsv -NoTypeInformation -Encoding $utf8Encoding
                         Break
                     }
                     Catch {
@@ -1624,14 +1681,14 @@ Do
             Write-Host "Check apps at the Intune Windows Apps (Admin center):"
             Write-Host "https://intune.microsoft.com/?ref=AdminCenter#view/Microsoft_Intune_DeviceSettings/AppsWindowsMenu/~/windowsApps" -ForegroundColor Green
             # Kind of like Pause but with a custom key and msg
-            $retVal=AskForChoice -message "Done. Publish something else?"
+            $retVal=AskForChoice -message "Done. Re-check Intune for these apps? [No to return to the main menu]"
             if ($retVal -eq 0) {
                 $showmenu_publish =$false
-                $bShowmenu=$false
+                $bShowmenu=$true
             }
         } until (-not $showmenu_publish)
     } # Menu Choice: Publish
-    ElseIf ($action -eq 3)
+    ElseIf ($action -eq "Org prep")
     { # Menu Choice: Org Create
         $AppName = "IntuneApp Publisher"
         $orglistcsv = "$($scriptdir)\AppsPublish_OrgList.csv"
@@ -1743,12 +1800,12 @@ Do
             $orglist += $newRow
         } # create a new row
         # Save
-        $orglist | Export-Csv $orglistcsv -NoTypeInformation
+        $orglist | Export-Csv $orglistcsv -NoTypeInformation -Encoding $utf8Encoding
         Write-host "New org added: " -NoNewline
         Write-Host $OrgDomain -ForegroundColor Yellow
         PressEnterToContinue
     } # Menu Choice: Org Create
-    ElseIf ($action -eq 4)
+    ElseIf ($action -eq "Modules")
     { # Menu Choice: Modules
         $ps1file = "$($scriptDir)\ModuleManager.ps1"
         if (-not (Test-Path $ps1file -PathType Leaf))

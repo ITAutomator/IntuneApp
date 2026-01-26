@@ -1,4 +1,4 @@
-######################
+﻿######################
 ### Parameters
 ######################
 Param 
@@ -57,11 +57,12 @@ Do { # action
     $count = 0
     $Sources = Get-ChildItem $SourceRoot -Directory
     $SourceHashes = @()
+    $SourceLogLines = @()
     Foreach ($Source in $Sources) {
         Write-Host "$((++$count))) " -NoNewline
         Write-Host $Source.Name -ForegroundColor Blue -NoNewline
         $SourceFiles = Get-ChildItem $Source.Fullname -File -Recurse
-        $sErr,$sHash,$HashList = GetHashOfFiles $SourceFiles.FullName -ByDateOrByContents "ByDate"
+        $sErr,$sHash,$HashList = GetHashOfFiles $SourceFiles.FullName -ByDateOrByContents "ByContents"
         Write-Host " Files:" -NoNewline
         Write-host $SourceFiles.Count -ForegroundColor Blue -NoNewline
         Write-Host " Hash:" -NoNewline
@@ -71,6 +72,10 @@ Do { # action
             FileCount  = $SourceFiles.Count
             Hash       = $sHash
             HashList   = $HashList
+        }
+        $SourceLogLines += "--- Hash Details [$($sHash)] [$($Source.Name)] [$($SourceFiles.Count) files]"
+        ForEach ($HashListElem in $HashList) {
+            $SourceLogLines += "Hash: $($HashListElem.Hash) $($HashListElem.Name) [UTC $($HashListElem.LastWriteTime)] [$($HashListElem.Length) Bytes]"
         }
     }
     $sSourceHashesAll = ($SourceHashes | ForEach-Object {"$($_.SourceName)|$($_.Hash)"}) -join "*"
@@ -208,7 +213,7 @@ Do { # action
             Write-Host $Source.Name -ForegroundColor Blue
             # determine target folder
             $TargetFolder = "$($FolderPubDesktop)\$($Source.Name)"
-            $retcode, $retmsg = CopyFilesIfNeeded $Source.Fullname $TargetFolder "date" -delete_extra $true
+            $retcode, $retmsg = CopyFilesIfNeeded -source $Source.Fullname -target $TargetFolder -compareMethod "hash" -delete_extra $true
             foreach ($line in $retmsg) {
                 if ($line.StartsWith("OK:00")) {
                     Write-Host $line -ForegroundColor Blue
@@ -297,7 +302,7 @@ Do { # action
             Write-Host "$((++$count))) " -NoNewline
             Write-Host $SourceHash.SourceName -ForegroundColor Blue -NoNewline
             $TargetFiles = Get-ChildItem "$($FolderPubDesktop)\$($SourceHash.SourceName)" -File -Recurse
-            $sErr,$sHash,$HashList = GetHashOfFiles $TargetFiles.FullName -ByDateOrByContents "ByDate"
+            $sErr,$sHash,$HashList = GetHashOfFiles $TargetFiles.FullName -ByDateOrByContents "ByContents"
             Write-Host " Files:" -NoNewline
             Write-host $TargetFiles.Count -ForegroundColor Blue -NoNewline
             Write-Host " Hash:" -NoNewline
@@ -398,6 +403,10 @@ Do { # action
                 } # setting is different
             } # each setting
             if ($haschanges) {
+                # write log lines $SourceLogLines to a file
+                $LogFilePath = "$($scriptDir)\Desktop Company Files (Source Hashes Log).txt"
+                $SourceLogLines | Out-File -FilePath $LogFilePath -Encoding utf8
+                # export updated csv
                 $IntuneSettingsCSVRows | Export-Csv $IntuneSettingsCSVPath -NoTypeInformation -Force -Encoding $utf8Encoding
                 Write-Host "Updated $(Split-Path $IntuneSettingsCSVPath -Leaf)" -ForegroundColor Green
             }

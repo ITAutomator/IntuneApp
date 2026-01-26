@@ -1,4 +1,4 @@
-###
+﻿###
 ## To enable scrips, Run powershell 'as admin' then type
 ## Set-ExecutionPolicy Unrestricted
 ###

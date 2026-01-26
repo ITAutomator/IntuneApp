@@ -1,6 +1,6 @@
-#################### APPSPUBLISH_TEMPLATE.PS1 FILE
+﻿#################### APPSPUBLISH_TEMPLATE.PS1 FILE
 #
-# THIS IS THE APPSPUBLISH_TEMPLATE.PS1 FILE. DO NOT EDIT THIS CODE
+# THIS IS THE APPSPUBLISH_TEMPLATE.PS1 FILE. DO NOT EDIT THIS CODE.
 # THIS CONTAINS THE MASTER COPY OF THE MANAGED CODE THAT GETS INJECTED INTO THE 4 INTUNE PS1 FILES FOR ALL INTUNEAPPS
 #
 # This code is not intended to be run directly, it is injected into the 4 Intune scripts 
@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Setup Windows User-v244")
+    $IntuneAppValues.Add("AppName","Setup Windows User-v253")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","Setup.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode auto")
@@ -52,6 +52,8 @@ Function IntuneAppValues
 Function IntuneLog ($line, $quiet=$false,$appname="",$logfolder="",$appfunction="")
 {
     if ($IntuneApp.Function -eq "AppsPublish_Template.ps1") {return} # debug mode is active
+    # for exporting to CSV.  Example: Export-Csv -Path $csvFile -NoTypeInformation -Force -Encoding $utf8Encoding
+    $utf8Encoding = if ($PSVersionTable.PSEdition -eq 'Core') { 'utf8BOM' } else { 'utf8' } # UTF8-with-BOM string based on PowerShell Edition
     $scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName }
     $scriptName     = Split-Path -Path $scriptFullname -Leaf
     ## Load IntuneApp values if they aren't already loaded
@@ -100,10 +102,10 @@ Function IntuneLog ($line, $quiet=$false,$appname="",$logfolder="",$appfunction=
     { # logfolder exists
         # delete logfile if over 1MB
         $logfile = "$($logfolder)\Log_$($IntuneAppName).txt"
-        if (Test-Path -Path $logfile) {if (((Get-Item $logfile).length) -gt 1MB) {Remove-Item $logfile;Add-Content $logfile "$($dt) [Log file was reset because it grew over 1MB]"}}
-        if (-not (Test-Path -Path $logfile)) {Add-Content $logfile "$($dt) [Log file initialized - will reset if it grows over 1MB]"} # 1st line has info about logfile itself
+        if (Test-Path -Path $logfile) {if (((Get-Item $logfile).length) -gt 1MB) {Remove-Item $logfile;Add-Content $logfile "$($dt) [Log file was reset because it grew over 1MB]" -Encoding $utf8Encoding}}
+        if (-not (Test-Path -Path $logfile)) {Add-Content $logfile "$($dt) [Log file initialized - will reset if it grows over 1MB]" -Encoding $utf8Encoding} # 1st line has info about logfile itself
         # append to logfile
-        Add-Content $logfile $logline
+        Add-Content $logfile $logline -Encoding $utf8Encoding
     } # logfolder exists
 }
 Function IntuneAppsCSV ($mode="GetStatus",$appnamever="",$setstatus="", $setdescription="",$systemoruser="system",$logfolder="")
@@ -133,6 +135,8 @@ Function IntuneAppsCSV ($mode="GetStatus",$appnamever="",$setstatus="", $setdesc
       SetStatus Detected
     #>
     #if ($null -eq $IntuneApp) {$IntuneApp=IntuneAppValues}
+    # for exporting to CSV.  Example: Export-Csv -Path $csvFile -NoTypeInformation -Force -Encoding $utf8Encoding
+    $utf8Encoding = if ($PSVersionTable.PSEdition -eq 'Core') { 'utf8BOM' } else { 'utf8' } # UTF8-with-BOM string based on PowerShell Edition
     if ($logfolder -in "","<<IntuneLogFolder>>") {$logfolder="C:\IntuneApp"} # It's still the template value, hardcode this until it gets published to an org-based value
     $csvAppsfile="$($logfolder)\v2\IntuneApps.csv"
     # split IntuneAppNameVer(AAAA-vVVVV) into IntuneAppName (AAAA) and IntuneAppVer VVVV)
@@ -148,7 +152,7 @@ Function IntuneAppsCSV ($mode="GetStatus",$appnamever="",$setstatus="", $setdesc
     If ($AppVer -eq "")
         {$AppVer = "1"}
     ## create empty csv if needed with the column headings
-    if (-not (Test-Path -Path $csvAppsfile)) {Add-Content $csvAppsfile "AppName,AppVer,Username,Status,Description"}
+    if (-not (Test-Path -Path $csvAppsfile)) {Add-Content $csvAppsfile "AppName,AppVer,Username,Status,Description" -Encoding $utf8Encoding}
     ## import from csv
     $csvApps = @(Import-Csv $csvAppsfile)
     $bChangeMade = $false
@@ -261,7 +265,7 @@ Function IntuneAppsCSV ($mode="GetStatus",$appnamever="",$setstatus="", $setdesc
     }
     If ($bChangeMade)
     {
-        $csvApps | Where-Object AppName -ne "TO_DELETE"| Sort-Object AppName | Export-Csv -Encoding UTF8 -Path $csvAppsfile -NoTypeInformation
+        $csvApps | Where-Object AppName -ne "TO_DELETE"| Sort-Object AppName | Export-Csv -Encoding $utf8Encoding -Path $csvAppsfile -NoTypeInformation
     }
     Return $approw
 }
@@ -532,7 +536,8 @@ Function TranscriptRemoveHeaderFooter ($TsFile)
             {$TsLines_new+=$line}
         }
     }
-    [System.IO.File]::WriteAllLines($TsFile,$TsLines_new) # writes UTF8 file
+    $utf8Encoding = [System.Text.UTF8Encoding]::new($true) # with BOM
+    [System.IO.File]::WriteAllLines($TsFile,$TsLines_new,$utf8Encoding) # writes UTF8 file
 }
 Function PS1WithLogging ($ps1, $ps1args="")
 {
@@ -1198,7 +1203,7 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
         } #verb:list
         elseif ($Wingetverb -eq "install")
         { # winget install
-            $Winget_command = "install","--id",$WingetApp,"--exact","--accept-package-agreements"
+            $Winget_command = "install","--id",$WingetApp,"--exact","--accept-package-agreements","--source","winget"
             #$exitcode,$Winget_return,$stderr=StartProc "winget" $Winget_command
             $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
             # exitcode: (https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md)
@@ -1218,7 +1223,7 @@ Function WingetAction ($WingetMin = "1.6",$WingetVerb = "list", $WingetApp="appn
                 } # 2nd install can't be tried
                 else
                 { # 2nd install attempt, without scope
-                    $Winget_command = "install","--id",$WingetApp,"--exact","--accept-package-agreements"
+                    $Winget_command = "install","--id",$WingetApp,"--exact","--accept-package-agreements","--source","winget"
                     $Winget_return,$retStatus,$exitcode = StartProcAsJob "winget" $Winget_command -ShowOutputToHost $True -StopProcOnTimeout $False -TimeoutSecs 300
                     $chkresults = (($Winget_return -like "*Successfully installed*") -or ($Winget_return -like "*Found an existing package already installed*"))
                     if (-not $chkresults) {
@@ -1599,11 +1604,13 @@ If ($IntuneApp.Function -in ("intune_Detection.ps1"))
             Rename-Item -Path $tmpfile.FullName -NewName $customps1_tmp_name
             $customps1_tmp_fullpath = "$($tmpfile.DirectoryName)\$($customps1_tmp_name)"
             # write lines
-            [System.IO.File]::WriteAllLines($customps1_tmp_fullpath,$customps1_injection_lines) # writes UTF8 file
+            $utf8Encoding = [System.Text.UTF8Encoding]::new($true) # with BOM
+            [System.IO.File]::WriteAllLines($customps1_tmp_fullpath,$customps1_injection_lines,$utf8Encoding) # writes UTF8 file
             IntuneLog "Running injected .ps1 file: $(Split-Path -Path $customps1_tmp_fullpath -leaf)"
             $ps1_exit,$ps1_output = PS1WithLogging -ps1 $customps1_tmp_fullpath
             $app_detected = $ps1_output # apply results of ps1_output
             # cleanup
+            IntuneLog "Removing injected .ps1 file: $($customps1_tmp_fullpath)"
             Remove-Item $customps1_tmp_fullpath -Force
         } # code was injected above
     } # no ps1 found
@@ -1663,7 +1670,8 @@ If ($IntuneApp.Function -in ("intune_Requirements.ps1"))
             Rename-Item -Path $tmpfile.FullName -NewName $customps1_tmp_name
             $customps1_tmp_fullpath = "$($tmpfile.DirectoryName)\$($customps1_tmp_name)"
             # write lines
-            [System.IO.File]::WriteAllLines($customps1_tmp_fullpath,$customps1_injection_lines) # writes UTF8 file
+            $utf8Encoding = [System.Text.UTF8Encoding]::new($true) # with BOM
+            [System.IO.File]::WriteAllLines($customps1_tmp_fullpath,$customps1_injection_lines,$utf8Encoding) # writes UTF8 file
             IntuneLog "Running injected .ps1 file: $(Split-Path -Path $customps1_tmp_fullpath -leaf)"
             $ps1_exit,$ps1_output = PS1WithLogging -ps1 $customps1_tmp_fullpath
             $requirements_met = $ps1_output # apply results of ps1_output

@@ -1,4 +1,4 @@
-## To enable scrips, Run powershell 'as admin' then type
+﻿## To enable scrips, Run powershell 'as admin' then type
 ## Set-ExecutionPolicy Unrestricted
 $scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName }
 $scriptXML      = $scriptFullname.Substring(0, $scriptFullname.LastIndexOf('.'))+ ".xml"  ### replace .ps1 with .xml

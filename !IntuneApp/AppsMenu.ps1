@@ -1,4 +1,4 @@
-# Main Procedure
+﻿# Main Procedure
 $scriptFullname = $PSCommandPath ; if (!($scriptFullname)) {$scriptFullname =$MyInvocation.InvocationName }
 $scriptDir      = Split-Path -Path $scriptFullname -Parent
 $scriptName     = Split-Path -Path $scriptFullname -Leaf

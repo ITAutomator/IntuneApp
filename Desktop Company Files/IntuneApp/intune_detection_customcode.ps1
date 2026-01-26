@@ -1,4 +1,4 @@
-<# -------- Custom Detection code
+﻿<# -------- Custom Detection code
 Put your custom code here
 Delete this file from your package if it is not needed. Normally, it is not needed.
 Winget and Choco packages detect themselves without needing this script.
@@ -22,9 +22,23 @@ However this script is a child process of intune_detection.ps1, and has those fu
 For instance, $IntuneApp.AppVar1 ... $IntuneApp.AppVar5 are injected from the intune_settings.csv, and are usable.
 To debug this script, put a break in the script and run the parent ps1 file (Detection).
 Detection and Requirements scripts are run every few hours (for all required apps), so they should be conservative with resources.
- 
 #>
-
+Function FixMojibake ($mojibake)
+{
+    # Convert a string with Mojibake characters to their correct UTF8 equivalents.  The Intune IME can cause Mojibake characters to appear in scripts.
+    # Usage:   FixMojibake "hÃ´ne skill. this looks like a ÃŸ but is a sharp S. And this Ã¡ccented a."
+    # Returns: "hône skill. this looks like a ß but is a sharp S. And this áccented a."
+    $return = $mojibake
+    # Convert the string bytes from source to destination encoding
+    $sourceEncoding = [System.Text.Encoding]::GetEncoding(1252) # Windows-1252 encoding
+    $bytes = $sourceEncoding.GetBytes($mojibake)
+    if ($bytes -contains 195) { # Mojibake often contains Ã (195)
+        # Write-Host "Found Mojibake char 195!"
+        $destEncoding = [System.Text.Encoding]::UTF8 # UTF8 encoding
+        $return = $destEncoding.GetString($bytes) # Convert bytes to string using destination encoding
+    }
+    Return $return
+}
 Function GetHashOfFiles ($FilePaths, $ByDateOrByContents="ByContents")
 {
     # GetHashOfFiles - Give a list of filepaths, creates an MD5 hash of their content (ByContents) or their date time stamps (ByDate)
@@ -77,6 +91,13 @@ Function GetHashOfFiles ($FilePaths, $ByDateOrByContents="ByContents")
 $app_detected = $false
 $FolderPubDesktop=[System.Environment]::GetFolderPath("CommonDesktopDirectory")
 $SourceHashes = @()
+Write-Host "FolderPubDesktop  : $($FolderPubDesktop)"
+Write-Host "AppVar1 (ToCopy)  : $($IntuneApp.AppVar1)"
+Write-Host "AppVar2 (ToRemove): $($IntuneApp.AppVar2)"
+$IntuneApp.AppVar1 = FixMojibake $IntuneApp.AppVar1
+$IntuneApp.AppVar2 = FixMojibake $IntuneApp.AppVar2
+Write-Host "AppVar1 (ToCopy)   [Fixed Mojibake]: $($IntuneApp.AppVar1)"
+Write-Host "AppVar2 (ToRemove) [Fixed Mojibake]: $($IntuneApp.AppVar2)"
 if (($IntuneApp.AppVar1 -match "|") -and ($null -ne $IntuneApp.AppVar1) -and ($IntuneApp.AppVar1 -ne "")) {
     $SourceHashes = $IntuneApp.AppVar1 -split "\*"
 } # has appvar1
@@ -96,11 +117,14 @@ Foreach ($SourceHash in $SourceHashes) {
         Hash = $SourceNameHash[1]
     }
     # endregion: parse source name and hash
-    Write-Host "$((++$count))) " -NoNewline
+    Write-Host "ToCopy $((++$count))) " -NoNewline
     Write-Host $SourceHash.SourceName -ForegroundColor Blue -NoNewline
-    $TargetFiles = Get-ChildItem "$($FolderPubDesktop)\$($SourceHash.SourceName)" -File -Recurse
-    $sErr,$sHash,$HashList = GetHashOfFiles $TargetFiles.FullName -ByDateOrByContents "ByDate"
-    Write-Host " Files:" -NoNewline
+    Write-Host " [" -NoNewline
+    $folderTarget = "$($FolderPubDesktop)\$($SourceHash.SourceName)"
+    Write-Host $folderTarget -ForegroundColor Blue -NoNewline
+    $TargetFiles = Get-ChildItem $folderTarget -File -Recurse
+    $sErr,$sHash,$HashList = GetHashOfFiles $TargetFiles.FullName -ByDateOrByContents "ByContents"
+    Write-Host "] Files:" -NoNewline
     Write-host $TargetFiles.Count -ForegroundColor Blue -NoNewline
     Write-Host " Hash:" -NoNewline
     Write-host $sHash -ForegroundColor Blue -NoNewline
@@ -109,16 +133,22 @@ Foreach ($SourceHash in $SourceHashes) {
     } # hash match
     else {
         Write-Host " MISMATCH" -ForegroundColor Yellow
+        Write-host "   Expected Hash: $($SourceHash.Hash) [$($SourceHash.SourceName)]"
+        Write-host " Mismatched Hash: $($sHash) [$($folderTarget)]"
+        Write-Host "------------ Mismatched Details"
+        ForEach ($HashListElem in $HashList) {
+            Write-Host "Hash: $($HashListElem.Hash) $($HashListElem.Name) [UTC $($HashListElem.LastWriteTime)] [$($HashListElem.Length) Bytes]"
+        }
+        Write-Host "------------ Hash: $($sHash)"
         $bMatchAll = $false
     } # hash mismatch
 } # each source hash
 # Delete Checking
 $bDeletesOK = $true
 If ($Removes.Count -gt 0) {
-    Write-Host "$(Split-Path $FilesToRemoveCSV -Leaf)"
     $count=0
     Foreach ($Remove in $Removes) {
-        Write-Host "$((++$count))) " -NoNewline
+        Write-Host "ToDelete $((++$count))) " -NoNewline
         Write-Host $Remove -ForegroundColor Blue -NoNewline
         $PathToRemove = "$($FolderPubDesktop)\$($Remove)"
         if (Test-Path $PathToRemove) {

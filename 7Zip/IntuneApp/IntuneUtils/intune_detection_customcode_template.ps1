@@ -1,4 +1,4 @@
-<# -------- Custom Detection code
+﻿<# -------- Custom Detection code
 Put your custom code here
 Delete this file from your package if it is not needed. Normally, it is not needed.
 Winget and Choco packages detect themselves without needing this script.

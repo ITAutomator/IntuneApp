@@ -459,6 +459,7 @@ If you are replacing a previously pushed package, use this *IntuneApp* technique
 
 | Version    | Description                |
 |------------|----------------------------|
+| 2026-01-25 | AppPublish Connect-MGGraph improved logic. App publish can now be a subset to speed things up |
 | 2025-06-08 | Winget install on fresh Windows install fix. When winget is run as a service, if no admin has run the MS Store or if VCredistributable is missing, winget returns no output.  This is now detected and fix via an inline VCredist install |
 | 2025-04-10 | Allow for ARM architecture. ARM Installers run in 32 bit mode will self-adjust to 64 bit mode. |
 | 2025-03-01 | Initial release |
