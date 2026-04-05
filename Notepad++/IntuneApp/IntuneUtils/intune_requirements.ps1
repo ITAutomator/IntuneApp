@@ -32,12 +32,12 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Notepad++-v208")
+    $IntuneAppValues.Add("AppName","Notepad++-v209")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Notepad++.Notepad++")
     $IntuneAppValues.Add("AppInstallArgs","")
     $IntuneAppValues.Add("AppUninstallName","")
-    $IntuneAppValues.Add("AppUninstallVersion","8.5.8")
+    $IntuneAppValues.Add("AppUninstallVersion","8.9.2")
     $IntuneAppValues.Add("AppUninstallProcess","notepad++")
     $IntuneAppValues.Add("SystemOrUser","system")
     $IntuneAppValues.Add("Function","intune_requirements.ps1")

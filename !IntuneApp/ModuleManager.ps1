@@ -1,4 +1,4 @@
-﻿<# ####### Update Manually (Run elevated)
+<# ####### Update Manually (Run elevated)
 $GraphModules = Get-InstalledModule | Where {$_.Name -Match "Graph"}; $GraphModules 
 foreach($module in $GraphModules){
 	Write-Host "Update-Module $($module.Name)..."
@@ -185,12 +185,57 @@ Do { # choose a module
     $i = 0
     Write-Host "Modules:" 
     $modules | ForEach-Object {$i+=1;Write-Host " $($i)] " -NoNewline;Write-Host $_ -ForegroundColor Yellow}
+    Write-Host " B] " -NoNewline; Write-host "Browse Module folders (in File Explorer)" -ForegroundColor Green
     Write-Host "------------------------------"
     $module = $null
     $module_numstr = Read-Host "Which module? (blank to exit)"
     if (($module_numstr -eq "x") -or ($null -eq $module_numstr) -or ($module_numstr -eq "")) {
         Break
     } # nothing entered
+    elseif ($module_numstr.toUpper() -eq "B")
+    { # browse
+        $modulepaths = @()
+        #
+        $thisObj = [PSCustomObject]@{
+            Desc = "PS5 User Modules"
+            Path = "$($env:OneDrive)\Documents\WindowsPowerShell\Modules"
+        }
+        $modulepaths += $thisObj
+        #
+        $thisObj = [PSCustomObject]@{
+            Desc = "PS5 Machine Modules"
+            Path = "$($env:ProgramFiles)\WindowsPowerShell\Modules"
+        }
+        $modulepaths += $thisObj
+        #
+        $thisObj = [PSCustomObject]@{
+            Desc = "PS7 User Modules"
+            Path = "$($env:OneDrive)\Documents\PowerShell\Modules"
+        }
+        $modulepaths += $thisObj
+        #
+        $thisObj = [PSCustomObject]@{
+            Desc = "PS7 Machine Modules"
+            Path = "$($env:ProgramFiles)\PowerShell\Modules"
+        }
+        $modulepaths += $thisObj
+        #
+        Write-Host "Explorer Module Paths"
+        Write-Host "------------------------------"
+        $i_count = 0
+        ForEach ($modulepath in $modulepaths) {
+            $i_count += 1
+            Write-Host "$($i_count)) [$($modulepath.Desc)] $($modulepath.Path)" -NoNewline
+            if (Test-Path $modulepath.Path) {
+                Write-Host " Opened" -ForegroundColor Green
+                Start-Process explorer.exe $modulepath.Path
+            }
+            else {
+                Write-Host " Not Found" -ForegroundColor Yellow
+            }
+        } # each module path
+        PressEnterToContinue
+    }
     else
     { # something entered
         # convert to number

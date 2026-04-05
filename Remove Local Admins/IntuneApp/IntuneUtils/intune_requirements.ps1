@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Remove Local Admins-v222")
+    $IntuneAppValues.Add("AppName","Remove Local Admins-v225")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","RemoveLocalAdmins.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode R")
@@ -42,8 +42,8 @@ Function IntuneAppValues
     $IntuneAppValues.Add("SystemOrUser","system")
     $IntuneAppValues.Add("Function","intune_requirements.ps1")
     $IntuneAppValues.Add("LogFolder","C:\IntuneApp")
-    $IntuneAppValues.Add("AppVar1","Admins to Remove: AzureAD\*,.\*")
-    $IntuneAppValues.Add("AppVar2","Admins to Allow: AdminContoso,AdminFabrikant,AzureAD\JohnAdmin")
+    $IntuneAppValues.Add("AppVar1","Admins to Remove: [AzureAD]*,[Local].\*")
+    $IntuneAppValues.Add("AppVar2","Admins to Allow: [Local].\AdminContoso,[Local].\AdminFabrikant")
     $IntuneAppValues.Add("AppVar3","")
     $IntuneAppValues.Add("AppVar4","")
     $IntuneAppValues.Add("AppVar5","")

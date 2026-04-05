@@ -1,3 +1,5 @@
 "Name","Value"
-"AdminsToAllow","AdminContoso,AdminFabrikant,AzureAD\JohnAdmin"
-"AdminsToRemove","AzureAD\*,.\*"
+"AdminsToAllow","[Local].\AdminContoso,[Local].\AdminFabrikant"
+"AdminsToRemove","[AzureAD]*,[Local].\*"
+"SettingsFileCreatedBy","DESKTOP-0CHTU40\JasonSimotas"
+"SettingsFileCreatedDate","2026-04-01"

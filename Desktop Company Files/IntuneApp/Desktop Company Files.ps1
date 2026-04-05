@@ -126,6 +126,78 @@ Do { # action
         Start-Sleep 3
     }
     # endregion: check for files
+
+    if ($true)
+    { # intune_settings
+        $IntuneSettingsCSVPath = "$($scriptDir)\intune_settings.csv"
+        if (-not (Test-Path $IntuneSettingsCSVPath)) {
+            Write-Host "Couldn't find csv file: $($IntuneSettingsCSVPath)"
+        }
+        else {
+            # create array of objects
+            $intunesettings = @()
+            $newRow = [PSCustomObject]@{
+                Name  = "AppName"
+                Value = Split-path (Split-Path $scriptDir -Parent) -Leaf
+            } ; $intunesettings += $newRow
+            $newRow = [PSCustomObject]@{
+                Name  = "AppInstaller"
+                Value = "ps1"
+            } ; $intunesettings += $newRow
+            $newRow = [PSCustomObject]@{
+                Name  = "AppInstallName"
+                Value = $scriptName
+            } ; $intunesettings += $newRow
+            $newRow = [PSCustomObject]@{
+                Name  = "AppInstallArgs"
+                Value = "ARGS:-mode C"
+            } ; $intunesettings += $newRow
+            $newRow = [PSCustomObject]@{
+                Name  = "AppDescription"
+                Value = $AppDescription
+            } ; $intunesettings += $newRow
+            $newRow = [PSCustomObject]@{
+                Name  = "AppVar1"
+                Value = $sSourceHashesAll
+            } ; $intunesettings += $newRow
+            $newRow = [PSCustomObject]@{
+                Name  = "AppVar2"
+                Value = $sRemovesAll
+            } ; $intunesettings += $newRow
+            # Write-Host "Checking $(Split-Path $IntuneSettingsCSVPath -Leaf)"
+            # Write-Host "-------------------------------------"
+            $IntuneSettingsCSVRows = Import-Csv $IntuneSettingsCSVPath
+            $haschanges = $false
+            foreach ($intunesetting in $intunesettings) {
+                $IntuneSettingsCSVRow =  $IntuneSettingsCSVRows | Where-Object Name -eq $intunesetting.Name
+                #Write-Host "$($IntuneSettingsCSVRow.Name) = $($IntuneSettingsCSVRow.Value) " -NoNewline
+                if ($IntuneSettingsCSVRow.Value -eq $intunesetting.Value) {
+                    # Write-Host "OK" -ForegroundColor Blue
+                } # setting match
+                else {
+                    if (-not $haschanges) {
+                        Write-Host "-------------------------------------"
+                        Write-Host "Checking $(Split-Path $IntuneSettingsCSVPath -Leaf) found needed changes:" -ForegroundColor Yellow
+                    }
+                    $IntuneSettingsCSVRow.Value = $intunesetting.Value
+                    Write-Host "IntuneApp Setting for $($IntuneSettingsCSVRow.Name) = $($IntuneSettingsCSVRow.Value) Changed to $($intunesetting.Value)" -ForegroundColor Green
+                    $haschanges = $true
+                } # setting is different
+            } # each setting
+            if ($haschanges) {
+                # write log lines $SourceLogLines to a file
+                $LogFilePath = "$($scriptDir)\Desktop Company Files (Source Hashes Log).txt"
+                $SourceLogLines | Out-File -FilePath $LogFilePath -Encoding utf8
+                # export updated csv
+                $IntuneSettingsCSVRows | Export-Csv $IntuneSettingsCSVPath -NoTypeInformation -Force -Encoding $utf8Encoding
+                Write-Host "Updated $(Split-Path $IntuneSettingsCSVPath -Leaf)" -ForegroundColor Green
+            }
+            else {
+                # Write-Host "No changes required" -ForegroundColor Blue
+            }
+        } # found intune_settings.csv
+        # if ($mode -eq '') {PressEnterToContinue}
+    } # intune_settings
     Write-Host "--------------- Choices  ------------------"
     Write-Host "[B] Browse the source folder to make changes"
     Write-Host "[E] Edit the To Remove.csv list."

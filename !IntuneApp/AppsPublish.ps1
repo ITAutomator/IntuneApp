@@ -267,6 +267,206 @@ Function CreatePublishingApp ($OrgDomain, $AppName)
     $sResult = $appRegistration.AppId
     Return $sResult
 } # CreatePublishingApp
+Function CreatePublishingAppWithClientSecret ($OrgDomain, $AppName)
+{ # CreatePublishingAppWithClientSecret
+    # Connects to an org and creates a Registered App using Application permissions + Client Secret
+    # for non-interactive (unattended) authentication. Returns a hashtable with ClientID and ClientSecret.
+    $sResult = @{ ClientID = "ERR"; ClientSecret = "ERR" }
+    $connected = $false
+    Do
+    { #Loop until connected
+        Try
+        {
+            # Scopes needed to create the app and grant admin consent for application permissions
+            $scopes = @()
+            $scopes += "Domain.Read.All"                        # Read domain properties
+            $scopes += "Application.ReadWrite.All"              # Create/update app registrations
+            $scopes += "AppRoleAssignment.ReadWrite.All"        # Grant app role assignments (admin consent)
+            $scopes += "RoleManagement.ReadWrite.Directory"     # Role management
+            $retval = ""
+            $context = Get-MgContext
+            if ($context)
+            { # already connected
+                Write-Host "Connect-MgGraph is already connected as: " -NoNewline
+                Write-Host $context.Account -ForegroundColor Yellow
+                if (-not (AskForChoice "Use this connection?"))
+                {
+                    Disconnect-MgGraph -ErrorAction Ignore | Out-Null
+                    Write-Host "Connecting ... There may be a popup logon window in the background"
+                    PressEnterToContinue "Press Enter to try connecting"
+                    Connect-MgGraph -Scopes $scopes -TenantId $OrgDomain -ErrorAction Stop | Out-Null
+                }
+            } # already connected
+            else
+            {
+                Write-Host "Connecting ... There may be a popup logon window in the background"
+                Connect-MgGraph -Scopes $scopes -TenantId $OrgDomain -ErrorAction Stop | Out-Null
+            }
+            $connected = $true
+        }
+        Catch
+        {
+            $retval = "ERR: Connect-MgGraph returned $($_.ToString())"
+            Write-Host $retval
+        }
+        if ($connected)
+        { # connected
+            $retval = "OK"
+            $context = Get-MgContext
+            if ($null -eq $context.TenantId)
+            {
+                $connected = $false
+            }
+            if ($connected)
+            { # connected with context
+                Try
+                {
+                    $orgdomains = (Get-MgDomain | Sort-Object IsDefault -Descending | Select-Object Id).Id
+                    Write-Host "Connected to Domain: " -NoNewline
+                    Write-Host ($orgdomains -join ", ") -ForegroundColor Yellow
+                }
+                Catch
+                {
+                    $orgdomains = "Error running Get-MgDomain"
+                }
+                if (-not ($OrgDomain -in $orgdomains))
+                {
+                    Write-Host "Couldn't find domain [$($OrgDomain)] in orgdomains[$($orgdomains -join ",")]"
+                    $connected = $false
+                    Pause
+                    Disconnect-MgGraph -ErrorAction Ignore | Out-Null
+                }
+            } # connected with context
+        } # connected
+        If (-not $connected)
+        { # not connected
+            Write-Host "Not Connected (Showing connection options again...)"
+        } # not connected
+    } #Loop until connected
+    Until ($connected)
+    $context = Get-MgContext
+    $tenantid = $context.TenantId
+    Write-Host "Connected via account: " -NoNewline
+    Write-Host $context.Account $tenantid -ForegroundColor Yellow
+    # Check for existing application with same name
+    $appidstoremove = $null
+    $orgapps = @(Get-MgApplication)
+    $orgapp = $orgapps | Where-Object DisplayName -EQ $AppName
+    If ($orgapp)
+    { # App with same name found
+        Write-Host "Warning: Existing app was found in tenant:" -NoNewline
+        Write-Host $AppName -ForegroundColor Yellow
+        if ((AskForChoice -message "Replace existing app: $($AppName)" -ChooseDefault:$AutoCreate) -eq 0)
+        { # user didn't want to replace
+            $retval = "ERR: Existing app found, user chose not to replace: $($AppName)"
+            Write-Verbose $retval
+            Return $retval
+        } # user didn't want to replace
+        $appidstoremove = @($orgapp.id)
+    } # App with same name found
+    #region CreateApp
+    # Build Application permission (Role type) objects - these work with client credential flow
+    $ReqResAccess = New-Object -TypeName System.Collections.Generic.List[Microsoft.Graph.PowerShell.Models.MicrosoftGraphRequiredResourceAccess]
+    $ResourceName = "Microsoft Graph"
+    $ReqResAppIDAccesses = New-Object -TypeName Microsoft.Graph.PowerShell.Models.MicrosoftGraphRequiredResourceAccess
+    $ResourceApp = Get-MgServicePrincipal -Filter "DisplayName eq '$($ResourceName)'"
+    $ReqResAppIDAccesses.ResourceAppId = $ResourceApp.AppId
+    $ResourceRoles = @()
+    $ResourceRoles += "DeviceManagementManagedDevices.ReadWrite.All"
+    $ResourceRoles += "DeviceManagementApps.ReadWrite.All"
+    $ResourceRoles += "Group.Read.All"
+    $ResourceRoles += "User.Read.All"
+    Foreach ($Role in $ResourceRoles)
+    { # each resourcerole
+        $sp_property = "AppRoles"  # Application permissions use AppRoles (not Oauth2PermissionScopes)
+        $ra_type = "Role"          # Application permissions use Role (not Scope)
+        $ResourceAppRole = Get-MgServicePrincipal -Filter "DisplayName eq '$($ResourceName)'" -Property $sp_property | Select-Object -ExpandProperty $sp_property | Where-Object Value -EQ $Role
+        $ReqResAppIDAccesses.ResourceAccess += @{ Id = $ResourceAppRole.id; Type = $ra_type }
+        Write-Host "Staging access to resource: " -NoNewline
+        Write-Host $ResourceApp.DisplayName -ForegroundColor Yellow -NoNewline
+        Write-Host " with role: " -NoNewline
+        Write-Host $ResourceAppRole.Value -ForegroundColor Yellow
+    } # each resourcerole
+    $ReqResAccess.Add($ReqResAppIDAccesses)
+    # No RedirectUri or PublicClient needed for client credentials flow
+    $params = @{
+        DisplayName            = $AppName
+        SignInAudience         = "AzureADMyOrg"
+        RequiredResourceAccess = $ReqResAccess
+        AdditionalProperties   = @{}
+    }
+    try
+    {
+        ########### CREATE APP
+        $appRegistration = New-MgApplication @params
+    }
+    catch
+    {
+        $_
+        Pause
+    }
+    #endregion CreateApp
+    #region AddClientSecret
+    # Azure generates the secret value; it is only readable once at creation time
+    $passwordCredential = @{
+        DisplayName = "AutoGenerated-$(Get-Date -Format 'yyyyMMdd')"
+        EndDateTime = (Get-Date).AddYears(1)
+    }
+    try
+    {
+        $secretResult = Add-MgApplicationPassword -ApplicationId $appRegistration.Id -PasswordCredential $passwordCredential
+    }
+    catch
+    {
+        $_
+        Pause
+    }
+    #endregion AddClientSecret
+    #region GrantApp
+    # Create service principal for the new app, then grant each application role (admin consent)
+    New-MgServicePrincipal -AppId $appRegistration.AppId | Out-Null
+    $AppClient = Get-MgServicePrincipal -Filter "appId eq '$($appRegistration.AppId)'"
+    $rras = $appRegistration.RequiredResourceAccess
+    foreach ($rra in $rras)
+    { # each api (Microsoft Graph)
+        $resource = Get-MgServicePrincipal -Filter "appId eq '$($rra.resourceAppId)'"
+        $requiredRoleIds = $rra.resourceAccess | Where-Object { $_.Type -eq "Role" } | ForEach-Object { $_.id }
+        foreach ($requiredRoleId in $requiredRoleIds)
+        {
+            New-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $AppClient.Id -PrincipalId $AppClient.Id -ResourceId $resource.Id -AppRoleId $requiredRoleId | Out-Null
+        }
+    } # each api
+    #endregion GrantApp
+    # Remove old app if it was replaced
+    if ($appidstoremove)
+    {
+        ForEach ($appidtoremove in $appidstoremove)
+        {
+            Remove-MgApplication -ApplicationId $appidtoremove
+        }
+    }
+    Write-Host "-----------------------------------------------------------------------------"
+    Write-Host "Package-publishing Application (Client Secret) setup complete"
+    Write-Host "                  AppName: " -NoNewline
+    Write-Host                             $AppName -ForegroundColor Yellow
+    Write-Host "         AppId (ClientID): " -NoNewline
+    Write-Host                             $appRegistration.AppId -ForegroundColor Yellow
+    Write-Host "             ClientSecret: " -NoNewline
+    Write-Host                             $secretResult.SecretText -ForegroundColor Yellow
+    Write-Host "      Secret Expires On : " -NoNewline
+    Write-Host                             $secretResult.EndDateTime -ForegroundColor Yellow
+    Write-Host "-----------------------------------------------------------------------------"
+    Write-Host "WARNING: Save the ClientSecret now - it cannot be retrieved again!" -ForegroundColor Red
+    Write-Host "-----------------------------------------------------------------------------"
+    Write-Host "Find it here: Entra Admin > Apps > App Registrations > All apps"
+    Write-Host "              https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade/quickStartType~/null/sourceType/Microsoft_AAD_IAM" -ForegroundColor Green
+    Start-Sleep 3
+    $sResult = @{
+        ClientID     = $appRegistration.AppId
+        ClientSecret = $secretResult.SecretText
+    }
+    Return $sResult
+} # CreatePublishingAppWithClientSecret
 Function CreatePublishTemplatePs1Files ($rootpath)
 { # CreatePublishTemplatePs1Files
     # Copies the template lines into the 4 ps1files
@@ -1189,10 +1389,10 @@ Do
                         #  Test-AccessToken -RenewalThresholdMinutes 10
                         if ($DeviceCode) {
                             Write-host "[-DeviceCode option] To sign in... information is about to be shown. Open the URL (as an org admin) and copy / paste the code. The process will continue (or timeout)." -ForegroundColor Yellow
-                            Write-host "Note: if this isn't working you may make a one-time adjustment to the IntuneApp Publisher app"
-                            Write-host "      Entra > Applications > App registrations > All applications > [IntuneApp Publisher] > Authentication > Allow public client flows: Yes"
-                            Write-host "      https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$($OrgValues.AppPublisherClientID)"
-                            PressEnterToContinue
+                            # Write-host "Note: if this isn't working you may make a one-time adjustment to the IntuneApp Publisher app"
+                            # Write-host "      Entra > Applications > App registrations > All applications > [IntuneApp Publisher] > Authentication > Allow public client flows: Yes"
+                            # Write-host "      https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$($OrgValues.AppPublisherClientID)"
+                            # PressEnterToContinue
                         }
                         # This can fail in PS7 (without the DeviceCode option): The embedded WebView2 browser cannot be started because a runtime component cannot be loaded. For troubleshooting details, see https://aka.ms/msal-net-webview2 
                         # Download and install from Microsoft (Look for the Evergreen Standalone Installer (x64)): https://developer.microsoft.com/en-us/microsoft-edge/webview2/
@@ -1211,8 +1411,14 @@ Do
                             }
                         } # existing token found
                         if ($connect_try) {
-                            Write-Host "[Connect-MSIntuneGraph] Connecting to Tenant: $($OrgValues.TenantName) [You may see a sign-on popup <OR> subsequent directions for web sign-on]" -ForegroundColor Yellow
-                            $AuthToken = Connect-MSIntuneGraph -TenantID $OrgValues.TenantName -ClientID $OrgValues.AppPublisherClientID -RedirectUri "https://login.microsoftonline.com/common/oauth2/nativeclient" -DeviceCode:$DeviceCode
+                            if ($DeviceCode) {
+                                Write-Host "[Connect-MSIntuneGraph] Connecting to Tenant: $($OrgValues.TenantName) with DeviceCode [You may see a sign-on popup <OR> subsequent directions for web sign-on]" -ForegroundColor Yellow
+                                $AuthToken = Connect-MSIntuneGraph -TenantID $OrgValues.TenantName -ClientID $OrgValues.AppPublisherClientID -RedirectUri "https://login.microsoftonline.com/common/oauth2/nativeclient" -DeviceCode
+                            }
+                            Else {
+                                Write-Host "[Connect-MSIntuneGraph] Connecting to Tenant: $($OrgValues.TenantName) [You may see a sign-on popup <OR> subsequent directions for web sign-on]" -ForegroundColor Yellow
+                                $AuthToken = Connect-MSIntuneGraph -TenantID $OrgValues.TenantName -ClientID $OrgValues.AppPublisherClientID -RedirectUri "https://login.microsoftonline.com/common/oauth2/nativeclient"
+                            }
                         }
                         if ($AuthToken)
                         {
@@ -1382,7 +1588,17 @@ Do
                         #intune_detection.ps1 (see above for return values)
                         $DetectionRule = New-IntuneWin32AppDetectionRuleScript -ScriptFile "$($pkg.Fullpath)\IntuneUtils\intune_detection.ps1"
                         # intune_requirements.ps1 (see above for return values)
-                        $RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "All" -MinimumSupportedWindowsRelease "W10_1809"
+                        Try {
+                            # IntuneWin32App v1.4.4 and prior (https://github.com/MSEndpointMgr/IntuneWin32App/blob/master/ReleaseNotes.md)
+                            $RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "All" -MinimumSupportedWindowsRelease "W10_1809"
+                        }
+                        catch {
+                            $RequirementRule = $null
+                        }
+                        if (-not $RequirementRule) {
+                            # IntuneWin32App v1.4.5 and later
+                            $RequirementRule = New-IntuneWin32AppRequirementRule -Architecture "AllWithARM64" -MinimumSupportedWindowsRelease "W10_1809"
+                        }
                         $AdditionalRequirementRule = New-IntuneWin32AppRequirementRuleScript -ScriptFile "$($pkg.Fullpath)\IntuneUtils\intune_requirements.ps1" -StringOutputDataType -StringComparisonOperator equal -StringValue "REQUIREMENTS_MET" -ScriptContext $pkg.SystemOrUser
                         # Convert image file to icon
                         $IntuneIcon = New-IntuneWin32AppIcon -FilePath "$($pkg.Fullpath)\intune_icon.png"

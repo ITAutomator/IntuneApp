@@ -29,7 +29,7 @@ The SID to convert
     [Guid]$guid = $bytes
 
     return $guid
-}
+} # Convert-AzureAdSidToObjectId
 Function GetLocalAdmins ($AdminsToRemove, $AdminsToAllow)
 {
     # Get Admins to remove and allow as arrays
@@ -49,9 +49,7 @@ Function GetLocalAdmins ($AdminsToRemove, $AdminsToAllow)
         { # each admin element
             $AdminElem = $AdminElem.Trim()
             if ($AdminElem -eq "") {Continue}
-            $AdminSrch = $AdminElem.Replace("*","")
-            $AdminSrch = $AdminSrch.Replace(".\","$($env:COMPUTERNAME)\")
-            if ($AdminSrch  -notlike "*\*" ) {$AdminSrch = "$($env:COMPUTERNAME)\$($AdminElem)"}
+            $AdminSrch = $AdminElem.Replace(".\","$($env:COMPUTERNAME)\") # replace .\ with computername\
             # Create object
             $obj_this = [PSCustomObject]@{
                 Elem = $AdminElem
@@ -84,31 +82,33 @@ Function GetLocalAdmins ($AdminsToRemove, $AdminsToAllow)
             Status = ""
         } # create object
         # Adjust Name for AzureAD accounts
-        if ($user_this.SID.StartsWith("S-1-12-1-"))
-        {
+        if ($user_this.SID.StartsWith("S-1-12-1-")) { # AzureAD SID - convert to Cloud ObjectID
             $user_this.Name = "AzureAD ObjectID " + (Convert-AzureAdSidToObjectId -Sid $user_this.SID)
         }
-        # Check if enabled
-        if ($user_this.Class -eq "User") {
+        if ($user_this.Class -eq "User") { # If it's a user (not group) check local SIDs for enabled state
             $locuser = Get-LocalUser -SID $user_this.SID -ErrorAction SilentlyContinue
             if ($locuser) {
                 $user_this.Enabled = $locuser.Enabled
-            } # is found
+            } # user SID is found
         } # is User
-        # Name fixes
-        if ($user_this.NameClean -eq $user_this.SID) {
+        # NameClean fixes
+        if ($user_this.NameClean -eq $user_this.SID) { # if NameClean is the same as the SID then this is an AzureAD ObjectID that this script ignores
             $user_this.NameClean = $user_this.Name
+            $user_this.Status = "OK: AzureAD ObjectID ignored by this script"
         }
-        if ($user_this.Source -notin "Local","AzureAD") {
+        if ($user_this.Source -notin "Local","AzureAD") # Local, AzureAD, MicrosoftAccount, ActiveDirectory
+        { # account source ignored
             $user_this.Status = "OK: Account source is ignored by this script [$($user_this.Source)]"
         } # account source ignored
-        else
-        { # account source not ignored
+        if (-not $user_this.Status.StartsWith("OK:"))
+        { # Not already marked as OK, so check if action needed
+            # Create string for matching against allow/remove lists
+            $user_this_allowremove = "[$($user_this.Source)]$($user_this.NameClean)"
             # ToRemove
             $toRemove = $false
             $RemoveVia = ""
             ForEach ($AdminToRemove in $AdminsToRemoveArray) {
-                if ($user_this.NameClean -like "*$($AdminToRemove.Srch)*" ) {
+                if ($user_this_allowremove.StartsWith($AdminToRemove.Srch.TrimEnd('*'))) {
                     $toRemove = $true; $RemoveVia=$AdminToRemove.Elem ;break
                 }
             }
@@ -116,7 +116,7 @@ Function GetLocalAdmins ($AdminsToRemove, $AdminsToAllow)
             $toAllow = $false
             $AllowVia = ""
             ForEach ($AdminToAllow in $AdminsToAllowArray) {
-                if ($user_this.NameClean -like "*$($AdminToAllow.Srch)*" ) {
+                if ($user_this_allowremove.StartsWith($AdminToAllow.Srch.TrimEnd('*'))) {
                     $toAllow = $true; $AllowVia=$AdminToAllow.Elem ;break
                 }
             }
@@ -158,8 +158,7 @@ Function GetLocalAdmins ($AdminsToRemove, $AdminsToAllow)
                     }
                 } # not marked to remove
             } # not marked to allow
-            
-        } # account source not ignored
+        } # Not already marked as OK, so check if action needed
         # Append to array
         $locadmins += $user_this
     }
@@ -182,14 +181,13 @@ $scriptVer      = "v"+(Get-Item $scriptFullname).LastWriteTime.ToString("yyyy-MM
 $psm1="$($scriptDir)\ITAutomator.psm1";if ((Test-Path $psm1)) {Import-Module $psm1 -Force} else {write-output "Err 99: Couldn't find '$(Split-Path $psm1 -Leaf)'";Start-Sleep -Seconds 10;Exit(99)}
 # Get-Command -module ITAutomator  ##Shows a list of available functions
 ######################
-
 # Load settings
 $csvFile = "$($scriptDir)\$($scriptBase) Settings.csv"
 $settings = CSVSettingsLoad $csvFile
 # Defaults
 $settings_updated = $false
-if ($null -eq $settings.AdminsToAllow) {$settings.AdminsToAllow = "AdminContoso,AdminFabrikant,AzureAD\JohnAdmin"; $settings_updated = $true}
-if ($null -eq $settings.AdminsToRemove) {$settings.AdminsToRemove = "AzureAD\*,.\*"; $settings_updated = $true}
+if ($null -eq $settings.AdminsToAllow) {$settings.AdminsToAllow = "[Local].\AdminContoso,[Local].\AdminFabrikant"; $settings_updated = $true}
+if ($null -eq $settings.AdminsToRemove) {$settings.AdminsToRemove = "[AzureAD]*,[Local].\*"; $settings_updated = $true}
 if ($settings_updated) {$retVal = CSVSettingsSave $settings $csvFile; Write-Host "Initialized - $($retVal)"}
 # cmd line info
 $CmdLineInfo = "(none)"
@@ -206,6 +204,11 @@ Write-host "$($scriptBase) Settings.csv" -ForegroundColor Yellow
 Write-Host ""
 $AppDescription = "Removes Local Admins [De-elevates to a regular user] (Does not affect the built-in AzureAD DeviceAdmin or Microsoft accounts)`n"
 Write-Host $AppDescription
+Write-Host "Remove/Allows should be of the form [Local].\Name or [AzureAD]Name"
+Write-Host "A . is always replaced with the computername"
+Write-Host "A * at the end indicates wildcard for the remainder"
+Write-Host "Multiple entries should be separated by commas"
+Write-Host ""
 $AppDescription += "AdminsToRemove: $($settings.AdminsToRemove)`n"
 $AppDescription += "AdminsToAllow: $($settings.AdminsToAllow)`n"
 # Menu
@@ -253,7 +256,7 @@ Do { # action
             ForEach ($LocalAdmin in $LocalAdmins | Sort-Object Source,NameClean)
             { # each local admin
                 Write-Host "[$($LocalAdmin.Source)] $($LocalAdmin.NameClean) " -NoNewline
-                if ($LocalAdmin.Status -like "Action:*") {
+                if ($LocalAdmin.Status.StartsWith("Action:")) {
                     if ($NoneToRemove) {$NoneToRemove = $false}
                     Write-Host $LocalAdmin.Status -ForegroundColor yellow
                 } # action required
@@ -270,7 +273,7 @@ Do { # action
         else {
             $adminsremoved = @()
             Write-Host "Removing from Administrators: (Effective for NEXT logon)"
-            ForEach ($LocalAdmin in $LocalAdmins | Sort-Object Source,NameClean | Where-Object Status -like "Action:*")
+            ForEach ($LocalAdmin in $LocalAdmins | Sort-Object Source,NameClean | Where-Object { $_.Status.StartsWith("Action:") })
             { # each local admin
                 Write-Host "Removing admin from [$($LocalAdmin.Source)] $($LocalAdmin.NameClean)" -ForegroundColor Yellow
                 Remove-LocalGroupMember -SID "S-1-5-32-544" -Member $LocalAdmin.SID -Confirm:$False
@@ -297,7 +300,7 @@ Do { # action
             ForEach ($LocalAdmin in $LocalAdmins | Sort-Object Source,NameClean)
             { # each local admin
                 Write-Host "[$($LocalAdmin.Source)] $($LocalAdmin.NameClean) " -NoNewline
-                if ($LocalAdmin.Status -like "Action:*") {
+                if ($LocalAdmin.Status.StartsWith("Action:")) {
                     if ($NoneToRemove) {$NoneToRemove = $false}
                     Write-Host $LocalAdmin.Status -ForegroundColor yellow
                 } # action required

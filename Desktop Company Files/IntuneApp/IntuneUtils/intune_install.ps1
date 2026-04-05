@@ -32,7 +32,7 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Desktop Company Files-v164")
+    $IntuneAppValues.Add("AppName","Desktop Company Files-v167")
     $IntuneAppValues.Add("AppInstaller","ps1")
     $IntuneAppValues.Add("AppInstallName","Desktop Company Files.ps1")
     $IntuneAppValues.Add("AppInstallArgs","ARGS:-mode C")
@@ -42,7 +42,7 @@ Function IntuneAppValues
     $IntuneAppValues.Add("SystemOrUser","System")
     $IntuneAppValues.Add("Function","intune_install.ps1")
     $IntuneAppValues.Add("LogFolder","C:\IntuneApp")
-    $IntuneAppValues.Add("AppVar1","Company Files|8DF6FA9BF87F3DA2F05DD62B7D2814B2")
+    $IntuneAppValues.Add("AppVar1","Company Files|60142824191BFDD7C495BD806E5CDB03")
     $IntuneAppValues.Add("AppVar2","")
     $IntuneAppValues.Add("AppVar3","")
     $IntuneAppValues.Add("AppVar4","")
