@@ -1,0 +1,26 @@
+Name,Value,Comment
+AppName,7Zip,(Required) Base package name (e.g 7zip) (Remove ! Character which hides sample apps)
+AppVersion,111,(Optional) Package version. Whole numbers beginning with 100. Nothing to do with product version. (e.g. 100 for 7zip-v100) (Recommended)
+AppInstaller,winget,"(Required) winget,choco,exe,msi,ps1,cmd. If winget, choco is used, leave AppUninstallName blank unless you want to uninstall an additional app"
+AppInstallName,7zip.7zip,(Required) winget appid (case sensitive) or choco appid or filename of .exe or .msi or .ps1 or .cmd (wildcard OK). See https://winstall.app or https://community.chocolatey.org/packages for package ids.
+AppInstallArgs,,"(Optional) Prefix with ARGS: Installer arguments for msi,ps1,exe,cmd (for msi usually /quiet or /q /norestart) (for ps1 with multi param try -var1 xyz -var2 pdq named format, else entire value is first param )"
+AppDescription,zip file management tool,(Required) Info for company portal
+AppUninstallName,,"(Optional) AddRemove Program Name (winget id - see winget list). App to uninstall (also done prior to install). This is in addition to the normal choco,winget uninstall. Uses winget to uninstall (winget list myproductid -e)"
+AppUninstallVersion,22,(Optional) AddRemove Product version below which to Uninstall (e.g. 4.5.0). Detection: versions below this will not be considered Detected. Blank=Any version is detected. Use this to repackage an app to upgrade everyone to latest version.
+AppUninstallProcess,*7z*,(Optional) Processes to end prior to uninstall. Acrob* style will work but better if no * is used. Show running names via powershell: get-process -Name Acrob*
+SystemOrUser,system,"(Required) System to install as system, User to install as user"
+Publisher,Igor Pavlov of 7Zip,(Required) Info for company portal
+RestartBehavior,allow,Allow Installer to Restart (Default is allow)
+Developer,,Info for company portal
+Owner,,Info for company portal
+Notes,,Info for company portal
+InformationURL,https://www.7-zip.org/?ref=winstall,Info for company portal
+PrivacyURL,,Info for company portal
+CompanyPortalFeaturedApp,FALSE,(Required) Company Portal Featured (Default is FALSE)
+AvailableInCompanyPortal,TRUE,(Required) Company Portal Availability (Default is TRUE)
+PublishToOrgGroup,TRUE,"(Required) When uploaded to Intune, the PublishToGroup values from the AppsPublish_OrgList.csv will be used to push this to the existing org-wide Group as a required app. False means do not publish. Apps are always published to its own Intune WindowsApp XYZ group (Default is FALSE)"
+AppVar1,,Custom var useable by ps1 files
+AppVar2,,Custom var useable by ps1 files
+AppVar3,,Custom var useable by ps1 files
+AppVar4,,Custom var useable by ps1 files
+AppVar5,,Custom var useable by ps1 files

@@ -32,12 +32,12 @@ Function IntuneAppValues
 {
     # These values are replaced by AppsPublish.ps1 with matching values from the CSV file
 	$IntuneAppValues = @{}
-    $IntuneAppValues.Add("AppName","Adobe Reader-v212")
+    $IntuneAppValues.Add("AppName","Adobe Reader-v215")
     $IntuneAppValues.Add("AppInstaller","winget")
     $IntuneAppValues.Add("AppInstallName","Adobe.Acrobat.Reader.64-bit")
     $IntuneAppValues.Add("AppInstallArgs","")
     $IntuneAppValues.Add("AppUninstallName","")
-    $IntuneAppValues.Add("AppUninstallVersion","22")
+    $IntuneAppValues.Add("AppUninstallVersion","26.1.21411")
     $IntuneAppValues.Add("AppUninstallProcess","Acrobat")
     $IntuneAppValues.Add("SystemOrUser","system")
     $IntuneAppValues.Add("Function","intune_requirements.ps1")
