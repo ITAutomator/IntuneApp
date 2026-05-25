@@ -57,7 +57,7 @@ Do
     }
     ElseIf ($action -eq 4)
     {
-        $ps1file = "$($scriptDir)\AppsPublish.ps1"
+        $ps1file = "$($scriptDir)\IntuneApp Publish.ps1"
     }
     ##### ps1 launch
     if ($ps1file -ne "")

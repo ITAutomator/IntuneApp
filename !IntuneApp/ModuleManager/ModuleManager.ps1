@@ -109,7 +109,7 @@ Function ModuleAction ($module="<none>",$action="update")
         } # each module that needs an update
         if ($action -in "install","reinstall")
         { # install reinstall
-            $reqver = PromptForString -Prompt "Version" $fm.Version
+            $reqver = PromptForString -Prompt "Enter desired version" -Default $fm.Version
             Write-Host "Installing $($reqver)"
             if ($IsAdmin) {
                 Write-Host "Install-Module -Name $module -AllowClobber -Scope AllUsers -RequiredVersion $reqver" -ForegroundColor Yellow
@@ -197,7 +197,7 @@ Do { # choose a module
         $modulepaths = @()
         #
         $thisObj = [PSCustomObject]@{
-            Desc = "PS5 User Modules"
+            Desc = "PS5 User Modules   "
             Path = "$($env:OneDrive)\Documents\WindowsPowerShell\Modules"
         }
         $modulepaths += $thisObj
@@ -209,7 +209,7 @@ Do { # choose a module
         $modulepaths += $thisObj
         #
         $thisObj = [PSCustomObject]@{
-            Desc = "PS7 User Modules"
+            Desc = "PS7 User Modules   "
             Path = "$($env:OneDrive)\Documents\PowerShell\Modules"
         }
         $modulepaths += $thisObj
@@ -227,14 +227,49 @@ Do { # choose a module
             $i_count += 1
             Write-Host "$($i_count)) [$($modulepath.Desc)] $($modulepath.Path)" -NoNewline
             if (Test-Path $modulepath.Path) {
-                Write-Host " Opened" -ForegroundColor Green
-                Start-Process explorer.exe $modulepath.Path
+                Write-Host " Found" -ForegroundColor Green
             }
             else {
                 Write-Host " Not Found" -ForegroundColor Yellow
             }
         } # each module path
-        PressEnterToContinue
+        $choice = AskForChoice -Message "Open PowerShell 5 or 7 paths in Explorer?" -choices ("&5","&7","&All","E&xit") -DefaultChoice 3 -ReturnString
+        if ($choice -ne "Exit") {
+            Write-Host "Explorer Module Paths"
+            Write-Host "------------------------------"
+            if ($choice -eq "5") {
+                $pathsToOpen = $modulepaths | Where-Object {$_.Desc -match "PS5"}
+            }
+            elseif ($choice -eq "7") {
+                $pathsToOpen = $modulepaths | Where-Object {$_.Desc -match "PS7"}
+            }
+            else {
+                $pathsToOpen = $modulepaths
+            }
+            ForEach ($modulepath in $pathsToOpen) {
+                Write-Host "Opening: [$($modulepath.Desc)] $($modulepath.Path)" -NoNewline
+                if (Test-Path $modulepath.Path) {
+                    Write-Host " Opened" -ForegroundColor Green
+                    Start-Process explorer.exe $modulepath.Path
+                }
+                else {
+                    Write-Host " Not Found" -ForegroundColor Yellow
+                }
+            } # each module path to open
+            PressEnterToContinue
+        }
+        # $i_count = 0
+        # ForEach ($modulepath in $modulepaths) {
+        #     $i_count += 1
+        #     Write-Host "$($i_count)) [$($modulepath.Desc)] $($modulepath.Path)" -NoNewline
+        #     if (Test-Path $modulepath.Path) {
+        #         Write-Host " Opened" -ForegroundColor Green
+        #         Start-Process explorer.exe $modulepath.Path
+        #     }
+        #     else {
+        #         Write-Host " Not Found" -ForegroundColor Yellow
+        #     }
+        # } # each module path
     }
     else
     { # something entered

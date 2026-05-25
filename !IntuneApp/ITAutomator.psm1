@@ -63,6 +63,14 @@ If (-not(IsAdmin))
 }
 #>
 <###### Version History
+2026-04-14
+LoadModule Removed the Verbose option from the user-based installer
+2026-03-05
+FolderPruneToSize -Folder "C:\LogFolder" -MaxMB 5
+FolderPruneToCount -Folder "C:\LogFolder" -MaxCount 5
+CropString ($StringtoCrop, $MaxLen = 30, $ForcetoMaxLen = $false, $Ellipsis = "...")
+PromptForString - Pre type the default
+DecryptString - Suppresses error for decrypt failure - returns empty string
 2025-08-08
 CopyFilesIfNeeded - Added a check for source folder existence
 2025-04-01
@@ -370,23 +378,30 @@ Function ParseToken ($Stringtosearch, $delim_start = "Hash: [",$delim_end = "]" 
     } # found delim_start
     Return $sReturn
 }
-Function CropString ($StringtoCrop, $MaxLen = 30)
+Function CropString ($StringtoCrop, $MaxLen = 30, [switch] $ForcetoMaxLen, $Ellipsis = "...")
 {
     # CropString - Given a string, crops it below the maxlen and appends ... marks if needed, to indicate cropping
     # helloworld (len=10)
     # maxlen 5
     # 012345678901234
     # he...
-    $MaxLen = [math]::Max(3,$MaxLen) # at least 3 (to fit ...)
+    # ForcetoMaxLen will force everything to the same width (using spaces)
+    $MaxLen = [math]::Max($Ellipsis.length,$MaxLen) # at least length of ellipsis
     $sReturn = ""
     if ($StringtoCrop.length -le $MaxLen)
     {
-        $sReturn = $StringtoCrop
+        if ($ForcetoMaxLen)
+        {
+            $sReturn = $StringtoCrop.PadRight($MaxLen)
+        }
+        else {
+            $sReturn = $StringtoCrop
+        }
     }
     else
     {
-        $sReturn = $StringtoCrop.Substring(0,$MaxLen-3)
-        $sReturn += "..."      
+        $sReturn = $StringtoCrop.Substring(0,$MaxLen-$Ellipsis.length)
+        $sReturn += $Ellipsis      
     }
     Return $sReturn
 }
@@ -749,7 +764,11 @@ Function CreateLocalUser($username, $password, $desc, $computername, $GroupsList
         }
     }
 Function EncryptString ($StringToEncrypt, $Key = $null, $KeyAsString = "")
-    {
+{
+    # EncryptString - Encrypts a string using a provided (or default) key which will work on any system which provides same key.
+    if (-not ($StringToEncrypt)) {
+        return ""
+    }
     $EncryptedSS = ConvertTo-SecureString -AsPlainText -Force -String $StringToEncrypt
     if ($KeyAsString -eq "") {
         if (-not ($Key)) { ## default to a simple key
@@ -768,13 +787,17 @@ Function EncryptString ($StringToEncrypt, $Key = $null, $KeyAsString = "")
     return $Encrypted
 }
 Function EncryptStringSecure ($StringToEncrypt)
-    {
+{
+    # Uses a machine specific key, so only works on the same machine, but doesn't require managing a key.
     $EncryptedSS = ConvertTo-SecureString -AsPlainText -Force -String $StringToEncrypt
     $Encrypted = ConvertFrom-SecureString -SecureString $EncryptedSS
     return $Encrypted
 }
 Function DecryptString ($StringToDecrypt, $Key = $null, $KeyAsString = "")
 {
+    if (-not ($StringToDecrypt)) {
+        return ""
+    }
     if ($KeyAsString -eq "") {
         if (-not ($Key)) { ## default to a simple key
             [Byte[]] $Key = (1..16)
@@ -788,8 +811,13 @@ Function DecryptString ($StringToDecrypt, $Key = $null, $KeyAsString = "")
         # Use the first 32 bytes for a 256-bit key
         $Key = $hashedKey[0..31]
     } # KeyAsString
-    $StringToDecryptSS= ConvertTo-SecureString -Key $key -String $StringToDecrypt
-    $Decrypted=(New-Object System.Management.Automation.PSCredential 'N/A', $StringToDecryptSS).GetNetworkCredential().Password
+    try {
+        $StringToDecryptSS= ConvertTo-SecureString -Key $key -String $StringToDecrypt
+        $Decrypted=(New-Object System.Management.Automation.PSCredential 'N/A', $StringToDecryptSS).GetNetworkCredential().Password
+    }
+    catch {
+        $Decrypted="" # decryption failed, likely due to wrong key or corrupt data
+    }
     return $Decrypted
 }
 Function DecryptStringSecure ($StringToDecrypt)
@@ -1904,20 +1932,22 @@ Function VarExists
 }
 function PromptForString ($Prompt = "Enter your choice", $defaultValue = "")
 {
-    if ([string]::IsNullOrWhiteSpace($defaultValue)) {
-    }
-    else {
-        $defaultPrompt = "Press Enter for default: "
-        $defaultPrompt = $defaultPrompt.PadLeft($Prompt.Length +2, ' ')  # Line up the 2 prompts
-        Write-Host $defaultPrompt -NoNewline
-        Write-Host $defaultValue -ForegroundColor Yellow
-        $Prompt = $Prompt.PadLeft($defaultPrompt.Length - 2, ' ') # Line up the 2 prompts
+    if (-not [string]::IsNullOrWhiteSpace($defaultValue)) {
+        # Show the default on Line 1, the prompt on Line2
+        # $defaultPrompt = "Press Enter for default: "
+        # $defaultPrompt = $defaultPrompt.PadLeft($Prompt.Length +2, ' ')  # Line up the 2 prompts
+        # Write-Host $defaultPrompt -NoNewline
+        # Write-Host $defaultValue -ForegroundColor Yellow
+        # $Prompt = $Prompt.PadLeft($defaultPrompt.Length - 2, ' ') # Line up the 2 prompts
+        # Pre-type the default value
+        $wsh = New-Object -ComObject WScript.Shell
+        $wsh.SendKeys($defaultValue)  
     }
     $userInput = Read-Host -Prompt $Prompt
     # Use the default value if the user presses Enter without typing anything
-    if ([string]::IsNullOrWhiteSpace($userInput)) {
-        $userInput = $defaultValue
-    }
+    # if ([string]::IsNullOrWhiteSpace($userInput)) {
+    #     $userInput = $defaultValue
+    # }
     Return $userInput
 }
 Function AskForChoice
@@ -3409,20 +3439,92 @@ Function FolderSize
         }
     }
 }
+Function FolderPruneToCount
+{
+    <#
+    ### Prunes old files from a folder, keeping total count under a certain limit
+    Usage:
+    FolderPruneToCount -Folder "C:\LogFolder" -MaxCount 5
+    #>
+    Param (
+        [string]  $Folder="C:\LogFolder"
+        ,[string]  $Filter="*.*"
+        ,[int]     $MaxCount=5
+        ,[switch]  $SubfoldersToo = $false
+    )
+    if (-Not(Test-Path -Path $Folder -PathType Container)) {
+        Throw "No folder '$($Folder)'"
+    }
+    $returnObject = [PsCustomObject]@{
+        Messages = @()
+        CountAll = 0
+        CountPruned = 0
+        PrunedMsg = ""
+    }
+    $PrunedBytes = 0
+    $Files = Get-ChildItem -Path $Folder -File -Recurse:$SubfoldersToo -Filter $Filter | Sort-Object LastWriteTime -Descending
+    $returnObject.CountAll = $Files.Count
+    ForEach ($File in ($Files | Select-Object -Skip $MaxCount))
+    { # Each File that's over max
+        $msg = "$($File.Name) $($File.LastWritetime) $(BytestoString $File.Length) [Deleted]"
+        $returnObject.Messages += $msg
+        $returnObject.CountPruned += 1
+        $PrunedBytes += $File.Length
+        $File.Delete()
+    } # Each File that's over max
+    if ($PrunedBytes -gt 0) {
+        $returnObject.PrunedMsg = BytestoString $PrunedBytes
+    }
+    return $returnObject
+}
+Function FolderPruneToSize
+{
+    <#
+    ### Prunes old files from a folder, keeping total size under a certain limit (MB)
+    Usage:
+    FolderPruneToSize -Folder "C:\LogFolder" -MaxMB 5
+    #>
+    Param (
+        [string]  $Folder="C:\LogFolder"
+        ,[string]  $Filter="*.*"
+        ,[int]     $MaxMB=5
+        ,[switch]  $SubfoldersToo = $false
+    )
+    if (-Not(Test-Path -Path $Folder -PathType Container)) {
+        Throw "No folder '$($Folder)'"
+    }
+    $returnObject = [PsCustomObject]@{
+        Messages = @()
+        CountAll = 0
+        CountPruned = 0
+        PrunedMsg = ""
+    }
+    $PrunedBytes = 0
+    $MaxBytes = $MaxMB * 1MB
+    $FilesBytes = 0
+    $Files = Get-ChildItem -Path $Folder -File -Recurse:$SubfoldersToo -Filter $Filter | Sort-Object LastWriteTime -Descending
+    $returnObject.CountAll = $Files.Count
+    ForEach ($File in $Files)
+    { # Each File
+        $fileinfo = "$($File.Name) $($File.LastWritetime) $(BytestoString $File.Length)"
+        $FilesBytes +=$File.Length
+        if ($FilesBytes -gt $MaxBytes)
+        { # Over limit
+            $msg = "$($fileinfo) [Deleted]"
+            $returnObject.Messages += $msg
+            $returnObject.CountPruned += 1
+            $PrunedBytes += $File.Length
+            $File.Delete()
+        } # Over limit
+    } # Each File
+    if ($PrunedBytes -gt 0) {
+        $returnObject.PrunedMsg = BytestoString $PrunedBytes
+    }
+    return $returnObject
+}
 Function FolderDelete {
     <#
-    .SYNOPSIS
-    Removes all files and folders within given path, recursively removing files first.
-    .DESCRIPTION
-    Satisfies OneDrive files on demand, where you can't remove non-empty folders (Remove-Item -Recurse -Force doesn't work)
-    .PARAMETER Path
-    Path to file/folder
-    .PARAMETER SkipFolder
-    Supply this switch if you do not want to delete top level folder
-    .EXAMPLE
     FolderDelete -Path "C:\Support\GitHub\GpoZaurr\Docs"
-    .NOTES
-    General notes
     #>
     [cmdletbinding()]
     param(
@@ -4091,7 +4193,7 @@ Function LoadModule ($m, $providercheck = "", $checkver = $true) #nuget
                         $msg = "About to run Install-Module $($m). You are not an admin, is that OK? (not recommended)"
                         if (AskForChoice -Message $msg) {
                             write-verbose "Module $($m) is available online, downloading to disk (not an admin so as user)..."
-                            Install-Module -Name $m -Force -Verbose -Scope CurrentUser
+                            Install-Module -Name $m -Force -Scope CurrentUser
                         }
                         else {
                             write-verbose "Module $($m) not installed (user aborted)"
