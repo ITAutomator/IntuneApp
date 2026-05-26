@@ -1,5 +1,21 @@
+#######################################
+# IntuneApp Publish.ps1
+# Use this to publish Win32 apps to Intune
+# 
+# Prequisites (From a user-based command prompt)
+#
+# Powershell 7
+# winget install --id Microsoft.Powershell --source winget
+#
+# Modules (From a user-based pwsh.exe prompt)
+# Install-Module Microsoft.Graph
+# Install-Module IntuneWin32App
+#
+# VSCode (Optional)
+# winget install --id Microsoft.VisualStudioCode --source winget
+#
+#######################################
 #region: Functions
-
 Function MgGroupCreate ($groupname)
 {
     #MgGroupCreate - Creates a group in Azure/Entra (if necessary)
@@ -2308,26 +2324,38 @@ Do { # Main Menu Loop
             } # Check ALL Tenants
             If ($TenantsChoice -eq "R")
             { # Remove
+                if ($tenants.count -eq 1) {
+                    PressEnterToContinue "You can't remove the last tenant.  Add a new tenant first <or> exit the program and delete the tenants.csv file. Press Enter to continue"
+                    Continue
+                }
                 $TenantIdToDel = $settings.TenantId
                 Write-Host "Selected Tenant: " -NoNewline
                 Write-Host $TenantIdToDel -ForegroundColor Green
                 If (AskForChoice "Remove this tenant?") {
-                    # Update settings with selected tenant info
-                    $settings.TenantId = "(none)"
-                    $settings.AppId = "(none)"
-                    $settings.LastChecked ="(never)"
-                    # Save updated settings
-                    $retVal = CSVSettingsSave $settings $csvFile
                     # Remove from Tenants
-                    $Tenants = $Tenants | Where-Object { $_.TenantId -ne $TenantIdToDel }
-                    # Save updated list
-                    $Tenants | Sort-Object TenantId | Export-Csv -Path $TenantsCSV -Encoding UTF8 -NoTypeInformation -Force
-                    # Ask If they want ot remove the registered app too
+                    $NewTenants = @()
+                    $NewTenants += $Tenants | Where-Object { $_.TenantId -ne $TenantIdToDel }
+                    # Save updated TenantsCSV
+                    $NewTenants | Sort-Object TenantId | Export-Csv -Path $TenantsCSV -Encoding UTF8 -NoTypeInformation -Force
+                    # Ask If they want to remove the registered app too
                     If (-not(($TenantIdToDel -eq "(none)") -or ($TenantIdToDel -eq "contoso.com"))) {
                         If (AskForChoice "Remove the registered app from this tenant?") {
                             RemoveRegisteredApp -TenantId $TenantIdToDel -AppName $settings.AppName -SystemOrUser $SystemOrUser -AdminAppID $settings.AdminAppId -AdminAppCertThumbprint $settings.AdminAppCertThumbprint -AdminAppCertFriendlyName $settings.AdminAppCertFriendlyName
                         }
                     }
+                    # Select another tenant (the first tenant)
+                    $SelectedTenant = $NewTenants[0]
+                    # Update settings with selected tenant info
+                    $settings.TenantId     = $SelectedTenant.TenantId
+                    $settings.AppId        = $SelectedTenant.AppId
+                    $settings.LastChecked  = $SelectedTenant.LastChecked
+                    $settings.AdminAppId   = $SelectedTenant.AdminAppId
+                    $settings.AdminAppCertThumbprint = $SelectedTenant.AdminAppCertThumbprint
+                    $settings.AdminAppCertFriendlyName = $SelectedTenant.AdminAppCertFriendlyName
+                    # Save updated settings
+                    $retVal = CSVSettingsSave $settings $csvFile
+                    # Update in-memory 
+                    $Tenants = $NewTenants
                     Write-Host "Done with Removal"
                 } Else {
                     Write-Host "Canceled"
@@ -2627,7 +2655,7 @@ Do { # Main Menu Loop
             # Check for AppCert
             If ($null -eq $AppCert)
             { # No AppCert
-                PressEnterToContinue "  No AppCert. Select this [T]enant and use [F] to fix it. Press Enter."
+                PressEnterToContinue "  No AppCert. Select this [T]enant, then use [F] to fix it. <Press Enter>"
                 Continue # back to menu
             } # No AppCert
             # Check for AppId
